@@ -8,8 +8,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from click.testing import CliRunner
 
+from notebooklm.exceptions import ChatSettingsUpdateError
 from notebooklm.notebooklm_cli import cli
-from notebooklm.types import AskResult, Notebook
+from notebooklm.rpc import ChatGoal, ChatResponseLength
+from notebooklm.types import UNSET, AskResult, ChatMode, ChatSettings, Notebook
 
 from .conftest import create_mock_client, patch_client_for_module, patch_main_cli_client
 
@@ -487,11 +489,22 @@ class TestNotebookConfigure:
 
             assert result.exit_code == 0
             assert "Chat mode set to: learning-guide" in result.output
+            mock_client.chat.set_mode.assert_awaited_once_with(
+                "nb_123",
+                ChatMode.LEARNING_GUIDE,
+            )
 
-    def test_notebook_configure_persona(self, runner, mock_auth):
+    def test_notebook_configure_persona_uses_patch(self, runner, mock_auth):
         with patch_main_cli_client() as mock_client_cls:
             mock_client = create_mock_client()
-            mock_client.chat.configure = AsyncMock(return_value=None)
+            mock_client.chat.update_settings = AsyncMock(
+                return_value=ChatSettings(
+                    goal=ChatGoal.CUSTOM,
+                    response_length=ChatResponseLength.DEFAULT,
+                    custom_prompt="Act as a tutor",
+                    source="server",
+                )
+            )
             mock_client_cls.return_value = mock_client
 
             with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
@@ -501,13 +514,26 @@ class TestNotebookConfigure:
                 )
 
             assert result.exit_code == 0
-            assert "Chat configured" in result.output
-            assert "persona" in result.output
+            assert "Chat settings updated" in result.output
+            mock_client.chat.update_settings.assert_awaited_once_with(
+                "nb_123",
+                goal=ChatGoal.CUSTOM,
+                response_length=UNSET,
+                custom_prompt="Act as a tutor",
+                strict=True,
+            )
 
-    def test_notebook_configure_response_length(self, runner, mock_auth):
+    def test_notebook_configure_response_length_uses_patch(self, runner, mock_auth):
         with patch_main_cli_client() as mock_client_cls:
             mock_client = create_mock_client()
-            mock_client.chat.configure = AsyncMock(return_value=None)
+            mock_client.chat.update_settings = AsyncMock(
+                return_value=ChatSettings(
+                    goal=ChatGoal.DEFAULT,
+                    response_length=ChatResponseLength.LONGER,
+                    custom_prompt=None,
+                    source="server",
+                )
+            )
             mock_client_cls.return_value = mock_client
 
             with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
@@ -517,7 +543,129 @@ class TestNotebookConfigure:
                 )
 
             assert result.exit_code == 0
-            assert "response length: longer" in result.output
+            assert "length=longer" in result.output
+            mock_client.chat.update_settings.assert_awaited_once_with(
+                "nb_123",
+                goal=UNSET,
+                response_length=ChatResponseLength.LONGER,
+                custom_prompt=UNSET,
+                strict=True,
+            )
+
+    def test_notebook_configure_mode_plus_length_does_not_early_return(self, runner, mock_auth):
+        with patch_main_cli_client() as mock_client_cls:
+            mock_client = create_mock_client()
+            mock_client.chat.set_mode = AsyncMock(return_value=None)
+            mock_client.chat.set_settings = AsyncMock(return_value=None)
+            mock_client_cls.return_value = mock_client
+
+            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
+                mock_fetch.return_value = ("csrf", "session")
+                result = runner.invoke(
+                    cli,
+                    [
+                        "configure",
+                        "-n",
+                        "nb_123",
+                        "--mode",
+                        "learning-guide",
+                        "--response-length",
+                        "longer",
+                    ],
+                )
+
+            assert result.exit_code == 0
+            mock_client.chat.set_mode.assert_not_called()
+            mock_client.chat.set_settings.assert_awaited_once_with(
+                "nb_123",
+                ChatSettings(
+                    goal=ChatGoal.LEARNING_GUIDE,
+                    response_length=ChatResponseLength.LONGER,
+                    custom_prompt=None,
+                    source="default",
+                ),
+            )
+
+    def test_notebook_configure_show_json(self, runner, mock_auth):
+        with patch_main_cli_client() as mock_client_cls:
+            mock_client = create_mock_client()
+            mock_client.chat.get_settings = AsyncMock(
+                return_value=ChatSettings(
+                    goal=ChatGoal.CUSTOM,
+                    response_length=ChatResponseLength.DEFAULT,
+                    custom_prompt="x" * 80,
+                    source="server",
+                )
+            )
+            mock_client_cls.return_value = mock_client
+
+            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
+                mock_fetch.return_value = ("csrf", "session")
+                result = runner.invoke(cli, ["configure", "-n", "nb_123", "--show", "--json"])
+
+            assert result.exit_code == 0
+            payload = json.loads(result.output)
+            assert payload["notebook_id"] == "nb_123"
+            assert payload["goal"] == "custom"
+            assert payload["response_length"] == "default"
+            assert payload["custom_prompt_len"] == 80
+            assert payload["source"] == "server"
+            assert payload["custom_prompt"].endswith("...")
+            assert len(payload["custom_prompt"]) <= 63
+
+    def test_notebook_configure_reset(self, runner, mock_auth):
+        with patch_main_cli_client() as mock_client_cls:
+            mock_client = create_mock_client()
+            mock_client.chat.reset_settings = AsyncMock(return_value=None)
+            mock_client_cls.return_value = mock_client
+
+            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
+                mock_fetch.return_value = ("csrf", "session")
+                result = runner.invoke(cli, ["configure", "-n", "nb_123", "--reset"])
+
+            assert result.exit_code == 0
+            mock_client.chat.reset_settings.assert_awaited_once_with("nb_123")
+
+    def test_notebook_configure_rejects_style_prompt_conflict(self, runner, mock_auth):
+        with patch_main_cli_client() as mock_client_cls:
+            mock_client = create_mock_client()
+            mock_client_cls.return_value = mock_client
+
+            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
+                mock_fetch.return_value = ("csrf", "session")
+                result = runner.invoke(
+                    cli,
+                    [
+                        "configure",
+                        "-n",
+                        "nb_123",
+                        "--style",
+                        "default",
+                        "--custom-instructions",
+                        "Do not use this",
+                    ],
+                )
+
+            assert result.exit_code != 0
+            assert "can only be used with --style custom" in result.output
+
+    def test_notebook_configure_force_requires_full_axes(self, runner, mock_auth):
+        with patch_main_cli_client() as mock_client_cls:
+            mock_client = create_mock_client()
+            mock_client.chat.update_settings = AsyncMock(
+                side_effect=ChatSettingsUpdateError("Cannot safely PATCH")
+            )
+            mock_client_cls.return_value = mock_client
+
+            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
+                mock_fetch.return_value = ("csrf", "session")
+                result = runner.invoke(
+                    cli,
+                    ["configure", "-n", "nb_123", "--length", "longer", "--force"],
+                )
+
+            assert result.exit_code != 0
+            assert "--force requires explicit style and length" in result.output
 
 
 # =============================================================================

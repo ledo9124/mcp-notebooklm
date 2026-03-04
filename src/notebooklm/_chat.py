@@ -9,15 +9,23 @@ import logging
 import os
 import re
 import uuid
+import warnings
 from typing import Any
 from urllib.parse import quote, urlencode
 
 import httpx
 
+from ._chat_settings import parse_chat_settings
 from ._core import ClientCore
-from .exceptions import ChatError, NetworkError, ValidationError
-from .rpc import QUERY_URL, RPCMethod
-from .types import AskResult, ChatReference, ConversationTurn
+from .exceptions import (
+    ChatError,
+    ChatSettingsParseError,
+    ChatSettingsUpdateError,
+    NetworkError,
+    ValidationError,
+)
+from .rpc import QUERY_URL, ChatGoal, ChatResponseLength, RPCMethod
+from .types import UNSET, AskResult, ChatReference, ChatSettings, ConversationTurn
 
 logger = logging.getLogger(__name__)
 
@@ -353,6 +361,145 @@ class ChatAPI:
         """
         return self._core.clear_conversation_cache(conversation_id)
 
+    async def try_get_settings(self, notebook_id: str) -> ChatSettings | None:
+        """Best-effort read of chat settings.
+
+        Returns None when settings cannot be parsed from server payload.
+        """
+        try:
+            return await self.get_settings(notebook_id, strict=True)
+        except ChatSettingsParseError:
+            return None
+
+    async def get_settings(self, notebook_id: str, *, strict: bool = True) -> ChatSettings:
+        """Read current chat settings from the server.
+
+        Args:
+            notebook_id: The notebook ID.
+            strict: If True, parsing failures raise ChatSettingsParseError.
+                If False, returns a safe DEFAULT/DEFAULT fallback with source="unknown".
+        """
+        params = [notebook_id, None, [2], None, 0]
+        raw = await self._core.rpc_call(
+            RPCMethod.GET_NOTEBOOK,
+            params,
+            source_path=f"/notebook/{notebook_id}",
+        )
+
+        try:
+            return parse_chat_settings(raw, strict=strict)
+        except ChatSettingsParseError:
+            if strict:
+                raise
+
+            warnings.warn(
+                "Could not parse chat settings from server payload; "
+                "falling back to DEFAULT/DEFAULT with source='unknown'.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            return ChatSettings(
+                goal=ChatGoal.DEFAULT,
+                response_length=ChatResponseLength.DEFAULT,
+                custom_prompt=None,
+                source="unknown",
+            )
+
+    async def set_settings(self, notebook_id: str, settings: ChatSettings) -> None:
+        """Set chat settings absolutely (writes both style and response length)."""
+        custom_prompt = settings.custom_prompt if settings.goal == ChatGoal.CUSTOM else None
+
+        try:
+            await self.configure(
+                notebook_id,
+                goal=settings.goal,
+                response_length=settings.response_length,
+                custom_prompt=custom_prompt,
+            )
+        except Exception as exc:
+            raise ChatSettingsUpdateError("Failed to set chat settings", cause=exc) from exc
+
+    async def update_settings(
+        self,
+        notebook_id: str,
+        *,
+        goal: ChatGoal | object = UNSET,
+        response_length: ChatResponseLength | object = UNSET,
+        custom_prompt: str | None | object = UNSET,
+        strict: bool = True,
+    ) -> ChatSettings:
+        """Safely patch chat settings via read-modify-write.
+
+        If strict parsing fails while reading current settings, the method raises
+        ChatSettingsUpdateError to avoid accidental clobbering.
+        """
+        try:
+            current = await self.get_settings(notebook_id, strict=strict)
+        except ChatSettingsParseError as exc:
+            raise ChatSettingsUpdateError(
+                "Cannot safely PATCH chat settings because current settings could not be "
+                "read from server. Use set_settings() with explicit goal and response_length.",
+                cause=exc,
+            ) from exc
+
+        merged_goal = current.goal if goal is UNSET else goal
+        merged_length = current.response_length if response_length is UNSET else response_length
+
+        merged_prompt = current.custom_prompt if custom_prompt is UNSET else custom_prompt
+
+        if merged_goal != ChatGoal.CUSTOM:
+            merged_prompt = None
+
+        if not isinstance(merged_goal, ChatGoal):
+            raise ChatSettingsUpdateError(
+                "goal must be a ChatGoal value when updating settings"
+            )
+        if not isinstance(merged_length, ChatResponseLength):
+            raise ChatSettingsUpdateError(
+                "response_length must be a ChatResponseLength value when updating settings"
+            )
+        if merged_prompt is not None and not isinstance(merged_prompt, str):
+            raise ChatSettingsUpdateError(
+                "custom_prompt must be a string, None, or UNSET when updating settings"
+            )
+
+        try:
+            merged = ChatSettings(
+                goal=merged_goal,
+                response_length=merged_length,
+                custom_prompt=merged_prompt,
+                source="server",
+            )
+        except Exception as exc:
+            raise ChatSettingsUpdateError("Invalid chat settings update payload", cause=exc) from exc
+
+        if (
+            merged.goal == current.goal
+            and merged.response_length == current.response_length
+            and merged.custom_prompt == current.custom_prompt
+        ):
+            return current
+
+        await self.set_settings(notebook_id, merged)
+        return ChatSettings(
+            goal=merged.goal,
+            response_length=merged.response_length,
+            custom_prompt=merged.custom_prompt,
+            source="server",
+        )
+
+    async def reset_settings(self, notebook_id: str) -> None:
+        """Reset chat settings to NotebookLM defaults (DEFAULT/DEFAULT)."""
+        await self.set_settings(
+            notebook_id,
+            ChatSettings(
+                goal=ChatGoal.DEFAULT,
+                response_length=ChatResponseLength.DEFAULT,
+                custom_prompt=None,
+                source="default",
+            ),
+        )
+
     async def configure(
         self,
         notebook_id: str,
@@ -360,7 +507,11 @@ class ChatAPI:
         response_length: Any | None = None,
         custom_prompt: str | None = None,
     ) -> None:
-        """Configure chat persona and response settings for a notebook.
+        """Legacy absolute-set API for chat persona and response settings.
+
+        This method writes both style and response length in one request and
+        applies implicit defaults when values are omitted. For safe partial
+        updates, prefer update_settings().
 
         Args:
             notebook_id: The notebook ID.
@@ -372,7 +523,6 @@ class ChatAPI:
             ValidationError: If goal is CUSTOM but custom_prompt is not provided.
         """
         logger.debug("Configuring chat for notebook %s", notebook_id)
-        from .rpc import ChatGoal, ChatResponseLength
 
         if goal is None:
             goal = ChatGoal.DEFAULT
@@ -398,18 +548,17 @@ class ChatAPI:
         )
 
     async def set_mode(self, notebook_id: str, mode: Any) -> None:
-        """Set chat mode using predefined configurations.
+        """Legacy convenience wrapper around absolute-set configure().
 
         Args:
             notebook_id: The notebook ID.
             mode: Predefined ChatMode (DEFAULT, LEARNING_GUIDE, CONCISE, DETAILED).
         """
-        from .rpc import ChatGoal, ChatResponseLength
         from .types import ChatMode
 
         mode_configs = {
             ChatMode.DEFAULT: (ChatGoal.DEFAULT, ChatResponseLength.DEFAULT, None),
-            ChatMode.LEARNING_GUIDE: (ChatGoal.LEARNING_GUIDE, ChatResponseLength.LONGER, None),
+            ChatMode.LEARNING_GUIDE: (ChatGoal.LEARNING_GUIDE, ChatResponseLength.DEFAULT, None),
             ChatMode.CONCISE: (ChatGoal.DEFAULT, ChatResponseLength.SHORTER, None),
             ChatMode.DETAILED: (ChatGoal.DEFAULT, ChatResponseLength.LONGER, None),
         }

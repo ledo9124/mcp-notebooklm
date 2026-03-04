@@ -17,6 +17,8 @@ import pytest
 from notebooklm._artifacts import ArtifactsAPI
 from notebooklm._chat import ChatAPI
 from notebooklm.auth import AuthTokens
+from notebooklm.rpc import ChatGoal, ChatResponseLength
+from notebooklm.types import ChatMode
 
 
 @pytest.fixture
@@ -175,6 +177,25 @@ class TestChatSourceSelection:
 
             # Verify the triple-nested format
             assert sources_array == [[["s1"]], [["s2"]], [["s3"]]]
+
+
+class TestChatModeMappings:
+    """Tests for predefined ChatMode mappings in ChatAPI.set_mode()."""
+
+    @pytest.mark.asyncio
+    async def test_set_mode_learning_guide_keeps_default_length(self, mock_core):
+        """LEARNING_GUIDE should only change style/goal, not force longer length."""
+        api = ChatAPI(mock_core)
+        api.configure = AsyncMock()
+
+        await api.set_mode("nb_123", ChatMode.LEARNING_GUIDE)
+
+        api.configure.assert_awaited_once_with(
+            "nb_123",
+            ChatGoal.LEARNING_GUIDE,
+            ChatResponseLength.DEFAULT,
+            None,
+        )
 
 
 class TestArtifactsSourceSelection:

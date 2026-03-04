@@ -1,7 +1,7 @@
 # CLI Reference
 
 **Status:** Active
-**Last Updated:** 2026-03-02
+**Last Updated:** 2026-03-04
 
 Complete command reference for the `notebooklm` CLI—providing full programmatic access to all NotebookLM features, including capabilities not exposed in the web UI.
 
@@ -79,7 +79,7 @@ See [Configuration](configuration.md) for details on environment variables and C
 | `ask --json` | Get answer with source references | `notebooklm ask "Explain X" --json` |
 | `ask --save-as-note` | Save response as a note | `notebooklm ask "Explain X" --save-as-note` |
 | `ask --save-as-note --note-title` | Save response with custom note title | `notebooklm ask "Explain X" --save-as-note --note-title "Title"` |
-| `configure` | Set persona/mode | `notebooklm configure --mode learning-guide` |
+| `configure` | Configure chat settings (style + length + custom instructions) | `notebooklm configure --style learning-guide --length longer` |
 | `history` | View conversation history | `notebooklm history` |
 | `history --clear` | Clear local conversation cache | `notebooklm history --clear` |
 | `history --save` | Save history as a note | `notebooklm history --save` |
@@ -398,6 +398,105 @@ notebooklm auth check --json
 - Verify auth setup in CI/CD environments
 - Check if cookies are from correct domain (regional vs .google.com)
 - Diagnose NOTEBOOKLM_AUTH_JSON environment variable issues
+
+### Chat: `configure` (Chat Settings)
+
+Configure notebook-level chat settings with Web-parity semantics.
+
+```bash
+notebooklm configure [OPTIONS]
+```
+
+**Goal model:** two independent axes
+- Style: `default | learning-guide | custom`
+- Length: `shorter | default | longer`
+
+**Primary options:**
+- `-n, --notebook ID` - Notebook ID (uses current if not set; supports partial IDs)
+- `--style [default|learning-guide|custom]` - Set style axis
+- `--length [shorter|default|longer]` - Set response length axis
+- `--custom-instructions TEXT` - Custom prompt text (implies `--style custom` when style not specified)
+- `--show` - Show current settings without mutating
+- `--reset` - Reset to style=`default`, length=`default`
+- `--json` - Machine-readable output (supports `--show` and mutation responses)
+- `--force` - Fallback to absolute set only when safe PATCH read fails
+
+**Legacy aliases (still supported):**
+- `--mode [default|learning-guide|concise|detailed]`
+- `--persona TEXT` (alias of `--custom-instructions`)
+- `--response-length [shorter|default|longer]` (alias of `--length`)
+
+**Web UI control ↔ CLI flag mapping:**
+| Web UI control | CLI flag | Notes |
+|----------------|----------|-------|
+| Conversational style dropdown | `--style` | `default`, `learning-guide`, `custom` |
+| Response length dropdown | `--length` | alias: `--response-length` |
+| Custom instructions textbox | `--custom-instructions` | alias: `--persona`; implies custom style if omitted |
+| View current settings | `--show` | use `--show --json` for automation |
+| Reset chat settings | `--reset` | resets style/length to default |
+
+**`--mode` mapping:**
+| Mode | Style | Length |
+|------|-------|--------|
+| `default` | `default` | `default` |
+| `learning-guide` | `learning-guide` | `default` |
+| `concise` | `default` | `shorter` |
+| `detailed` | `default` | `longer` |
+
+**Precedence and safety rules:**
+1. `--show` and `--reset` are verbs and cannot be used together.
+2. If both style and length are fully specified, CLI uses absolute set (`set_settings`).
+3. If only one axis is specified, CLI uses safe PATCH (`update_settings`) to preserve the other axis.
+4. `--custom-instructions` with non-custom style is rejected.
+5. `--force` is only valid when style + length are explicit enough for absolute set; force-patch is not allowed.
+
+**Web UI → CLI mapping examples:**
+| Web action | CLI command |
+|------------|-------------|
+| Set "Learning Guide" style | `notebooklm configure --style learning-guide` |
+| Change only response length to Longer | `notebooklm configure --length longer` |
+| Set custom instructions + longer answers | `notebooklm configure --style custom --custom-instructions "Teach with examples" --length longer` |
+| View current settings | `notebooklm configure --show` |
+| Reset chat settings to defaults | `notebooklm configure --reset` |
+
+**Examples:**
+```bash
+# Show current settings (human-friendly)
+notebooklm configure --show
+
+# Show current settings as stable JSON schema
+notebooklm configure --show --json
+
+# Change only style (PATCH, preserves current length)
+notebooklm configure --style learning-guide
+
+# Change only length (PATCH, preserves current style)
+notebooklm configure --length shorter
+
+# Legacy mode with override (no early return)
+notebooklm configure --mode learning-guide --length longer
+
+# Custom instructions (style implied as custom)
+notebooklm configure --custom-instructions "Ask Socratic follow-up questions"
+
+# Reset back to default/default
+notebooklm configure --reset
+```
+
+**`--show --json` schema:**
+```json
+{
+  "notebook_id": "...",
+  "goal": "default|learning-guide|custom",
+  "response_length": "shorter|default|longer",
+  "custom_prompt": "truncated preview or null",
+  "custom_prompt_len": 0,
+  "source": "server|default|unknown"
+}
+```
+
+Manual Web UI parity walkthrough:
+[`docs/chat-settings-manual-checklist.md`](chat-settings-manual-checklist.md)
 
 ### Source: `add-research`
 

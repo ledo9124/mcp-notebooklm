@@ -7,7 +7,23 @@ from pytest_httpx import HTTPXMock
 
 from notebooklm import NotebookLMClient
 from notebooklm.rpc import ChatGoal, ChatResponseLength, RPCMethod
-from notebooklm.types import ChatMode
+from notebooklm.types import ChatMode, ChatSettings
+
+
+def _decode_chat_settings_from_request(request) -> list:
+    """Extract chat_settings payload from a RENAME_NOTEBOOK request body."""
+    import json
+    import re
+    from urllib.parse import unquote
+
+    content = request.content.decode() if isinstance(request.content, bytes) else str(request.content)
+    match = re.search(r"f\.req=([^&]+)", content)
+    assert match is not None, "f.req not found in request body"
+
+    rpc_payload = json.loads(unquote(match.group(1)))
+    params_json = rpc_payload[0][0][1]
+    params = json.loads(params_json)
+    return params[1][0][7]
 
 
 class TestChatAPI:
@@ -238,6 +254,170 @@ class TestChatAPI:
 
         request = httpx_mock.get_request()
         assert RPCMethod.RENAME_NOTEBOOK in str(request.url)
+
+    @pytest.mark.asyncio
+    async def test_get_settings_strict(
+        self,
+        auth_tokens,
+        httpx_mock: HTTPXMock,
+        build_rpc_response,
+    ):
+        """Test get_settings(strict=True) parses server settings."""
+        response = build_rpc_response(
+            RPCMethod.GET_NOTEBOOK,
+            [None, {"chat": [[ChatGoal.LEARNING_GUIDE.value], [ChatResponseLength.LONGER.value]]}],
+        )
+        httpx_mock.add_response(content=response.encode())
+
+        async with NotebookLMClient(auth_tokens) as client:
+            settings = await client.chat.get_settings("nb_123")
+
+        assert settings.goal == ChatGoal.LEARNING_GUIDE
+        assert settings.response_length == ChatResponseLength.LONGER
+        assert settings.custom_prompt is None
+        assert settings.source == "server"
+
+    @pytest.mark.asyncio
+    async def test_get_settings_non_strict_parse_fallback(
+        self,
+        auth_tokens,
+        httpx_mock: HTTPXMock,
+        build_rpc_response,
+    ):
+        """Test get_settings(strict=False) falls back safely when parsing fails."""
+        response = build_rpc_response(RPCMethod.GET_NOTEBOOK, [None, {"unexpected": "shape"}])
+        httpx_mock.add_response(content=response.encode())
+
+        async with NotebookLMClient(auth_tokens) as client:
+            with pytest.warns(RuntimeWarning, match="Could not parse chat settings"):
+                settings = await client.chat.get_settings("nb_123", strict=False)
+
+        assert settings == ChatSettings(
+            goal=ChatGoal.DEFAULT,
+            response_length=ChatResponseLength.DEFAULT,
+            custom_prompt=None,
+            source="unknown",
+        )
+
+    @pytest.mark.asyncio
+    async def test_set_settings_delegates_to_configure(self, auth_tokens):
+        """Test set_settings delegates to configure with absolute values."""
+        async with NotebookLMClient(auth_tokens) as client:
+            with patch.object(client.chat, "configure", new_callable=AsyncMock) as mock_configure:
+                settings = ChatSettings(
+                    goal=ChatGoal.CUSTOM,
+                    response_length=ChatResponseLength.SHORTER,
+                    custom_prompt="Teach like a mentor",
+                    source="server",
+                )
+                await client.chat.set_settings("nb_123", settings)
+
+        mock_configure.assert_awaited_once_with(
+            "nb_123",
+            goal=ChatGoal.CUSTOM,
+            response_length=ChatResponseLength.SHORTER,
+            custom_prompt="Teach like a mentor",
+        )
+
+    @pytest.mark.asyncio
+    async def test_update_settings_length_only_preserves_goal(
+        self,
+        auth_tokens,
+        httpx_mock: HTTPXMock,
+        build_rpc_response,
+    ):
+        """Test PATCH update on one axis preserves the other axis."""
+        get_response = build_rpc_response(
+            RPCMethod.GET_NOTEBOOK,
+            [None, {"chat": [[ChatGoal.LEARNING_GUIDE.value], [ChatResponseLength.DEFAULT.value]]}],
+        )
+        set_response = build_rpc_response(RPCMethod.RENAME_NOTEBOOK, None)
+        httpx_mock.add_response(content=get_response.encode())
+        httpx_mock.add_response(content=set_response.encode())
+
+        async with NotebookLMClient(auth_tokens) as client:
+            updated = await client.chat.update_settings(
+                "nb_123",
+                response_length=ChatResponseLength.LONGER,
+            )
+
+        assert updated.goal == ChatGoal.LEARNING_GUIDE
+        assert updated.response_length == ChatResponseLength.LONGER
+        assert updated.source == "server"
+
+        requests = httpx_mock.get_requests()
+        assert len(requests) == 2
+        assert RPCMethod.GET_NOTEBOOK in str(requests[0].url)
+        assert RPCMethod.RENAME_NOTEBOOK in str(requests[1].url)
+        assert _decode_chat_settings_from_request(requests[1]) == [
+            [ChatGoal.LEARNING_GUIDE.value],
+            [ChatResponseLength.LONGER.value],
+        ]
+
+    @pytest.mark.asyncio
+    async def test_update_settings_no_change_skips_write(
+        self,
+        auth_tokens,
+        httpx_mock: HTTPXMock,
+        build_rpc_response,
+    ):
+        """Test idempotent PATCH avoids unnecessary write RPC."""
+        get_response = build_rpc_response(
+            RPCMethod.GET_NOTEBOOK,
+            [None, {"chat": [[ChatGoal.DEFAULT.value], [ChatResponseLength.DEFAULT.value]]}],
+        )
+        httpx_mock.add_response(content=get_response.encode())
+
+        async with NotebookLMClient(auth_tokens) as client:
+            current = await client.chat.update_settings("nb_123")
+
+        assert current.goal == ChatGoal.DEFAULT
+        assert current.response_length == ChatResponseLength.DEFAULT
+        requests = httpx_mock.get_requests()
+        assert len(requests) == 1
+        assert RPCMethod.GET_NOTEBOOK in str(requests[0].url)
+
+    @pytest.mark.asyncio
+    async def test_update_settings_parse_failure_raises_update_error(
+        self,
+        auth_tokens,
+        httpx_mock: HTTPXMock,
+        build_rpc_response,
+    ):
+        """Test PATCH raises explicit update error when strict read fails."""
+        from notebooklm.exceptions import ChatSettingsUpdateError
+
+        get_response = build_rpc_response(RPCMethod.GET_NOTEBOOK, [None, {"unexpected": "shape"}])
+        httpx_mock.add_response(content=get_response.encode())
+
+        async with NotebookLMClient(auth_tokens) as client:
+            with pytest.raises(ChatSettingsUpdateError, match="Cannot safely PATCH"):
+                await client.chat.update_settings(
+                    "nb_123",
+                    response_length=ChatResponseLength.LONGER,
+                    strict=True,
+                )
+
+    @pytest.mark.asyncio
+    async def test_reset_settings_sets_defaults(
+        self,
+        auth_tokens,
+        httpx_mock: HTTPXMock,
+        build_rpc_response,
+    ):
+        """Test reset_settings writes DEFAULT/DEFAULT."""
+        set_response = build_rpc_response(RPCMethod.RENAME_NOTEBOOK, None)
+        httpx_mock.add_response(content=set_response.encode())
+
+        async with NotebookLMClient(auth_tokens) as client:
+            await client.chat.reset_settings("nb_123")
+
+        request = httpx_mock.get_request()
+        assert RPCMethod.RENAME_NOTEBOOK in str(request.url)
+        assert _decode_chat_settings_from_request(request) == [
+            [ChatGoal.DEFAULT.value],
+            [ChatResponseLength.DEFAULT.value],
+        ]
 
     def test_get_cached_turns_empty(self, auth_tokens):
         """Test getting cached turns for new conversation."""

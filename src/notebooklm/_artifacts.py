@@ -1381,11 +1381,10 @@ class ArtifactsAPI:
         output_file = Path(output_path)
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
-        def _write_file() -> None:
-            with open(output_path, "w", encoding="utf-8") as f:
-                f.write(content)
-
-        await asyncio.to_thread(_write_file)
+        # Keep file writes synchronous here to avoid lingering threadpool workers
+        # during event-loop teardown in async test environments.
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(content)
         return output_path
 
     def _format_interactive_content(

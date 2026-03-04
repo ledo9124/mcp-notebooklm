@@ -27,6 +27,15 @@ class TestPlaywrightSmokeTest:
     configuration. They caught issue #89 (Windows Python 3.12 login failure).
     """
 
+    @staticmethod
+    def _get_sync_playwright():
+        """Get Playwright sync API or skip when optional dependency is missing."""
+        sync_api = pytest.importorskip(
+            "playwright.sync_api",
+            reason="playwright not installed (install notebooklm-py[browser] to run smoke tests)",
+        )
+        return sync_api.sync_playwright
+
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only smoke test")
     def test_playwright_initializes_with_context_manager(self):
         """Verify sync_playwright() works on Windows with our event loop fix.
@@ -35,7 +44,7 @@ class TestPlaywrightSmokeTest:
         sync_playwright() raises NotImplementedError on Windows because
         WindowsSelectorEventLoopPolicy doesn't support subprocess spawning.
         """
-        from playwright.sync_api import sync_playwright
+        sync_playwright = self._get_sync_playwright()
 
         # This would fail without the context manager fix
         with _windows_playwright_event_loop(), sync_playwright() as p:
@@ -52,7 +61,7 @@ class TestPlaywrightSmokeTest:
         if sys.platform == "win32":
             pytest.skip("Non-Windows test")
 
-        from playwright.sync_api import sync_playwright
+        sync_playwright = self._get_sync_playwright()
 
         # Context manager is no-op on non-Windows, Playwright should still work
         with _windows_playwright_event_loop(), sync_playwright() as p:

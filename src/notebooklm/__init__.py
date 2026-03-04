@@ -58,6 +58,9 @@ from .exceptions import (
     AuthError,
     # Domain: Chat
     ChatError,
+    ChatSettingsParseError,
+    ChatSettingsUpdateError,
+    ChatSettingsValidationError,
     ClientError,
     # Validation/Config
     ConfigurationError,
@@ -85,6 +88,7 @@ from .exceptions import (
 
 # Public API: Types and dataclasses
 from .types import (
+    UNSET,
     Artifact,
     ArtifactType,
     AskResult,
@@ -94,6 +98,7 @@ from .types import (
     ChatMode,
     ChatReference,
     ChatResponseLength,
+    ChatSettings,
     ConversationTurn,
     DriveMimeType,
     ExportType,
@@ -146,7 +151,9 @@ __all__ = [
     "ConversationTurn",
     "ChatReference",
     "AskResult",
+    "ChatSettings",
     "ChatMode",
+    "UNSET",
     "SharedUser",
     "ShareStatus",
     # Base Exceptions
@@ -168,6 +175,9 @@ __all__ = [
     "NotebookNotFoundError",
     # Domain Exceptions: Chat
     "ChatError",
+    "ChatSettingsParseError",
+    "ChatSettingsValidationError",
+    "ChatSettingsUpdateError",
     # Domain Exceptions: Sources
     "SourceError",
     "SourceAddError",

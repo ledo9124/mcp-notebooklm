@@ -10,6 +10,9 @@ from notebooklm.exceptions import (
     ArtifactParseError,
     AuthError,
     ChatError,
+    ChatSettingsParseError,
+    ChatSettingsUpdateError,
+    ChatSettingsValidationError,
     ClientError,
     ConfigurationError,
     DecodingError,
@@ -51,6 +54,9 @@ class TestExceptionHierarchy:
             NotebookError,
             NotebookNotFoundError,
             ChatError,
+            ChatSettingsParseError,
+            ChatSettingsValidationError,
+            ChatSettingsUpdateError,
             SourceError,
             SourceAddError,
             SourceNotFoundError,
@@ -86,6 +92,9 @@ class TestExceptionHierarchy:
     def test_domain_exceptions_have_correct_base(self):
         """Domain exceptions inherit from their domain base."""
         assert issubclass(NotebookNotFoundError, NotebookError)
+        assert issubclass(ChatSettingsParseError, ChatError)
+        assert issubclass(ChatSettingsValidationError, ChatError)
+        assert issubclass(ChatSettingsUpdateError, ChatError)
         assert issubclass(SourceAddError, SourceError)
         assert issubclass(SourceNotFoundError, SourceError)
         assert issubclass(SourceProcessingError, SourceError)
@@ -269,6 +278,19 @@ class TestDomainExceptions:
         assert e.artifact_type == "audio"
         assert e.details == "404 Not Found"
         assert e.artifact_id == "art_789"
+
+    def test_chat_settings_parse_error_has_details(self):
+        """ChatSettingsParseError stores details and cause."""
+        cause = ValueError("bad payload")
+        e = ChatSettingsParseError(details="candidate not found", cause=cause)
+        assert e.details == "candidate not found"
+        assert e.cause is cause
+
+    def test_chat_settings_update_error_has_cause(self):
+        """ChatSettingsUpdateError stores cause."""
+        cause = RuntimeError("rpc failed")
+        e = ChatSettingsUpdateError(cause=cause)
+        assert e.cause is cause
 
 
 class TestCatchAllPattern:

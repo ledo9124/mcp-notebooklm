@@ -36,6 +36,9 @@ __all__ = [
     "NotebookNotFoundError",
     # Domain: Chat
     "ChatError",
+    "ChatSettingsParseError",
+    "ChatSettingsValidationError",
+    "ChatSettingsUpdateError",
     # Domain: Sources
     "SourceError",
     "SourceAddError",
@@ -321,6 +324,38 @@ class NotebookNotFoundError(NotebookError):
 
 class ChatError(NotebookLMError):
     """Base for chat operations."""
+
+
+class ChatSettingsParseError(ChatError):
+    """Failed to parse chat settings from server response."""
+
+    def __init__(
+        self,
+        message: str = "Failed to parse chat settings from server response",
+        *,
+        details: str | None = None,
+        cause: Exception | None = None,
+    ):
+        self.details = details
+        self.cause = cause
+        super().__init__(f"{message}: {details}" if details else message)
+
+
+class ChatSettingsValidationError(ChatError):
+    """Invalid chat settings combination or field value."""
+
+
+class ChatSettingsUpdateError(ChatError):
+    """Chat settings update failed during write/merge flow."""
+
+    def __init__(
+        self,
+        message: str = "Failed to update chat settings",
+        *,
+        cause: Exception | None = None,
+    ):
+        self.cause = cause
+        super().__init__(message)
 
 
 # =============================================================================

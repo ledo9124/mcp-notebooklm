@@ -19,7 +19,8 @@ Usage:
 
 import asyncio
 
-from notebooklm import NotebookLMClient
+from notebooklm import ChatSettings, NotebookLMClient
+from notebooklm.rpc import ChatGoal, ChatResponseLength
 
 
 async def main():
@@ -41,6 +42,22 @@ async def main():
         print("Asking a question...")
         result = await client.chat.ask(nb.id, "What are the main topics covered?")
         print(f"  Answer: {result.answer[:200]}...\n")
+
+        # 3b. Chat settings (Web UI parity: style + length are independent)
+        print("Configuring chat settings...")
+        await client.chat.update_settings(nb.id, goal=ChatGoal.LEARNING_GUIDE)
+        await client.chat.update_settings(nb.id, response_length=ChatResponseLength.LONGER)
+        await client.chat.set_settings(
+            nb.id,
+            ChatSettings(
+                goal=ChatGoal.CUSTOM,
+                response_length=ChatResponseLength.DEFAULT,
+                custom_prompt="Explain concepts step-by-step with simple examples.",
+                source="default",
+            ),
+        )
+        await client.chat.reset_settings(nb.id)
+        print("  Applied style/length/custom/reset flows\n")
 
         # 4. Generate an audio overview
         print("Generating podcast (this may take a few minutes)...")

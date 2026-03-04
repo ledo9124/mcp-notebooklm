@@ -12,7 +12,9 @@ import click
 from rich.table import Table
 
 from ..client import NotebookLMClient
-from ..types import ChatMode
+from ..exceptions import ChatSettingsUpdateError
+from ..rpc import ChatGoal, ChatResponseLength
+from ..types import UNSET, ChatMode, ChatSettings
 from .helpers import (
     console,
     get_current_conversation,
@@ -26,6 +28,59 @@ from .helpers import (
 )
 
 logger = logging.getLogger(__name__)
+
+_MODE_TO_BASELINE: dict[str, tuple[ChatGoal, ChatResponseLength]] = {
+    "default": (ChatGoal.DEFAULT, ChatResponseLength.DEFAULT),
+    "learning-guide": (ChatGoal.LEARNING_GUIDE, ChatResponseLength.DEFAULT),
+    "concise": (ChatGoal.DEFAULT, ChatResponseLength.SHORTER),
+    "detailed": (ChatGoal.DEFAULT, ChatResponseLength.LONGER),
+}
+
+_STYLE_TO_GOAL: dict[str, ChatGoal] = {
+    "default": ChatGoal.DEFAULT,
+    "learning-guide": ChatGoal.LEARNING_GUIDE,
+    "custom": ChatGoal.CUSTOM,
+}
+
+_GOAL_TO_STYLE: dict[ChatGoal, str] = {
+    ChatGoal.DEFAULT: "default",
+    ChatGoal.LEARNING_GUIDE: "learning-guide",
+    ChatGoal.CUSTOM: "custom",
+}
+
+_LENGTH_TO_ENUM: dict[str, ChatResponseLength] = {
+    "default": ChatResponseLength.DEFAULT,
+    "longer": ChatResponseLength.LONGER,
+    "shorter": ChatResponseLength.SHORTER,
+}
+
+_ENUM_TO_LENGTH: dict[ChatResponseLength, str] = {
+    ChatResponseLength.DEFAULT: "default",
+    ChatResponseLength.LONGER: "longer",
+    ChatResponseLength.SHORTER: "shorter",
+}
+
+
+def _prompt_preview(prompt: str | None, max_chars: int = 60) -> str | None:
+    """Return a truncated prompt preview suitable for terminal output."""
+    if not prompt:
+        return None
+    if len(prompt) <= max_chars:
+        return prompt
+    return f"{prompt[:max_chars]}..."
+
+
+def _settings_to_json(notebook_id: str, settings: ChatSettings) -> dict:
+    """Render chat settings using a stable machine-readable schema."""
+    preview = _prompt_preview(settings.custom_prompt)
+    return {
+        "notebook_id": notebook_id,
+        "goal": _GOAL_TO_STYLE[settings.goal],
+        "response_length": _ENUM_TO_LENGTH[settings.response_length],
+        "custom_prompt": preview,
+        "custom_prompt_len": len(settings.custom_prompt or ""),
+        "source": settings.source,
+    }
 
 
 def _determine_conversation_id(
@@ -211,40 +266,125 @@ def register_chat_commands(cli):
         "chat_mode",
         type=click.Choice(["default", "learning-guide", "concise", "detailed"]),
         default=None,
-        help="Predefined chat mode",
+        help="Legacy shorthand baseline (sets style + length together)",
     )
-    @click.option("--persona", default=None, help="Custom persona prompt (up to 10,000 chars)")
     @click.option(
+        "--style",
+        type=click.Choice(["default", "learning-guide", "custom"]),
+        default=None,
+        help="Conversational style (Web UI style axis)",
+    )
+    @click.option(
+        "--length",
         "--response-length",
+        "length",
         type=click.Choice(["default", "longer", "shorter"]),
         default=None,
-        help="Response verbosity",
+        help="Response length (Web UI length axis)",
+    )
+    @click.option(
+        "--custom-instructions",
+        "--persona",
+        "custom_instructions",
+        default=None,
+        help="Custom instructions text (implies --style custom if style not given)",
+    )
+    @click.option("--show", is_flag=True, help="Show current chat settings")
+    @click.option("--reset", is_flag=True, help="Reset to default/default")
+    @click.option("--json", "json_output", is_flag=True, help="Output structured JSON")
+    @click.option(
+        "--force",
+        is_flag=True,
+        help="Allow absolute set fallback when PATCH fails to read current settings",
     )
     @with_client
-    def configure_cmd(ctx, notebook_id, chat_mode, persona, response_length, client_auth):
-        """Configure chat persona and response settings.
+    def configure_cmd(
+        ctx,
+        notebook_id,
+        chat_mode,
+        style,
+        length,
+        custom_instructions,
+        show,
+        reset,
+        json_output,
+        force,
+        client_auth,
+    ):
+        """Configure notebook chat settings with web-parity semantics.
 
         \b
-        Modes:
-          default        General purpose (default behavior)
-          learning-guide Educational focus with learning-oriented responses
-          concise        Brief, to-the-point responses
-          detailed       Verbose, comprehensive responses
+        Axes:
+          --style  : default | learning-guide | custom
+          --length : shorter | default | longer
 
         \b
         Examples:
-          notebooklm configure --mode learning-guide
-          notebooklm configure --persona "Act as a chemistry tutor"
-          notebooklm configure --mode detailed --response-length longer
+          notebooklm configure --show
+          notebooklm configure --style learning-guide
+          notebooklm configure --length longer
+          notebooklm configure --custom-instructions "Act as a chemistry tutor"
+          notebooklm configure --mode detailed --length shorter
+          notebooklm configure --reset
         """
         nb_id = require_notebook(notebook_id)
 
         async def _run():
-            from ..rpc import ChatGoal, ChatResponseLength
-
             async with NotebookLMClient(client_auth) as client:
                 nb_id_resolved = await resolve_notebook_id(client, nb_id)
-                if chat_mode:
+
+                if show and reset:
+                    raise click.UsageError("--show and --reset cannot be used together.")
+
+                if custom_instructions is not None and style is not None and style != "custom":
+                    raise click.UsageError(
+                        "--custom-instructions/--persona can only be used with --style custom."
+                    )
+
+                if show:
+                    settings = await client.chat.get_settings(nb_id_resolved, strict=False)
+                    payload = _settings_to_json(nb_id_resolved, settings)
+                    if json_output:
+                        json_output_response(payload)
+                    else:
+                        preview = payload["custom_prompt"]
+                        if preview:
+                            prompt_line = (
+                                f"[set] ({payload['custom_prompt_len']} chars) {preview}"
+                            )
+                        else:
+                            prompt_line = "[none]"
+
+                        console.print("[bold cyan]Chat settings[/bold cyan]")
+                        console.print(f"Notebook: {nb_id_resolved}")
+                        console.print(f"Style: {payload['goal']}")
+                        console.print(f"Length: {payload['response_length']}")
+                        console.print(f"Custom instructions: {prompt_line}")
+                        console.print(f"Source: {payload['source']}")
+                    return
+
+                if reset:
+                    await client.chat.reset_settings(nb_id_resolved)
+                    if json_output:
+                        json_output_response(
+                            {
+                                "notebook_id": nb_id_resolved,
+                                "action": "reset",
+                                "goal": "default",
+                                "response_length": "default",
+                                "custom_prompt": None,
+                            }
+                        )
+                    else:
+                        console.print("[green]Chat settings reset to default/default[/green]")
+                    return
+
+                if (
+                    chat_mode
+                    and style is None
+                    and length is None
+                    and custom_instructions is None
+                ):
                     mode_map = {
                         "default": ChatMode.DEFAULT,
                         "learning-guide": ChatMode.LEARNING_GUIDE,
@@ -252,38 +392,130 @@ def register_chat_commands(cli):
                         "detailed": ChatMode.DETAILED,
                     }
                     await client.chat.set_mode(nb_id_resolved, mode_map[chat_mode])
-                    console.print(f"[green]Chat mode set to: {chat_mode}[/green]")
+                    if json_output:
+                        baseline_goal, baseline_length = _MODE_TO_BASELINE[chat_mode]
+                        json_output_response(
+                            {
+                                "notebook_id": nb_id_resolved,
+                                "action": "set_mode",
+                                "mode": chat_mode,
+                                "goal": _GOAL_TO_STYLE[baseline_goal],
+                                "response_length": _ENUM_TO_LENGTH[baseline_length],
+                            }
+                        )
+                    else:
+                        console.print(f"[green]Chat mode set to: {chat_mode}[/green]")
                     return
 
-                goal = ChatGoal.CUSTOM if persona else None
-                length = None
-                if response_length:
-                    length_map = {
-                        "default": ChatResponseLength.DEFAULT,
-                        "longer": ChatResponseLength.LONGER,
-                        "shorter": ChatResponseLength.SHORTER,
-                    }
-                    length = length_map[response_length]
+                baseline_goal: ChatGoal | None = None
+                baseline_length: ChatResponseLength | None = None
+                if chat_mode:
+                    baseline_goal, baseline_length = _MODE_TO_BASELINE[chat_mode]
 
-                await client.chat.configure(
-                    nb_id_resolved, goal=goal, response_length=length, custom_prompt=persona
-                )
+                resolved_goal = baseline_goal
+                resolved_length = baseline_length
 
-                parts = []
-                if persona:
-                    parts.append(
-                        f'persona: "{persona[:50]}..."'
-                        if len(persona) > 50
-                        else f'persona: "{persona}"'
+                if style is not None:
+                    resolved_goal = _STYLE_TO_GOAL[style]
+                if length is not None:
+                    resolved_length = _LENGTH_TO_ENUM[length]
+
+                if custom_instructions is not None and resolved_goal != ChatGoal.CUSTOM:
+                    resolved_goal = ChatGoal.CUSTOM
+
+                has_goal_input = chat_mode is not None or style is not None or custom_instructions is not None
+                has_length_input = chat_mode is not None or length is not None
+
+                if not has_goal_input and not has_length_input:
+                    if json_output:
+                        json_output_response(
+                            {
+                                "notebook_id": nb_id_resolved,
+                                "updated": False,
+                                "message": "No changes specified",
+                            }
+                        )
+                    else:
+                        console.print(
+                            "[yellow]No changes specified. Use --show to inspect current settings.[/yellow]"
+                        )
+                    return
+
+                updated_settings: ChatSettings
+                action = "update_settings"
+
+                if has_goal_input and has_length_input:
+                    if resolved_goal is None or resolved_length is None:
+                        raise click.ClickException(
+                            "Internal resolution error: missing goal/length for absolute set."
+                        )
+                    if resolved_goal == ChatGoal.CUSTOM and custom_instructions is None:
+                        raise click.UsageError(
+                            "Setting style=custom with absolute set requires "
+                            "--custom-instructions/--persona."
+                        )
+
+                    updated_settings = ChatSettings(
+                        goal=resolved_goal,
+                        response_length=resolved_length,
+                        custom_prompt=custom_instructions if resolved_goal == ChatGoal.CUSTOM else None,
+                        source="default",
                     )
-                if response_length:
-                    parts.append(f"response length: {response_length}")
-                result = (
-                    f"Chat configured: {', '.join(parts)}"
-                    if parts
-                    else "Chat configured (no changes)"
+                    await client.chat.set_settings(nb_id_resolved, updated_settings)
+                    action = "set_settings"
+                else:
+                    goal_arg = resolved_goal if has_goal_input else UNSET
+                    length_arg = resolved_length if has_length_input else UNSET
+                    prompt_arg = custom_instructions if custom_instructions is not None else UNSET
+
+                    try:
+                        updated_settings = await client.chat.update_settings(
+                            nb_id_resolved,
+                            goal=goal_arg,
+                            response_length=length_arg,
+                            custom_prompt=prompt_arg,
+                            strict=True,
+                        )
+                    except ChatSettingsUpdateError as exc:
+                        if not force:
+                            raise
+                        if resolved_goal is None or resolved_length is None:
+                            raise click.ClickException(
+                                "--force requires explicit style and length (or --mode) "
+                                "to perform an absolute set."
+                            ) from exc
+                        if resolved_goal == ChatGoal.CUSTOM and custom_instructions is None:
+                            raise click.UsageError(
+                                "--force absolute set with style=custom requires "
+                                "--custom-instructions/--persona."
+                            ) from exc
+
+                        updated_settings = ChatSettings(
+                            goal=resolved_goal,
+                            response_length=resolved_length,
+                            custom_prompt=custom_instructions if resolved_goal == ChatGoal.CUSTOM else None,
+                            source="default",
+                        )
+                        await client.chat.set_settings(nb_id_resolved, updated_settings)
+                        action = "force_set_settings"
+
+                payload = _settings_to_json(nb_id_resolved, updated_settings)
+                payload["action"] = action
+
+                if json_output:
+                    json_output_response(payload)
+                    return
+
+                prompt_preview = payload["custom_prompt"]
+                if prompt_preview:
+                    prompt_text = f"[set] ({payload['custom_prompt_len']} chars)"
+                else:
+                    prompt_text = "[none]"
+                console.print(
+                    "[green]Chat settings updated[/green]: "
+                    f"style={payload['goal']}, length={payload['response_length']}, "
+                    f"custom_instructions={prompt_text}"
                 )
-                console.print(f"[green]{result}[/green]")
 
         return _run()
 

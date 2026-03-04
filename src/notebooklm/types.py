@@ -13,7 +13,7 @@ import warnings
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 # Import exceptions from centralized module (re-export for backward compatibility)
 from .exceptions import (
@@ -22,6 +22,7 @@ from .exceptions import (
     ArtifactNotFoundError,
     ArtifactNotReadyError,
     ArtifactParseError,
+    ChatSettingsValidationError,
     SourceAddError,
     SourceError,
     SourceNotFoundError,
@@ -254,7 +255,9 @@ __all__ = [
     "ConversationTurn",
     "ChatReference",
     "AskResult",
+    "ChatSettings",
     "ChatMode",
+    "UNSET",
     "SharedUser",
     "ShareStatus",
     # Exceptions
@@ -313,6 +316,46 @@ class ChatMode(Enum):
     LEARNING_GUIDE = "learning_guide"  # Educational focus
     CONCISE = "concise"  # Brief responses
     DETAILED = "detailed"  # Verbose responses
+
+
+class _UnsetType:
+    """Sentinel type for PATCH-style APIs where None is a valid value."""
+
+    def __repr__(self) -> str:
+        return "UNSET"
+
+
+UNSET = _UnsetType()
+"""Sentinel used to represent an omitted field in PATCH-style APIs."""
+
+
+@dataclass(frozen=True)
+class ChatSettings:
+    """Chat settings represented as two independent axes plus optional prompt."""
+
+    goal: ChatGoal
+    response_length: ChatResponseLength
+    custom_prompt: str | None = None
+    source: Literal["server", "default", "unknown"] = "server"
+
+    def __post_init__(self) -> None:
+        """Validate goal/prompt combinations and prompt bounds."""
+        if self.goal == ChatGoal.CUSTOM:
+            if self.custom_prompt is None or not self.custom_prompt.strip():
+                raise ChatSettingsValidationError(
+                    "custom_prompt is required and must be non-empty when goal is CUSTOM"
+                )
+            if len(self.custom_prompt) > 10_000:
+                raise ChatSettingsValidationError(
+                    "custom_prompt must be 10,000 characters or fewer"
+                )
+        elif self.custom_prompt is not None:
+            raise ChatSettingsValidationError("custom_prompt must be None when goal is not CUSTOM")
+
+        if self.source not in ("server", "default", "unknown"):
+            raise ChatSettingsValidationError(
+                "source must be one of: 'server', 'default', or 'unknown'"
+            )
 
 
 # =============================================================================

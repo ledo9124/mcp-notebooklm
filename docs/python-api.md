@@ -1,7 +1,7 @@
 # Python API Reference
 
 **Status:** Active
-**Last Updated:** 2026-03-02
+**Last Updated:** 2026-03-04
 
 Complete reference for the `notebooklm` Python library.
 
@@ -485,11 +485,40 @@ else:
 | Method | Parameters | Returns | Description |
 |--------|------------|---------|-------------|
 | `ask(notebook_id, question, ...)` | `str, str, ...` | `AskResult` | Ask a question |
-| `configure(notebook_id, ...)` | `str, ...` | `bool` | Set chat persona |
+| `try_get_settings(notebook_id)` | `str` | `ChatSettings \| None` | Best-effort settings read (returns `None` on parse failure) |
+| `get_settings(notebook_id, strict=True)` | `str, bool` | `ChatSettings` | Read current chat settings |
+| `set_settings(notebook_id, settings)` | `str, ChatSettings` | `None` | Absolute set (style + length together) |
+| `update_settings(notebook_id, ...)` | `str, ...` | `ChatSettings` | Safe PATCH read-merge-write |
+| `reset_settings(notebook_id)` | `str` | `None` | Reset to `default/default` |
+| `configure(notebook_id, ...)` | `str, ...` | `None` | Legacy absolute-set API |
+| `set_mode(notebook_id, mode)` | `str, ChatMode` | `None` | Legacy predefined mode helper |
 | `get_history(notebook_id, limit=100, conversation_id=None)` | `str, int, str` | `list[tuple[str, str]]` | Get Q&A pairs from most recent conversation |
 | `get_conversation_id(notebook_id)` | `str` | `str \| None` | Get most recent conversation ID from server |
 
-**ask() Parameters:**
+`ChatSettings` models two independent axes:
+- `goal`: `ChatGoal.DEFAULT | ChatGoal.LEARNING_GUIDE | ChatGoal.CUSTOM`
+- `response_length`: `ChatResponseLength.SHORTER | DEFAULT | LONGER`
+
+For `ChatGoal.CUSTOM`, `custom_prompt` is required and validated.
+
+**Method signatures (settings lifecycle):**
+```python
+from notebooklm import UNSET, ChatGoal, ChatResponseLength, ChatSettings
+
+await client.chat.try_get_settings(notebook_id)
+await client.chat.get_settings(notebook_id, strict=True)
+await client.chat.set_settings(notebook_id, ChatSettings(...))
+await client.chat.update_settings(
+    notebook_id,
+    goal=UNSET,
+    response_length=ChatResponseLength.LONGER,
+    custom_prompt=UNSET,
+    strict=True,
+)
+await client.chat.reset_settings(notebook_id)
+```
+
+**ask() signature:**
 ```python
 async def ask(
     notebook_id: str,
@@ -499,7 +528,7 @@ async def ask(
 ) -> AskResult
 ```
 
-**Example:**
+**Examples (Web-parity flows):**
 ```python
 # Ask questions (uses all sources)
 result = await client.chat.ask(nb_id, "What are the main themes?")
@@ -523,14 +552,45 @@ result = await client.chat.ask(
     conversation_id=result.conversation_id
 )
 
-# Configure persona
+# 1) Read current settings
+current = await client.chat.get_settings(nb_id)
+print(current.goal, current.response_length, current.source)
+
+# 2) Change only length (safe PATCH; style preserved)
+updated = await client.chat.update_settings(
+    nb_id,
+    response_length=ChatResponseLength.LONGER,
+)
+
+# 3) Set custom instructions + explicit length (absolute set)
+await client.chat.set_settings(
+    nb_id,
+    ChatSettings(
+        goal=ChatGoal.CUSTOM,
+        response_length=ChatResponseLength.LONGER,
+        custom_prompt="Act as a patient tutor. Explain steps before conclusions.",
+        source="default",
+    ),
+)
+
+# 4) Reset back to NotebookLM defaults
+await client.chat.reset_settings(nb_id)
+
+# Legacy absolute-set API (still supported)
 await client.chat.configure(
     nb_id,
     goal=ChatGoal.LEARNING_GUIDE,
-    response_length=ChatResponseLength.LONGER,
-    custom_prompt="Focus on practical applications"
+    response_length=ChatResponseLength.DEFAULT,
+    custom_prompt=None,
 )
 ```
+
+**When to use which API:**
+- Use `update_settings(...)` for one-axis changes (avoids accidental clobber).
+- Use `set_settings(...)` when you intentionally want to set both style and length.
+- Use `get_settings(strict=False)` for display/reporting paths where graceful fallback is preferred.
+- Use `UNSET` in `update_settings(...)` to leave a field unchanged (instead of overwriting with `None`).
+- Keep `configure(...)` / `set_mode(...)` only for backward compatibility.
 
 ---
 
