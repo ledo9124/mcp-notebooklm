@@ -261,17 +261,7 @@ class ArtifactsAPI:
         artifacts: list[Artifact] = []
 
         # Fetch studio artifacts (audio, video, reports, etc.)
-        params = [[2], notebook_id, 'NOT artifact.status = "ARTIFACT_STATUS_SUGGESTED"']
-        result = await self._core.rpc_call(
-            RPCMethod.LIST_ARTIFACTS,
-            params,
-            source_path=f"/notebook/{notebook_id}",
-            allow_null=True,
-        )
-
-        artifacts_data: list[Any] = []
-        if result and isinstance(result, list) and len(result) > 0:
-            artifacts_data = result[0] if isinstance(result[0], list) else result
+        artifacts_data = await self._list_raw(notebook_id)
 
         for art_data in artifacts_data:
             if isinstance(art_data, list) and len(art_data) > 0:
@@ -1927,9 +1917,21 @@ class ArtifactsAPI:
             source_path=f"/notebook/{notebook_id}",
             allow_null=True,
         )
-        if result and isinstance(result, list) and len(result) > 0:
-            return result[0] if isinstance(result[0], list) else result
-        return []
+        if not result or not isinstance(result, list):
+            return []
+
+        first = result[0]
+        # RPC payloads may be either:
+        # - wrapped: [[artifact_row, ...]]
+        # - flat:    [artifact_row, ...]
+        # Only unwrap the wrapped single-item envelope.
+        if len(result) == 1 and isinstance(first, list):
+            if not first:
+                return []
+            if isinstance(first[0], list):
+                return first
+
+        return result
 
     def _select_artifact(
         self,

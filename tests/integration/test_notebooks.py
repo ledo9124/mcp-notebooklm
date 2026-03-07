@@ -77,6 +77,45 @@ class TestListNotebooks:
         body = request.content.decode()
         assert "at=test_csrf_token" in body
 
+    @pytest.mark.asyncio
+    async def test_list_notebooks_parses_source_count(
+        self,
+        auth_tokens,
+        httpx_mock: HTTPXMock,
+        build_rpc_response,
+    ):
+        response = build_rpc_response(
+            RPCMethod.LIST_NOTEBOOKS,
+            [
+                [
+                    [
+                        "Notebook A",
+                        [["src_1"], ["src_2"]],
+                        "nb_a",
+                        "📘",
+                        None,
+                        [None, None, None, None, None, [1704067200, 0]],
+                    ],
+                    [
+                        "Notebook B",
+                        [],
+                        "nb_b",
+                        "📚",
+                        None,
+                        [None, None, None, None, None, [1704153600, 0]],
+                    ],
+                ]
+            ],
+        )
+        httpx_mock.add_response(content=response.encode())
+
+        async with NotebookLMClient(auth_tokens) as client:
+            notebooks = await client.notebooks.list()
+
+        assert len(notebooks) == 2
+        assert notebooks[0].sources_count == 2
+        assert notebooks[1].sources_count == 0
+
 
 class TestCreateNotebook:
     @pytest.mark.asyncio

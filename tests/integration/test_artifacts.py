@@ -13,6 +13,7 @@ from notebooklm.rpc import AudioFormat, AudioLength, RPCError, RPCMethod, VideoF
 from notebooklm.types import (
     ArtifactNotReadyError,
     ArtifactParseError,
+    ArtifactType,
 )
 
 
@@ -525,7 +526,7 @@ class TestArtifactsAPI:
             RPCMethod.LIST_ARTIFACTS,
             [
                 ["art_001", "Audio Overview", 1, None, 3],
-                ["art_002", "Quiz", 4, None, 3],
+                ["art_002", "Quiz", 4, None, 3, None, None, None, None, [None, [2]]],
             ],
         )
         httpx_mock.add_response(content=response.encode())
@@ -586,6 +587,9 @@ class TestArtifactsAPI:
             artifacts = await client.artifacts.list_quizzes("nb_123")
 
         assert isinstance(artifacts, list)
+        assert len(artifacts) == 1
+        assert artifacts[0].id == "art_001"
+        assert artifacts[0].kind == ArtifactType.QUIZ
 
     @pytest.mark.asyncio
     async def test_delete_artifact(
@@ -634,6 +638,9 @@ class TestArtifactsAPI:
             artifacts = await client.artifacts.list_flashcards("nb_123")
 
         assert isinstance(artifacts, list)
+        assert len(artifacts) == 1
+        assert artifacts[0].id == "art_002"
+        assert artifacts[0].kind == ArtifactType.FLASHCARDS
 
     @pytest.mark.asyncio
     async def test_list_infographics(

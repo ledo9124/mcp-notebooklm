@@ -364,7 +364,9 @@ async def test_2pc_commit_rejects_tampered_token_and_requires_confirm() -> None:
             confirmation_token=token,
         )
 
-    tampered = token[:-1] + ("A" if token[-1] != "A" else "B")
+    payload_segment, signature_segment = token.split(".", 1)
+    tampered_signature = ("A" if signature_segment[0] != "A" else "B") + signature_segment[1:]
+    tampered = f"{payload_segment}.{tampered_signature}"
     with pytest.raises(MCPToolError, match="Invalid or expired confirmation token"):
         await ops_tools.notebooklm_sources_remove_commit(
             ctx,

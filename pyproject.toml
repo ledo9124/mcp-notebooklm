@@ -39,6 +39,34 @@ mcp = [
   "mcp>=1.0,<2",
   "pydantic>=2,<3",
 ]
+dev = [
+  "mypy>=1.10,<2",
+  "mcp>=1.0,<2",
+  "playwright>=1.49,<2",
+  "pydantic>=2,<3",
+  "pytest>=9,<10",
+  "pytest-asyncio>=1,<2",
+  "pytest-cov>=6,<7",
+  "pytest-httpx>=0.35,<1",
+  "pytest-rerunfailures>=14,<16",
+  "python-dotenv>=1,<2",
+  "ruff>=0.9,<1",
+  "vcrpy>=6,<8",
+]
+all = [
+  "mypy>=1.10,<2",
+  "mcp>=1.0,<2",
+  "playwright>=1.49,<2",
+  "pydantic>=2,<3",
+  "pytest>=9,<10",
+  "pytest-asyncio>=1,<2",
+  "pytest-cov>=6,<7",
+  "pytest-httpx>=0.35,<1",
+  "pytest-rerunfailures>=14,<16",
+  "python-dotenv>=1,<2",
+  "ruff>=0.9,<1",
+  "vcrpy>=6,<8",
+]
 
 [project.urls]
 Homepage = "https://github.com/teng-lin/notebooklm-py"
@@ -59,3 +87,15 @@ include = ["notebooklm*", "notebooklm_mcp*"]
 
 [tool.setuptools.package-data]
 "notebooklm.data" = ["SKILL.md"]
+
+[tool.pytest.ini_options]
+markers = [
+  "e2e: marks tests that call the live NotebookLM service",
+  "flaky: marks tests that may need reruns due to external instability",
+  "readonly: marks tests that only read existing NotebookLM resources",
+  "variants: marks parameterized variant coverage tests",
+  "vcr: marks tests that use VCR cassettes",
+]
+filterwarnings = [
+  "ignore:'asyncio\\.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect\\.iscoroutinefunction\\(\\) instead:DeprecationWarning:vcr\\.cassette",
+]

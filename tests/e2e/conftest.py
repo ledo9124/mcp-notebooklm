@@ -8,6 +8,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+import pytest_asyncio
 
 # Load .env file if python-dotenv is available
 try:
@@ -169,7 +170,7 @@ def auth_tokens(auth_cookies) -> AuthTokens:
     return asyncio.run(_fetch_tokens())
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client(auth_tokens) -> AsyncGenerator[NotebookLMClient, None]:
     async with NotebookLMClient(auth_tokens) as c:
         yield c
@@ -211,7 +212,7 @@ def created_notebooks():
     yield notebooks
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def cleanup_notebooks(created_notebooks, auth_tokens):
     """Cleanup created notebooks after test."""
     yield
@@ -229,7 +230,7 @@ async def cleanup_notebooks(created_notebooks, auth_tokens):
 # =============================================================================
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def temp_notebook(client, created_notebooks, cleanup_notebooks):
     """Create a temporary notebook with content that auto-deletes after test.
 
@@ -409,7 +410,7 @@ async def _verify_notebook_exists(client, notebook_id: str) -> bool:
         return False
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def generation_notebook_id(client):
     """Get or create a notebook for generation tests.
 
@@ -613,7 +614,7 @@ async def _cleanup_multi_source_notebook(client: NotebookLMClient, notebook_id: 
         pass
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def multi_source_notebook_id(client):
     """Get or create a notebook with multiple sources for source selection tests.
 

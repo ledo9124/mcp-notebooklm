@@ -91,7 +91,7 @@ def _package_version() -> str:
         return "0.0.0.dev0"
 
 
-def _build_fastmcp_kwargs() -> dict[str, Any]:
+def _build_fastmcp_kwargs(config: MCPConfig) -> dict[str, Any]:
     kwargs: dict[str, Any] = {
         "name": "notebooklm-mcp",
         "lifespan": app_lifespan,
@@ -106,6 +106,10 @@ def _build_fastmcp_kwargs() -> dict[str, Any]:
         kwargs["stateless_http"] = True
     if "json_response" in params:
         kwargs["json_response"] = True
+    if "host" in params:
+        kwargs["host"] = config.host
+    if "port" in params:
+        kwargs["port"] = config.port
     return kwargs
 
 
@@ -158,10 +162,12 @@ def create_server(config: MCPConfig | None = None) -> Any | None:
         return None
 
     cfg = config or load_config()
-    kwargs = _build_fastmcp_kwargs()
+    kwargs = _build_fastmcp_kwargs(cfg)
     logger.debug(
-        "Creating FastMCP server with kwargs=%s (timeout_ms=%d, max_inflight=%d)",
+        "Creating FastMCP server with kwargs=%s (host=%s, port=%d, timeout_ms=%d, max_inflight=%d)",
         sorted(kwargs.keys()),
+        cfg.host,
+        cfg.port,
         cfg.timeout_ms,
         cfg.max_inflight,
     )

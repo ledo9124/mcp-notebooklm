@@ -218,3 +218,34 @@ async def test_settings_patch_rejects_invalid_mode() -> None:
             notebook_id="nb-5",
             mode="merge",
         )
+
+
+@pytest.mark.asyncio
+async def test_settings_patch_mode_allows_explicit_null_custom_prompt() -> None:
+    client = MagicMock()
+    client.chat = MagicMock()
+    client.chat.update_settings = AsyncMock(
+        return_value=ChatSettings(
+            goal=ChatGoal.DEFAULT,
+            response_length=ChatResponseLength.DEFAULT,
+            custom_prompt=None,
+            source="server",
+        )
+    )
+    app = _make_app(client)
+    server = _FakeServer()
+    handlers = register_chat_settings_tools(server)
+
+    await handlers["notebooklm_settings_patch"](
+        _make_ctx(app, server),
+        notebook_id="nb-6",
+        custom_prompt=None,
+    )
+
+    client.chat.update_settings.assert_awaited_once_with(
+        "nb-6",
+        goal=UNSET,
+        response_length=UNSET,
+        custom_prompt=None,
+        strict=True,
+    )

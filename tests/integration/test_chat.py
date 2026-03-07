@@ -1729,6 +1729,27 @@ class TestGetHistoryTurnsDataNotReversed:
     """Test get_history when turns_data doesn't qualify for reversal (arc 272->279)."""
 
     @pytest.mark.asyncio
+    async def test_get_history_skips_reversal_when_turns_data_outer_empty(
+        self,
+        auth_tokens,
+        httpx_mock: HTTPXMock,
+        build_rpc_response,
+    ):
+        """Test get_history returns [] when turns_data is [] (empty outer payload)."""
+        id_response = build_rpc_response(RPCMethod.GET_LAST_CONVERSATION_ID, [[["conv_001"]]])
+        turns_response = build_rpc_response(
+            RPCMethod.GET_CONVERSATION_TURNS,
+            [],
+        )
+        httpx_mock.add_response(content=id_response.encode())
+        httpx_mock.add_response(content=turns_response.encode())
+
+        async with NotebookLMClient(auth_tokens) as client:
+            result = await client.chat.get_history("nb_123")
+
+        assert result == []
+
+    @pytest.mark.asyncio
     async def test_get_history_skips_reversal_when_turns_data_empty(
         self,
         auth_tokens,

@@ -4,6 +4,8 @@ Supported variables:
 - NOTEBOOKLM_MCP_ENABLE_DESTRUCTIVE_TOOLS (bool, default false)
 - NOTEBOOKLM_MCP_DESTRUCTIVE_2PC (bool, default false)
 - NOTEBOOKLM_MCP_LOG_LEVEL (str, default INFO)
+- NOTEBOOKLM_MCP_HOST (str, default 127.0.0.1)
+- NOTEBOOKLM_MCP_PORT (int, default 8764)
 - NOTEBOOKLM_MCP_MAX_INFLIGHT (int, default 5)
 - NOTEBOOKLM_MCP_TIMEOUT_MS (int, default 30000)
 - NOTEBOOKLM_MCP_SOURCE_CONTENT_MAX_CHARS (int, default 50000)
@@ -27,6 +29,8 @@ logger = logging.getLogger("notebooklm_mcp.config")
 ENV_ENABLE_DESTRUCTIVE_TOOLS = "NOTEBOOKLM_MCP_ENABLE_DESTRUCTIVE_TOOLS"
 ENV_DESTRUCTIVE_2PC = "NOTEBOOKLM_MCP_DESTRUCTIVE_2PC"
 ENV_LOG_LEVEL = "NOTEBOOKLM_MCP_LOG_LEVEL"
+ENV_HOST = "NOTEBOOKLM_MCP_HOST"
+ENV_PORT = "NOTEBOOKLM_MCP_PORT"
 ENV_MAX_INFLIGHT = "NOTEBOOKLM_MCP_MAX_INFLIGHT"
 ENV_TIMEOUT_MS = "NOTEBOOKLM_MCP_TIMEOUT_MS"
 ENV_SOURCE_CONTENT_MAX_CHARS = "NOTEBOOKLM_MCP_SOURCE_CONTENT_MAX_CHARS"
@@ -36,6 +40,8 @@ ENV_CACHE_TTL_SECONDS = "NOTEBOOKLM_MCP_CACHE_TTL_SECONDS"
 ENV_NOTEBOOKLM_HOME = "NOTEBOOKLM_HOME"
 
 DEFAULT_LOG_LEVEL = "INFO"
+DEFAULT_HOST = "127.0.0.1"
+DEFAULT_PORT = 8764
 DEFAULT_MAX_INFLIGHT = 5
 DEFAULT_TIMEOUT_MS = 30_000
 DEFAULT_SOURCE_CONTENT_MAX_CHARS = 50_000
@@ -53,6 +59,8 @@ class MCPConfig:
     enable_destructive_tools: bool = False
     destructive_2pc: bool = False
     log_level: str = DEFAULT_LOG_LEVEL
+    host: str = DEFAULT_HOST
+    port: int = DEFAULT_PORT
     max_inflight: int = DEFAULT_MAX_INFLIGHT
     timeout_ms: int = DEFAULT_TIMEOUT_MS
     source_content_max_chars: int = DEFAULT_SOURCE_CONTENT_MAX_CHARS
@@ -87,6 +95,7 @@ def _parse_int(
     default: int,
     *,
     minimum: int | None = None,
+    maximum: int | None = None,
 ) -> int:
     raw = environ.get(var_name)
     if raw is None:
@@ -99,6 +108,8 @@ def _parse_int(
 
     if minimum is not None and value < minimum:
         raise ConfigurationError(f"{var_name} must be >= {minimum}, got: {value}")
+    if maximum is not None and value > maximum:
+        raise ConfigurationError(f"{var_name} must be <= {maximum}, got: {value}")
 
     return value
 
@@ -112,6 +123,22 @@ def _parse_log_level(environ: Mapping[str, str]) -> str:
     return raw
 
 
+def _parse_non_empty_text(
+    environ: Mapping[str, str],
+    var_name: str,
+    default: str,
+) -> str:
+    raw = environ.get(var_name)
+    if raw is None:
+        return default
+
+    value = raw.strip()
+    if not value:
+        raise ConfigurationError(f"{var_name} must be a non-empty string")
+
+    return value
+
+
 def load_config(environ: Mapping[str, str] | None = None) -> MCPConfig:
     """Load and validate notebooklm-mcp configuration."""
     env = os.environ if environ is None else environ
@@ -120,6 +147,14 @@ def load_config(environ: Mapping[str, str] | None = None) -> MCPConfig:
         enable_destructive_tools=_parse_bool(env, ENV_ENABLE_DESTRUCTIVE_TOOLS, False),
         destructive_2pc=_parse_bool(env, ENV_DESTRUCTIVE_2PC, False),
         log_level=_parse_log_level(env),
+        host=_parse_non_empty_text(env, ENV_HOST, DEFAULT_HOST),
+        port=_parse_int(
+            env,
+            ENV_PORT,
+            DEFAULT_PORT,
+            minimum=1,
+            maximum=65_535,
+        ),
         max_inflight=_parse_int(
             env,
             ENV_MAX_INFLIGHT,
@@ -154,11 +189,13 @@ def load_config(environ: Mapping[str, str] | None = None) -> MCPConfig:
             f"{ENV_DESTRUCTIVE_2PC}=true requires {ENV_ENABLE_DESTRUCTIVE_TOOLS}=true"
         )
 
-    logger.info(
-        "Loaded MCP config: destructive_tools=%s destructive_2pc=%s cache_enabled=%s "
+    logger.debug(
+        "Loaded MCP config: destructive_tools=%s destructive_2pc=%s host=%s port=%d cache_enabled=%s "
         "max_inflight=%d timeout_ms=%d source_content_max_chars=%d audit_log_path_set=%s",
         config.enable_destructive_tools,
         config.destructive_2pc,
+        config.host,
+        config.port,
         config.cache_enabled,
         config.max_inflight,
         config.timeout_ms,
@@ -167,4 +204,3 @@ def load_config(environ: Mapping[str, str] | None = None) -> MCPConfig:
     )
 
     return config
-

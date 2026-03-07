@@ -84,12 +84,15 @@ class TestPlaywrightEventLoopFix:
     def test_context_manager_is_noop_on_non_windows(self):
         """Verify context manager is a no-op on non-Windows platforms."""
         # Mock sys.platform to non-Windows
-        with patch("notebooklm.cli.session.sys.platform", "linux"):
-            original_policy = asyncio.get_event_loop_policy()
+        with (
+            patch("notebooklm.cli.session.sys.platform", "linux"),
+            patch("notebooklm.cli.session.asyncio.set_event_loop_policy") as mock_set_policy,
+        ):
             with _windows_playwright_event_loop():
-                # Policy should remain unchanged on non-Windows
-                current_policy = asyncio.get_event_loop_policy()
-                assert current_policy is original_policy
+                pass
+
+            # Non-Windows path should not mutate asyncio policy.
+            mock_set_policy.assert_not_called()
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only test")
     def test_context_manager_restores_policy_on_windows(self):

@@ -25,7 +25,11 @@ from ..server import AppContext
 
 logger = logging.getLogger("notebooklm_mcp.tools.chat_settings")
 
-_UNSET_ARG = object()
+# NOTE:
+# Tool signatures are introspected into Pydantic schemas by FastMCP.
+# Non-serializable default values (e.g. object()) trigger
+# PydanticJsonSchemaWarning during schema generation.
+_UNSET_PROMPT_SENTINEL = "__NOTEBOOKLM_MCP_UNSET_CUSTOM_PROMPT__"
 
 
 def _resolve_app_context(ctx: MCPContext) -> AppContext:
@@ -82,8 +86,8 @@ def _parse_response_length(value: str | None) -> ChatResponseLength | object:
     return map_to_enum(value, ChatResponseLength, field_name="response_length")
 
 
-def _parse_optional_prompt(value: str | None | object, *, field: str) -> str | None | object:
-    if value is _UNSET_ARG:
+def _parse_optional_prompt(value: str | None, *, field: str) -> str | None | object:
+    if value == _UNSET_PROMPT_SENTINEL:
         return UNSET
     if value is None:
         return None
@@ -112,7 +116,7 @@ def _resolve_set_payload(
     *,
     goal: str | None,
     response_length: str | None,
-    custom_prompt: str | None | object,
+    custom_prompt: str | None,
 ) -> ChatSettings:
     goal_enum = (
         ChatGoal.DEFAULT
@@ -125,7 +129,7 @@ def _resolve_set_payload(
         else map_to_enum(response_length, ChatResponseLength, field_name="response_length")
     )
 
-    if custom_prompt is _UNSET_ARG:
+    if custom_prompt == _UNSET_PROMPT_SENTINEL:
         prompt = None
     elif custom_prompt is None:
         prompt = None
@@ -192,7 +196,7 @@ def register_chat_settings_tools(server: Any) -> dict[str, Callable[..., Any]]:
         mode: str = "patch",
         goal: str | None = None,
         response_length: str | None = None,
-        custom_prompt: str | None | object = _UNSET_ARG,
+        custom_prompt: str | None = _UNSET_PROMPT_SENTINEL,
         strict: bool = True,
     ) -> dict[str, Any]:
         clean_notebook_id = _require_text(notebook_id, field="notebook_id")

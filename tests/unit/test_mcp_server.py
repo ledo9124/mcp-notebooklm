@@ -92,6 +92,55 @@ def test_create_server_returns_none_without_mcp_dependency(monkeypatch: pytest.M
     assert server_instance is None
 
 
+def test_build_fastmcp_kwargs_includes_host_port_when_supported(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _FastMCPWithNetwork:
+        def __init__(
+            self,
+            *,
+            name: str,
+            lifespan,
+            version: str,
+            stateless_http: bool,
+            json_response: bool,
+            host: str,
+            port: int,
+        ) -> None:
+            pass
+
+    monkeypatch.setattr(mcp_server, "FastMCP", _FastMCPWithNetwork)
+    monkeypatch.setattr(mcp_server, "_package_version", lambda: "9.9.9")
+
+    config = mcp_server.MCPConfig(host="0.0.0.0", port=9101)
+    kwargs = mcp_server._build_fastmcp_kwargs(config)
+
+    assert kwargs["name"] == "notebooklm-mcp"
+    assert kwargs["lifespan"] is app_lifespan
+    assert kwargs["version"] == "9.9.9"
+    assert kwargs["stateless_http"] is True
+    assert kwargs["json_response"] is True
+    assert kwargs["host"] == "0.0.0.0"
+    assert kwargs["port"] == 9101
+
+
+def test_build_fastmcp_kwargs_omits_host_port_when_unsupported(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _LegacyFastMCP:
+        def __init__(self, *, name: str, lifespan) -> None:
+            pass
+
+    monkeypatch.setattr(mcp_server, "FastMCP", _LegacyFastMCP)
+
+    kwargs = mcp_server._build_fastmcp_kwargs(mcp_server.MCPConfig(host="0.0.0.0", port=9101))
+
+    assert kwargs["name"] == "notebooklm-mcp"
+    assert kwargs["lifespan"] is app_lifespan
+    assert "host" not in kwargs
+    assert "port" not in kwargs
+
+
 def test_create_server_builds_fastmcp_and_registers_components(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

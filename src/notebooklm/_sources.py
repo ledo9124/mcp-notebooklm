@@ -995,12 +995,28 @@ class SourcesAPI:
             "x-goog-upload-offset": "0",
         }
 
-        # Stream the file content instead of loading it all into memory
-        async def file_stream():
-            with open(file_path, "rb") as f:
-                while chunk := f.read(65536):  # 64KB chunks
+        class _UploadByteStream(httpx.AsyncByteStream):
+            """File stream compatible with AsyncClient send and VCR request.read()."""
+
+            def __init__(self, path: Path, chunk_size: int = 65536) -> None:
+                self._path = path
+                self._chunk_size = chunk_size
+
+            def __iter__(self):
+                with open(self._path, "rb") as f:
+                    while chunk := f.read(self._chunk_size):
+                        yield chunk
+
+            async def __aiter__(self):
+                for chunk in self:
                     yield chunk
 
         async with httpx.AsyncClient(timeout=300.0) as client:
-            response = await client.post(upload_url, headers=headers, content=file_stream())
+            request = client.build_request(
+                "POST",
+                upload_url,
+                headers=headers,
+                stream=_UploadByteStream(file_path),
+            )
+            response = await client.send(request)
             response.raise_for_status()

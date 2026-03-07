@@ -103,6 +103,7 @@ Beads provides a lightweight, dependency-aware issue database and CLI (`br` - be
    release_file_reservations(project_key, agent_name, paths=["src/**"])
    ```
    Final Mail reply: `[br-123] Completed` with summary
+   If the issue is resolved or a bug is fixed, close the corresponding `br` item in the same session before handoff.
 
 ### Mapping Cheat Sheet
 
@@ -232,7 +233,7 @@ br sync --flush-only  # Export to JSONL (NO git operations)
 1. **Start**: Run `br ready` to find actionable work
 2. **Claim**: Use `br update <id> --status=in_progress`
 3. **Work**: Implement the task
-4. **Complete**: Use `br close <id>`
+4. **Complete**: Use `br close <id>` as soon as the task is finished or the bug is resolved
 5. **Sync**: Run `br sync --flush-only` then manually commit
 
 ### Key Concepts
@@ -259,6 +260,7 @@ git push                # Push to remote
 
 - Check `br ready` at session start to find available work
 - Update status as you work (in_progress → closed)
+- Close resolved issues and fixed bugs promptly; do not hand off completed work as still open
 - Create new issues with `br create` when you discover tasks
 - Use descriptive titles and set appropriate priority/type
 - Always `br sync --flush-only && git add .beads/` before ending session
@@ -273,7 +275,7 @@ git push                # Push to remote
 
 1. **File issues for remaining work** - Create issues for anything that needs follow-up
 2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
+3. **Update issue status** - Close finished or resolved `br` items, especially bugs fixed in this session; update anything else still in progress
 4. **Sync beads** - `br sync --flush-only` to export to JSONL
 5. **Hand off** - Provide context for next session
 

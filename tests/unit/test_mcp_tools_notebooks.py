@@ -111,6 +111,38 @@ async def test_notebooks_list_returns_structured_and_text_payload() -> None:
 
 
 @pytest.mark.asyncio
+async def test_notebooks_list_uses_parser_source_count() -> None:
+    notebook = Notebook.from_api_response(
+        [
+            "Roadmap",
+            [["src_a"], ["src_b"], ["src_c"]],
+            "nb-raw",
+            "📘",
+        ]
+    )
+    client = MagicMock()
+    client.notebooks = MagicMock()
+    client.notebooks.list = AsyncMock(return_value=[notebook])
+    app = _make_app(client)
+    server = _FakeServer()
+    handlers = register_notebook_tools(server)
+
+    result = await handlers["notebooklm_notebooks_list"](_make_ctx(app, server))
+
+    structured = result["structuredContent"]  # type: ignore[index]
+    assert isinstance(structured, dict)
+    notebooks = structured["notebooks"]  # type: ignore[index]
+    assert isinstance(notebooks, list)
+    assert notebooks == [
+        {
+            "notebook_id": "nb-raw",
+            "title": "Roadmap",
+            "source_count": 3,
+        }
+    ]
+
+
+@pytest.mark.asyncio
 async def test_notebooks_create_calls_client_and_returns_identifier() -> None:
     client = MagicMock()
     client.notebooks = MagicMock()
@@ -224,4 +256,3 @@ async def test_notebooks_get_summary_includes_topics_and_source_count() -> None:
             }
         ],
     }
-

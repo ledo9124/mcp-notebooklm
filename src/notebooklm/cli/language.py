@@ -151,6 +151,7 @@ def _sync_language_to_server(code: str, ctx: click.Context) -> str | None:
     Returns:
         Server's response language, or None on failure.
     """
+    coro = None
     try:
         auth = get_auth_tokens(ctx)
 
@@ -158,10 +159,15 @@ def _sync_language_to_server(code: str, ctx: click.Context) -> str | None:
             async with NotebookLMClient(auth) as client:
                 return await client.settings.set_output_language(code)
 
-        return run_async(_set())
+        coro = _set()
+        return run_async(coro)
     except Exception as e:
         logger.debug("Failed to sync language to server: %s", e)
         return None
+    finally:
+        if coro is not None:
+            # Ensure patched/mocked run_async paths do not leak unawaited coroutines.
+            coro.close()
 
 
 def _get_language_from_server(ctx: click.Context) -> str | None:
@@ -173,6 +179,7 @@ def _get_language_from_server(ctx: click.Context) -> str | None:
     Returns:
         Server's language setting, or None on failure.
     """
+    coro = None
     try:
         auth = get_auth_tokens(ctx)
 
@@ -180,10 +187,15 @@ def _get_language_from_server(ctx: click.Context) -> str | None:
             async with NotebookLMClient(auth) as client:
                 return await client.settings.get_output_language()
 
-        return run_async(_get())
+        coro = _get()
+        return run_async(coro)
     except Exception as e:
         logger.debug("Failed to get language from server: %s", e)
         return None
+    finally:
+        if coro is not None:
+            # Ensure patched/mocked run_async paths do not leak unawaited coroutines.
+            coro.close()
 
 
 @click.group()

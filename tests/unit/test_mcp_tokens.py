@@ -145,7 +145,9 @@ def test_verify_rejects_tampered_token() -> None:
         ttl_seconds=60,
         secret_key=secret,
     )
-    tampered = token[:-1] + ("A" if token[-1] != "A" else "B")
+    payload_segment, signature_segment = token.split(".", 1)
+    tampered_payload = ("A" if payload_segment[0] != "A" else "B") + payload_segment[1:]
+    tampered = f"{tampered_payload}.{signature_segment}"
 
     assert (
         _tokens.verify_confirmation_token(
@@ -204,4 +206,3 @@ def test_verify_rejects_with_wrong_secret() -> None:
         )
         is False
     )
-

@@ -386,6 +386,7 @@ class Notebook:
         raw_title = data[0] if len(data) > 0 and isinstance(data[0], str) else ""
         title = raw_title.replace("thought\n", "").strip()
         notebook_id = data[2] if len(data) > 2 and isinstance(data[2], str) else ""
+        sources_count = len(data[1]) if len(data) > 1 and isinstance(data[1], list) else 0
 
         created_at = None
         if len(data) > 5 and isinstance(data[5], list) and len(data[5]) > 5:
@@ -401,7 +402,13 @@ class Notebook:
         if len(data) > 5 and isinstance(data[5], list) and len(data[5]) > 1:
             is_owner = data[5][1] is False
 
-        return cls(id=notebook_id, title=title, created_at=created_at, is_owner=is_owner)
+        return cls(
+            id=notebook_id,
+            title=title,
+            created_at=created_at,
+            sources_count=sources_count,
+            is_owner=is_owner,
+        )
 
 
 @dataclass
@@ -774,6 +781,12 @@ class Artifact:
             options = data[9][1]
             if isinstance(options, list) and len(options) > 0:
                 variant = options[0]
+
+        # Legacy list payloads may store quiz/flashcard variant at data[6][6].
+        if variant is None and len(data) > 6 and isinstance(data[6], list) and len(data[6]) > 6:
+            legacy_variant = data[6][6]
+            if isinstance(legacy_variant, int):
+                variant = legacy_variant
 
         return cls(
             id=str(artifact_id),

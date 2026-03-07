@@ -71,6 +71,26 @@ class TestNotebook:
         notebook = Notebook.from_api_response(data)
 
         assert notebook.is_owner is False
+        assert notebook.sources_count == 0
+
+    def test_from_api_response_extracts_sources_count(self):
+        """Test parsing source count from notebook list payload."""
+        data = [
+            "Notebook With Sources",
+            [["src_1"], ["src_2"], ["src_3"]],
+            "nb_sources",
+            "📓",
+        ]
+        notebook = Notebook.from_api_response(data)
+
+        assert notebook.sources_count == 3
+
+    def test_from_api_response_non_list_sources_defaults_to_zero(self):
+        """Test non-list source payload falls back to zero sources."""
+        data = ["Notebook", {"unexpected": "shape"}, "nb_123", "📓"]
+        notebook = Notebook.from_api_response(data)
+
+        assert notebook.sources_count == 0
 
     def test_from_api_response_empty_data(self):
         """Test parsing with minimal data."""
@@ -330,6 +350,14 @@ class TestArtifact:
         assert artifact.kind == ArtifactType.FLASHCARDS
         assert artifact.is_flashcards is True
         assert artifact.is_quiz is False
+
+    def test_from_api_response_with_legacy_variant_location(self):
+        """Test parsing quiz variant from legacy list payload location."""
+        data = ["art_quiz", "Quiz", 4, None, 3, None, [None, None, None, None, None, None, 2]]
+        artifact = Artifact.from_api_response(data)
+
+        assert artifact.kind == ArtifactType.QUIZ
+        assert artifact.is_quiz is True
 
     def test_is_completed_property(self):
         """Test is_completed property."""

@@ -285,7 +285,7 @@ class TestUploadFileStreaming:
             mock_client = AsyncMock()
             mock_client.__aenter__.return_value = mock_client
             mock_client.__aexit__.return_value = None
-            mock_client.post.return_value = mock_response
+            mock_client.send.return_value = mock_response
             mock_client_cls.return_value = mock_client
 
             # Should not raise
@@ -293,7 +293,7 @@ class TestUploadFileStreaming:
                 "https://upload.example.com/session", test_file
             )
 
-            mock_client.post.assert_called_once()
+            mock_client.send.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_upload_file_streaming_includes_correct_headers(
@@ -308,15 +308,15 @@ class TestUploadFileStreaming:
             mock_client = AsyncMock()
             mock_client.__aenter__.return_value = mock_client
             mock_client.__aexit__.return_value = None
-            mock_client.post.return_value = mock_response
+            mock_client.send.return_value = mock_response
             mock_client_cls.return_value = mock_client
 
             await sources_api._upload_file_streaming(
                 "https://upload.example.com/session", test_file
             )
 
-            call_kwargs = mock_client.post.call_args[1]
-            headers = call_kwargs["headers"]
+            request = mock_client.send.call_args[0][0]
+            headers = request.headers
 
             assert headers["x-goog-upload-command"] == "upload, finalize"
             assert headers["x-goog-upload-offset"] == "0"
@@ -334,16 +334,16 @@ class TestUploadFileStreaming:
             mock_client = AsyncMock()
             mock_client.__aenter__.return_value = mock_client
             mock_client.__aexit__.return_value = None
-            mock_client.post.return_value = mock_response
+            mock_client.send.return_value = mock_response
             mock_client_cls.return_value = mock_client
 
             await sources_api._upload_file_streaming("https://upload.example.com", test_file)
 
-            call_kwargs = mock_client.post.call_args[1]
-            # Content should be a generator, not bytes
-            content = call_kwargs["content"]
+            request = mock_client.send.call_args[0][0]
+            # Stream should be iterable and yield file chunks
+            content = request.stream
             # Consume the generator to verify it yields the file content
-            chunks = [chunk async for chunk in content]
+            chunks = list(content)
             assert b"".join(chunks) == test_content
 
     @pytest.mark.asyncio
@@ -360,7 +360,7 @@ class TestUploadFileStreaming:
             mock_client = AsyncMock()
             mock_client.__aenter__.return_value = mock_client
             mock_client.__aexit__.return_value = None
-            mock_client.post.side_effect = httpx.HTTPStatusError(
+            mock_client.send.side_effect = httpx.HTTPStatusError(
                 "Upload Failed", request=MagicMock(), response=MagicMock()
             )
             mock_client_cls.return_value = mock_client
@@ -397,7 +397,8 @@ class TestAddFile:
             mock_client = AsyncMock()
             mock_client.__aenter__.return_value = mock_client
             mock_client.__aexit__.return_value = None
-            mock_client.post.side_effect = [mock_start_response, mock_upload_response]
+            mock_client.post.return_value = mock_start_response
+            mock_client.send.return_value = mock_upload_response
             mock_client_cls.return_value = mock_client
 
             result = await sources_api.add_file("nb_123", str(test_file))
@@ -428,7 +429,8 @@ class TestAddFile:
             mock_client = AsyncMock()
             mock_client.__aenter__.return_value = mock_client
             mock_client.__aexit__.return_value = None
-            mock_client.post.side_effect = [mock_start_response, mock_upload_response]
+            mock_client.post.return_value = mock_start_response
+            mock_client.send.return_value = mock_upload_response
             mock_client_cls.return_value = mock_client
 
             result = await sources_api.add_file("nb_123", test_file)  # Path object

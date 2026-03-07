@@ -31,6 +31,10 @@ Unofficial async Python API + CLI for Google NotebookLM.
 
 ## Installation
 
+Python requirement: **3.10+**.
+
+### Linux / macOS
+
 ```bash
 # Runtime
 pip install notebooklm-py
@@ -40,7 +44,16 @@ pip install "notebooklm-py[browser]"
 playwright install chromium
 ```
 
-Python requirement: **3.10+**.
+### Windows (PowerShell)
+
+```powershell
+# Runtime
+pip install notebooklm-py
+
+# Includes browser login dependency
+pip install "notebooklm-py[browser]"
+playwright install chromium
+```
 
 ## Authenticate
 
@@ -128,7 +141,7 @@ Why use MCP here:
 - Structured output (`structuredContent`) with text JSON fallback for compatibility
 - Optional destructive-tool safety gate (`NOTEBOOKLM_MCP_ENABLE_DESTRUCTIVE_TOOLS=1` + `confirm=true`)
 
-Quick start:
+### Quick start (Linux / macOS)
 
 ```bash
 # Install MCP runtime support
@@ -138,8 +151,82 @@ playwright install chromium
 # Authenticate NotebookLM
 notebooklm login
 
-# Run MCP server (stdio transport)
-python -m notebooklm_mcp
+# Run MCP server (stdio transport — default)
+notebooklm-mcp serve
+
+# Run with HTTP transport (recommended for remote/agent use)
+notebooklm-mcp serve --http
+```
+
+### Quick start (Windows PowerShell)
+
+```powershell
+# Install MCP runtime support
+pip install "notebooklm-py[mcp,browser]"
+playwright install chromium
+
+# Authenticate NotebookLM
+notebooklm login
+
+# Run MCP server (stdio transport — default)
+notebooklm-mcp serve
+
+# Run with HTTP transport
+notebooklm-mcp serve --http
+```
+
+### Transport modes
+
+| Transport | Start command | Agent connection |
+| --- | --- | --- |
+| `stdio` (default) | `notebooklm-mcp serve` | Local subprocess (no URL) |
+| `streamable-http` (recommended HTTP) | `notebooklm-mcp serve --http` | `http://127.0.0.1:8764/mcp` |
+| `sse` (legacy HTTP) | `notebooklm-mcp serve --sse` | `http://127.0.0.1:8765/sse` |
+
+> **Backward compatibility:** `python -m notebooklm_mcp` and the legacy `--transport` flag still work.
+
+### HTTP configuration
+
+- Defaults: `NOTEBOOKLM_MCP_HOST=127.0.0.1`, `NOTEBOOKLM_MCP_PORT=8764`
+- Environment variables: `NOTEBOOKLM_MCP_HOST`, `NOTEBOOKLM_MCP_PORT`
+- CLI overrides: `--host`, `--port` (higher precedence than env vars)
+- Effective precedence: CLI flags > env vars > built-in defaults
+
+### Examples
+
+```bash
+# Start HTTP on custom port
+notebooklm-mcp serve --http --port 9000
+
+# Start on all interfaces (explicit risk acceptance)
+notebooklm-mcp serve --http --host 0.0.0.0
+
+# Enable verbose debug logging
+notebooklm-mcp serve --http -v
+```
+
+### Logging
+
+- **Default:** clean, minimal output — only startup banner and errors
+- **Verbose (`-v`):** DEBUG level with timestamps and logger names
+- `NOTEBOOKLM_MCP_LOG_LEVEL` environment variable is also supported
+- All logs go to **stderr** (safe for stdio transport)
+
+Security note:
+
+- The default bind is loopback (`127.0.0.1`) to keep the MCP endpoint local-only.
+- Binding to `0.0.0.0` exposes NotebookLM operations to your network. Do this only when intentionally deploying behind trusted network controls.
+
+Claude Desktop HTTP config example (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "notebooklm-http": {
+      "url": "http://127.0.0.1:8764/mcp"
+    }
+  }
+}
 ```
 
 For Claude Desktop setup and troubleshooting, see:
