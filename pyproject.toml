@@ -46,12 +46,12 @@ dev = [
   "pydantic>=2,<3",
   "pytest>=9,<10",
   "pytest-asyncio>=1,<2",
-  "pytest-cov>=6,<7",
+  "pytest-cov>=6,<8",
   "pytest-httpx>=0.35,<1",
-  "pytest-rerunfailures>=14,<16",
+  "pytest-rerunfailures>=14,<17",
   "python-dotenv>=1,<2",
   "ruff>=0.9,<1",
-  "vcrpy>=6,<8",
+  "vcrpy>=6,<9",
 ]
 all = [
   "mypy>=1.10,<2",
@@ -60,12 +60,12 @@ all = [
   "pydantic>=2,<3",
   "pytest>=9,<10",
   "pytest-asyncio>=1,<2",
-  "pytest-cov>=6,<7",
+  "pytest-cov>=6,<8",
   "pytest-httpx>=0.35,<1",
-  "pytest-rerunfailures>=14,<16",
+  "pytest-rerunfailures>=14,<17",
   "python-dotenv>=1,<2",
   "ruff>=0.9,<1",
-  "vcrpy>=6,<8",
+  "vcrpy>=6,<9",
 ]
 
 [project.urls]
