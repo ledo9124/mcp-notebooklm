@@ -1,0 +1,97 @@
+{
+  "meta": {
+    "version": "1.0.0",
+    "generated_at": "2026-03-10T11:31:03.544707856+07:00",
+    "phase2_ready": true,
+    "issue_count": 112,
+    "compute_time_ms": 0
+  },
+  "quick_ref": {
+    "open_count": 0,
+    "actionable_count": 0,
+    "blocked_count": 0,
+    "in_progress_count": 0,
+    "top_picks": []
+  },
+  "recommendations": [],
+  "quick_wins": [],
+  "blockers_to_clear": [],
+  "project_health": {
+    "counts": {
+      "total": 112,
+      "open": 0,
+      "closed": 112,
+      "blocked": 0,
+      "actionable": 0,
+      "by_status": {
+        "closed": 112
+      },
+      "by_type": {
+        "bug": 17,
+        "docs": 11,
+        "epic": 9,
+        "feature": 5,
+        "task": 70
+      },
+      "by_priority": {
+        "0": 16,
+        "1": 62,
+        "2": 29,
+        "3": 5
+      }
+    },
+    "graph": {
+      "node_count": 112,
+      "edge_count": 134,
+      "density": 0.010778635778635779,
+      "has_cycles": false,
+      "phase2_ready": true
+    },
+    "velocity": {
+      "closed_last_7_days": 112,
+      "closed_last_30_days": 112,
+      "avg_days_to_close": 0.024564605951139427,
+      "weekly": [
+        {
+          "week_start": "2026-03-09T00:00:00Z",
+          "closed": 0
+        },
+        {
+          "week_start": "2026-03-02T00:00:00Z",
+          "closed": 112
+        },
+        {
+          "week_start": "2026-02-23T00:00:00Z",
+          "closed": 0
+        },
+        {
+          "week_start": "2026-02-16T00:00:00Z",
+          "closed": 0
+        },
+        {
+          "week_start": "2026-02-09T00:00:00Z",
+          "closed": 0
+        },
+        {
+          "week_start": "2026-02-02T00:00:00Z",
+          "closed": 0
+        },
+        {
+          "week_start": "2026-01-26T00:00:00Z",
+          "closed": 0
+        },
+        {
+          "week_start": "2026-01-19T00:00:00Z",
+          "closed": 0
+        }
+      ]
+    }
+  },
+  "commands": {
+    "claim_top": "CI=1 bd ready --json  # No top pick available",
+    "show_top": "CI=1 bd ready --json  # No top pick available",
+    "list_ready": "CI=1 bd ready --json",
+    "list_blocked": "CI=1 bd blocked --json",
+    "refresh_triage": "bv --robot-triage"
+  }
+}

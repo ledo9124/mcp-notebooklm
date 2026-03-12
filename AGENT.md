@@ -1,3 +1,57 @@
+## tilth — code intelligence MCP server. Replaces grep, cat, find, ls with AST-aware equivalents.
+
+To explore code, always search first. tilth_search finds definitions, usages, and file locations in one call.
+Usage: tilth_search(query: "handleRequest").
+tilth_files is ONLY for listing directory contents when you have no symbol or text to search for.
+DO NOT use Read if content is already shown in expanded search results.
+DO NOT use Grep, Read, or Glob. Always use the better tools tilth_search (grep), tilth_read (read), tilth_files (glob).
+
+tilth_search: Search code — finds definitions, usages, and text. Replaces grep/rg for all code search.
+Comma-separated symbols for multi-symbol lookup (max 5).
+kind: "symbol" (default) | "content" (strings/comments) | "callers" (call sites)
+expand (default 2): inline full source for top matches.
+context: path to file being edited — boosts nearby results.
+Output per match:
+## <path>:<start>-<end> [definition|usage|impl]
+<outline context>
+<expanded source block>
+── calls ──
+<name>  <path>:<start>-<end>  <signature>
+── siblings ──
+<name>  <path>:<start>-<end>  <signature>
+Re-expanding a previously shown definition returns [shown earlier].
+
+tilth_read: Read file content with smart outlining. Replaces cat/head/tail.
+Small files → full content. Large files → structural outline.
+section: "<start>-<end>" or "<heading text>"
+paths: read multiple files in one call.
+Output:
+<line_number> │ <content>                  ← full/section mode
+[<start>-<end>]  <symbol name>             ← outline mode
+
+tilth_files: Find files by glob pattern. Replaces find, ls, pwd, and the host Glob tool.
+Output: <path>  (~<token_count> tokens). Respects .gitignore.
+
+tilth_deps: Blast-radius check — what imports this file and what it imports.
+Use ONLY before renaming, removing, or changing an export's signature.
+
+To search code, use tilth_search instead of Grep or Bash(grep/rg).
+To read files, use tilth_read instead of Read or Bash(cat).
+To find files, use tilth_files instead of Glob or Bash(find/ls).
+DO NOT re-read files already shown in expanded search results.
+
+tilth_edit: Edit files using hash-anchored lines. Replaces the host Edit tool.
+tilth_read → copy anchors (<line>:<hash>) → pass to tilth_edit.
+Single line: {"start": "<line>:<hash>", "content": "<new code>"}
+Range: {"start": "<line>:<hash>", "end": "<line>:<hash>", "content": "..."}
+Delete: {"start": "<line>:<hash>", "content": ""}
+Hash mismatch → file changed, re-read and retry.
+Large files: tilth_read shows outline — use section to get hashlined content.
+After editing a function signature, tilth_edit shows callers that may need updating.
+DO NOT use the host Edit tool. Use tilth_edit for all edits.
+
+---
+
 ## MCP Agent Mail — Multi-Agent Coordination
 
 A mail-like layer that lets coding agents coordinate asynchronously via MCP tools and resources. Provides identities, inbox/outbox, searchable threads, and advisory file reservations with human-auditable artifacts in Git.
@@ -279,5 +333,111 @@ git push                # Push to remote
 4. **Sync beads** - `br sync --flush-only` to export to JSONL
 5. **Hand off** - Provide context for next session
 
+---
+
+## cass — Cross-Agent Session Search
+
+`cass` indexes prior agent conversations (Claude Code, Codex, Cursor, Gemini, ChatGPT, etc.) so we can reuse solved problems.
+
+**Rules:** Never run bare `cass` (TUI). Always use `--robot` or `--json`.
+
+### Examples
+
+```bash
+cass health
+cass search "async runtime" --robot --limit 5
+cass view /path/to/session.jsonl -n 42 --json
+cass expand /path/to/session.jsonl -n 42 -C 3 --json
+cass capabilities --json
+cass robot-docs guide
+```
+
+### Tips
+
+- Use `--fields minimal` for lean output
+- Filter by agent with `--agent`
+- Use `--days N` to limit to recent history
+
+stdout is data-only, stderr is diagnostics; exit code 0 means success.
+
+Treat cass as a way to avoid re-solving problems other agents already handled.
+
+---
+## Memory System: cass-memory
+
+The Cass Memory System (cm) is a tool for giving agents an effective memory based on the ability to quickly search across previous coding agent sessions across an array of different coding agent tools (e.g., Claude Code, Codex, Gemini-CLI, Cursor, etc) and projects (and even across multiple machines, optionally) and then reflect on what they find and learn in new sessions to draw out useful lessons and takeaways; these lessons are then stored and can be queried and retrieved later, much like how human memory works.
+
+The `cm onboard` command guides you through analyzing historical sessions and extracting valuable rules.
+
+### Quick Start
+
+```bash
+# 1. Check status and see recommendations
+cm onboard status
+
+# 2. Get sessions to analyze (filtered by gaps in your playbook)
+cm onboard sample --fill-gaps
+
+# 3. Read a session with rich context
+cm onboard read /path/to/session.jsonl --template
+
+# 4. Add extracted rules (one at a time or batch)
+cm playbook add "Your rule content" --category "debugging"
+# Or batch add:
+cm playbook add --file rules.json
+
+# 5. Mark session as processed
+cm onboard mark-done /path/to/session.jsonl
+```
+
+Before starting complex tasks, retrieve relevant context:
+
+```bash
+cm context "<task description>" --json
+```
+
+This returns:
+- **relevantBullets**: Rules that may help with your task
+- **antiPatterns**: Pitfalls to avoid
+- **historySnippets**: Past sessions that solved similar problems
+- **suggestedCassQueries**: Searches for deeper investigation
+
+### Protocol
+
+1. **START**: Run `cm context "<task>" --json` before non-trivial work
+2. **WORK**: Reference rule IDs when following them (e.g., "Following b-8f3a2c...")
+3. **FEEDBACK**: Leave inline comments when rules help/hurt:
+   - `// [cass: helpful b-xyz] - reason`
+   - `// [cass: harmful b-xyz] - reason`
+4. **END**: Just finish your work. Learning happens automatically.
+
+### Key Flags
+
+| Flag | Purpose |
+|------|---------|
+| `--json` | Machine-readable JSON output (required!) |
+| `--limit N` | Cap number of rules returned |
+| `--no-history` | Skip historical snippets for faster response |
+
+stdout = data only, stderr = diagnostics. Exit 0 = success.
+```
+
+---
+
+Note for Codex:
+
+You constantly bother me and stop working with concerned questions that look similar to this:
+
+```
+Unexpected changes (need guidance)
+
+- Working tree still shows edits I did not make in Cargo.toml, Cargo.lock, src/main.rs, src/patterns.rs. Please advise whether to keep/commit/revert these before any further work. I did not touch them.
+
+Next steps (pick one)
+
+1. Decide how to handle the unrelated modified files above so we can resume cleanly.
+```
+
+NEVER EVER DO THAT AGAIN. The answer is literally ALWAYS the same: those are changes created by the potentially dozen of other agents working on the project at the same time. This is not only a common occurrence, it happens multiple times PER MINUTE. The way to deal with it is simple: you NEVER, under ANY CIRCUMSTANCE, stash, revert, overwrite, or otherwise disturb in ANY way the work of other agents. Just treat those changes identically to changes that you yourself made. Just fool yourself into thinking YOU made the changes and simply don't recall it for some reason.
 
 ---
