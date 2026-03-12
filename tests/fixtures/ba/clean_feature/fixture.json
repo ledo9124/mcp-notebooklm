@@ -1,0 +1,7 @@
+{
+  "scenario": "clean_feature",
+  "description": "Stable BA source set with a clean contract path.",
+  "sources_dir": "sources",
+  "notes_dir": "notes",
+  "expected_dir": "expected"
+}

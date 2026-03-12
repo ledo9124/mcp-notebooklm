@@ -1,0 +1,61 @@
+{
+  "changed_sources": [
+    "requirements"
+  ],
+  "deltas": [
+    {
+      "source_key": "requirements",
+      "change_kind": "MODIFIED",
+      "before_snapshot_id": "requirements-before",
+      "after_snapshot_id": "requirements-after",
+      "before_content_hash": "hash-before",
+      "after_content_hash": "hash-after",
+      "before_title": "Requirements Before",
+      "after_title": "Requirements After",
+      "changed_headings": [
+        "Customer Form",
+        "Customer Review",
+        "Overview"
+      ],
+      "changed_terms": [
+        "Loyalty Tier"
+      ]
+    }
+  ],
+  "impacted_screens": [
+    {
+      "screen_id": "customer-form",
+      "screen_name": "Customer Form",
+      "changed_sources": [
+        "requirements"
+      ],
+      "changed_terms": [
+        "Loyalty Tier"
+      ],
+      "reasons": [
+        "manifest_usage",
+        "related_source",
+        "terminology_match"
+      ]
+    },
+    {
+      "screen_id": "customer-review",
+      "screen_name": "Customer Review",
+      "changed_sources": [
+        "requirements"
+      ],
+      "changed_terms": [
+        "Loyalty Tier"
+      ],
+      "reasons": [
+        "manifest_usage",
+        "related_source",
+        "terminology_match"
+      ]
+    }
+  ],
+  "requires_full_rerun": true,
+  "escalation_reasons": [
+    "changes cut across every known screen"
+  ]
+}

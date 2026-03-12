@@ -1243,3 +1243,451 @@ The sequence should be:
 7. optional parity completion last.
 
 That ordering gets the enterprise to useful output fastest while also reducing long-term rework.
+
+---
+
+## 23. Repository-Grounded Execution Model
+
+The revised plan is intentionally product- and architecture-heavy. To make it executable inside this repository, it needs to be anchored to the code that already exists today.
+
+### 23.1 What the current repository already gives us
+
+The current MCP implementation is not a blank slate. It already has:
+- server/bootstrap wiring in `src/notebooklm_mcp/server.py` and `src/notebooklm_mcp/__main__.py`,
+- shared MCP conventions such as `AppContext`, config loading, concurrency slots, result shaping, and error mapping,
+- domain tool modules under `src/notebooklm_mcp/tools/`,
+- MCP resources in `src/notebooklm_mcp/resources.py`,
+- MCP prompts in `src/notebooklm_mcp/prompts.py`,
+- meaningful unit and integration coverage in `tests/unit/test_mcp_*` and `tests/integration/test_mcp_*`.
+
+That means the upgrade should be framed as a **layered expansion** of an existing server, not a greenfield rewrite.
+
+### 23.2 The most important implementation constraint
+
+The current generic workflow code in `src/notebooklm_mcp/tools/workflows.py` is already substantial. The BA runner should therefore avoid becoming “more workflow logic in the same monolith.” If the new pipeline is added as a loose pile of helper functions inside existing MCP modules, maintenance cost will rise quickly and the plan will fail for organizational reasons before it fails for model reasons.
+
+The practical constraint is:
+
+> **build the BA runner as a distinct internal subsystem that plugs into the current MCP shell, rather than as incremental sprawl inside existing generic tools.**
+
+### 23.3 Recommended code layout for the BA runner
+
+The exact filenames may evolve, but the architectural split should look roughly like this:
+
+```text
+src/notebooklm_mcp/
+  ba/
+    __init__.py
+    models.py              # Pydantic schemas / enums / validation rules
+    capabilities.py        # adapter over notebooklm-py client surface
+    run_store.py           # filesystem-backed run metadata + snapshots + audit
+    state_machine.py       # execution states / resumability / halt reasons
+    prompts.py             # named extraction prompt presets
+    source_intelligence.py # register / ingest / snapshot / quality / manifest
+    terminology.py         # glossary normalization and ambiguity handling
+    catalog.py             # screen catalog extraction
+    canonical.py           # per-screen canonical fact extraction
+    gaps.py                # contradictions / blockers / open questions
+    matrices.py            # field/action/API matrix generation
+    contracts.py           # provisional OpenAPI + mock data generation
+    readiness.py           # feature + screen readiness logic
+    render.py              # markdown / yaml / json / csv rendering
+    validate.py            # bundle QA and deterministic repair
+    rerun.py               # diffing + impacted screen mapping
+    tools.py               # MCP tool entry points for ba.*
+```
+
+This recommendation is important for future maintainability because it keeps:
+- generic NotebookLM MCP parity work in the existing generic modules,
+- BA-specific orchestration and schemas in a dedicated package,
+- the MCP public surface thin even if the internal pipeline grows materially.
+
+### 23.4 Recommended test layout for the BA runner
+
+The testing story should be established alongside implementation rather than retrofitted later.
+
+Recommended additions:
+
+```text
+tests/unit/
+  test_mcp_ba_models.py
+  test_mcp_ba_capabilities.py
+  test_mcp_ba_source_intelligence.py
+  test_mcp_ba_catalog.py
+  test_mcp_ba_canonical.py
+  test_mcp_ba_gaps.py
+  test_mcp_ba_matrices.py
+  test_mcp_ba_contracts.py
+  test_mcp_ba_readiness.py
+  test_mcp_ba_render.py
+  test_mcp_ba_validate.py
+  test_mcp_ba_rerun.py
+  test_mcp_tools_ba.py
+
+tests/integration/
+  test_mcp_ba_pipeline.py
+  test_mcp_ba_rerun.py
+
+tests/fixtures/ba/
+  clean_feature/
+  missing_contract/
+  contradictory_sources/
+  garbled_pdf/
+  rerun_diff/
+  note_clarification/
+```
+
+This matters because the value proposition of the upgrade is not “we can ask NotebookLM more things.” The value proposition is that we can do so **predictably** and with auditable degradation behavior.
+
+### 23.5 Documentation impact
+
+The implementation will require documentation updates in parallel with code changes, not only at the end:
+- `README.md` for the public positioning of the BA workflow surface,
+- `docs/mcp-tools.md` for the new `ba.*` tools and their contracts,
+- a new workflow guide describing expected inputs, outputs, and rerun behavior,
+- fixture and testing notes so future contributors understand why the synthetic BA sets exist.
+
+If this documentation work is deferred until after implementation, the public MCP surface will drift from the intended workflow contract and future maintenance will become much more expensive.
+
+---
+
+## 24. Program Structure and Phase Gates
+
+The original plan describes phases. This section turns those phases into a delivery program with explicit entry criteria, exit criteria, and sequencing rules.
+
+### 24.1 Program-level sequencing rule
+
+The critical path is:
+
+1. parity audit and internal foundations,
+2. source intelligence,
+3. canonical extraction,
+4. rendering plus FE-first outputs,
+5. orchestration and reruns,
+6. QA hardening,
+7. optional parity completion.
+
+This is not arbitrary. Each stage reduces uncertainty for the next stage:
+- without the adapter and schemas, later tools will fragment;
+- without source intelligence, canonical extraction will be built on unstable inputs;
+- without canonical extraction, rendering will be prose-first instead of schema-first;
+- without rendering, orchestration has nothing deterministic to run end to end;
+- without orchestration, QA and rerun economics cannot be validated honestly.
+
+### 24.2 Phase 0 gate: capability audit and foundation
+
+**Entry condition**
+- agreement that the repo should implement the BA runner in this codebase instead of a separate product.
+
+**Exit condition**
+- a parity matrix exists for the relevant `notebooklm-py` capabilities,
+- a capability adapter skeleton exists,
+- core BA schemas exist,
+- a run-store skeleton exists,
+- the chosen internal package layout is settled enough that later phases do not need to relocate major modules.
+
+**Why this gate exists**
+- This is the phase that prevents accidental rework from “discovering later” that a supposedly easy upstream capability is missing or awkwardly exposed.
+
+### 24.3 Phase 1 gate: source intelligence
+
+**Entry condition**
+- foundation modules are in place.
+
+**Exit condition**
+- a run can register typed sources,
+- ingest and bounded waiting are unified,
+- snapshots and source hashes are persisted,
+- source quality is assessed deterministically,
+- the run can emit an authoritative source manifest.
+
+**Why this gate exists**
+- If the pipeline cannot prove what it ingested and whether those inputs were trustworthy, every later artifact is suspect.
+
+### 24.4 Phase 2 gate: canonical extraction
+
+**Entry condition**
+- source manifest and snapshotting are trustworthy.
+
+**Exit condition**
+- terminology normalization works,
+- a stable screen catalog can be produced,
+- per-screen canonical JSON can be produced with evidence,
+- contradictions, blockers, and open questions are extracted explicitly rather than buried in prose.
+
+**Why this gate exists**
+- This is the transition from “NotebookLM MCP” to “workflow-native BA runner.”
+
+### 24.5 Phase 3 gate: rendering and FE-first delivery
+
+**Entry condition**
+- canonical data for realistic fixtures exists.
+
+**Exit condition**
+- FE and BE docs are rendered from canonical state,
+- matrices are generated and validated,
+- FE-first runs can emit provisional contracts and deterministic mock data,
+- readiness summaries and question backlogs reflect the same canonical layer.
+
+**Why this gate exists**
+- This is the first phase where the project begins returning the actual business artifact set the workflow cares about.
+
+### 24.6 Phase 4 gate: orchestration and reruns
+
+**Entry condition**
+- the discrete workflow steps are individually functional.
+
+**Exit condition**
+- `ba.run_pipeline` can drive the sequence end to end,
+- progress, halt reasons, and degraded states are visible,
+- impacted reruns work against source diffs and previous evidence,
+- changelog output is produced for reruns.
+
+**Why this gate exists**
+- A real workflow product is not a bag of callable primitives. It has to run coherently and cheaply when requirements evolve.
+
+### 24.7 Phase 5 gate: QA and hardening
+
+**Entry condition**
+- end-to-end output exists for at least the core fixture sets.
+
+**Exit condition**
+- validator coverage exists for the core artifact invariants,
+- deterministic self-repair is limited to safe repairs,
+- gold fixtures pass,
+- canary coverage exists for upstream drift,
+- operational metrics are being captured.
+
+**Why this gate exists**
+- This is what prevents the repository from shipping a convincing demo that later becomes expensive to trust.
+
+### 24.8 Phase 6 gate: parity completion and optional artifacts
+
+**Entry condition**
+- the BA runner already solves the primary workflow.
+
+**Exit condition**
+- the remaining parity helpers judged useful are exposed,
+- unstable or low-value artifacts are clearly flagged optional or experimental,
+- optional parity does not distort the BA-first mental model of the server.
+
+**Why this gate exists**
+- Optional parity should increase completeness, not steal focus from the core workflow.
+
+---
+
+## 25. Bead Design Contract for This Program
+
+The planning graph should follow a disciplined issue-writing contract so the bead database itself becomes a durable knowledge base rather than a thin todo list.
+
+### 25.1 Issue granularity rules
+
+Each bead should represent one of the following:
+- a program epic,
+- a deliverable-sized task,
+- a concrete subtask with a clear completion test.
+
+Avoid creating beads for trivial mechanical edits that should simply be included in a task’s definition of done. The goal is a graph that supports execution and handoff, not a graph that optimizes for issue count.
+
+### 25.2 Required information in each important bead
+
+At minimum, each significant issue should make the following clear:
+- background and why the issue exists,
+- scope and non-goals,
+- expected deliverables,
+- acceptance criteria,
+- implementation considerations,
+- risk or sequencing notes.
+
+### 25.3 Comment strategy
+
+Descriptions should carry the durable contract. Comments should capture:
+- reasoning that may not fit comfortably in the title or description,
+- future-self guidance about edge cases or expected pitfalls,
+- justification for why the item is sequenced where it is,
+- clarifications about what should not accidentally expand scope.
+
+The program should therefore prefer **fewer but richer comments** over many empty progress comments.
+
+### 25.4 Dependency rules
+
+Dependencies should encode real enabling constraints:
+- a child task may depend on its parent for tracking semantics,
+- execution tasks should depend on the work that materially enables them,
+- validation tasks should depend on the artifacts they validate,
+- optional parity tasks should avoid blocking the BA runner critical path unless they are truly required for the workflow.
+
+This is the practical difference between a dependency graph and a simple issue list.
+
+### 25.5 Labeling and prioritization rules
+
+Recommended label strategy:
+- one program label, such as `mcp-upgrade`,
+- one phase label per major track,
+- optional domain labels such as `schemas`, `sources`, `rendering`, `qa`, `artifacts`, `docs`.
+
+Priority should encode sequence pressure, not emotional urgency:
+- P0 for foundational blockers and critical-path execution work,
+- P1 for important but parallelizable work,
+- P2 for useful follow-ons and optional parity.
+
+### 25.6 Closure discipline
+
+A bead should close only when its acceptance criteria are actually satisfied in the repository state, not when a draft implementation exists. If work reveals new follow-ons, those should become explicit child or sibling beads rather than leaking into comments and memory.
+
+---
+
+## 26. Guidance to Future Implementers
+
+This section is intentionally direct. It captures the reasoning we are most likely to forget later.
+
+### 26.1 Do not mistake parity for the product
+
+Parity work is necessary, especially for source fulltext, notes, output language, reports, data tables, and other helpers. But parity is not the end state. The end state is a workflow runner that can emit a trusted implementation pack with grounded facts and explicit uncertainty handling.
+
+If later implementation pressure tempts the project to “just expose a few more NotebookLM tools and call it done,” that is a regression relative to this plan.
+
+### 26.2 Do not let raw prose become the system of record
+
+The canonical layer exists to prevent beautiful but ungrounded FE/BE docs. Any shortcut that writes final docs straight from NotebookLM chat output bypasses the central safety property of the design.
+
+### 26.3 Do not hide degraded states
+
+Partial JSON, weak parse quality, contradictory sources, missing contracts, and unresolved questions are not edge cases. They are core workflow realities. The implementation must surface them explicitly rather than pretending the system is more certain than it is.
+
+### 26.4 Prefer additive architecture over local convenience
+
+It may be locally convenient to add “just one more helper” to an existing generic MCP tool module. Repeating that decision many times is how the codebase becomes difficult to extend. When in doubt, keep BA-runner logic in the dedicated subsystem and have the public MCP handlers remain thin.
+
+### 26.5 Optimize for rerun economics early
+
+This workflow will only be pleasant in real use if reruns are cheap. That means snapshots, evidence links, stable screen IDs, terminology maps, and change-aware data structures are not post-MVP luxuries. They are part of the core product value.
+
+### 26.6 Keep the output honest
+
+The project should bias toward honest degraded output over polished false certainty:
+- provisional contracts must look provisional,
+- blockers must stay blockers,
+- contradictions must remain visible until resolved,
+- readiness must drop when evidence quality drops.
+
+That honesty is the main way this workflow earns trust over time.
+
+---
+
+## 27. Actual Bead Program Created in `.beads`
+
+On 2026-03-12, this plan was translated into an actual `br` hierarchy rooted at:
+
+- `bd-yae` — Upgrade notebooklm-mcp into an evidence-first BA implementation pack runner
+
+The graph was created with:
+- 1 root epic,
+- 8 child epics,
+- 42 task beads,
+- explicit blocking dependencies overlaid on top of the parent/child structure,
+- detailed comments added to every created issue.
+
+### 27.1 Critical-path epics
+
+The primary implementation path is:
+
+1. `bd-yae.1` — Phase 0: audit parity and lay the BA runner foundations
+2. `bd-yae.2` — Phase 1: implement source intelligence and trustworthy inputs
+3. `bd-yae.3` — Phase 2: build canonical extraction, evidence linkage, and gap analysis
+4. `bd-yae.4` — Phase 3: render deterministic FE/BE outputs and FE-first deliverables
+5. `bd-yae.5` — Phase 4: orchestrate the pipeline and support selective reruns
+6. `bd-yae.6` — Phase 5: harden the workflow with validation, fixtures, canaries, and metrics
+
+Parallel/supporting tracks:
+
+- `bd-yae.7` — Phase 6: complete high-value parity and fence optional artifacts behind stability rules
+- `bd-yae.8` — Documentation and contributor enablement for the BA runner
+
+### 27.2 Phase 0 beads
+
+- `bd-yae.1.1` — Audit current MCP parity against the NotebookLM capabilities the BA workflow actually needs
+- `bd-yae.1.2` — Carve out a dedicated `src/notebooklm_mcp/ba/` subsystem and module boundaries
+- `bd-yae.1.3` — Implement a capability adapter skeleton over the `NotebookLMClient` surface
+- `bd-yae.1.4` — Establish shared BA models, enums, and schema-versioning rules
+- `bd-yae.1.5` — Implement run-store and BA fixture scaffolding foundations
+
+### 27.3 Phase 1 beads
+
+- `bd-yae.2.1` — Implement typed source registration and manifest-row normalization
+- `bd-yae.2.2` — Implement ingest-and-wait orchestration with degraded timeout handling
+- `bd-yae.2.3` — Persist source snapshots, guides, freshness metadata, and content hashes
+- `bd-yae.2.4` — Implement deterministic parse-quality heuristics and degradation policy
+- `bd-yae.2.5` — Render authoritative source-manifest artifacts for each run
+
+### 27.4 Phase 2 beads
+
+- `bd-yae.3.1` — Implement a prompt registry and structured-ask utilities with degraded JSON handling
+- `bd-yae.3.2` — Normalize citations into snapshot-linked evidence objects
+- `bd-yae.3.3` — Implement terminology normalization and ambiguity tracking
+- `bd-yae.3.4` — Implement stable screen-catalog extraction and screen-ID policy
+- `bd-yae.3.5` — Implement the per-screen canonical extraction engine
+- `bd-yae.3.6` — Implement gap, contradiction, blocker, and question classification
+
+### 27.5 Phase 3 beads
+
+- `bd-yae.4.1` — Generate field, action-rule, and API matrices from canonical state
+- `bd-yae.4.2` — Implement mode selection and readiness evaluation with per-screen overrides
+- `bd-yae.4.3` — Render FE specifications deterministically from canonical state
+- `bd-yae.4.4` — Render BE specifications and per-screen question backlogs from canonical state
+- `bd-yae.4.5` — Generate provisional OpenAPI contracts for FE-first screens
+- `bd-yae.4.6` — Generate deterministic mock data aligned to provisional contracts
+- `bd-yae.4.7` — Assemble the deterministic bundle renderer and final output layout
+
+### 27.6 Phase 4 beads
+
+- `bd-yae.5.1` — Implement a persisted run state machine and audit trail for BA workflow execution
+- `bd-yae.5.2` — Expose the public `ba.*` MCP tool contracts and registration layer
+- `bd-yae.5.3` — Implement the end-to-end `ba.run_pipeline` orchestration macro
+- `bd-yae.5.4` — Implement run status, progress, and resumability surfaces for callers
+- `bd-yae.5.5` — Implement snapshot diffing, impact mapping, selective reruns, and changelog output
+
+### 27.7 Phase 5 beads
+
+- `bd-yae.6.1` — Implement bundle validator invariants and `qa-report.json` generation
+- `bd-yae.6.2` — Implement safe deterministic self-repair for non-semantic bundle failures
+- `bd-yae.6.3` — Build representative BA fixture suites for happy-path, degraded, contradiction, rerun, and note-derived scenarios
+- `bd-yae.6.4` — Add golden-file coverage for canonical outputs, rendered docs, and readiness summaries
+- `bd-yae.6.5` — Add upstream canary and smoke coverage for NotebookLM and MCP drift
+- `bd-yae.6.6` — Instrument operational metrics and evaluation reporting for workflow usefulness
+
+### 27.8 Phase 6 beads
+
+- `bd-yae.7.1` — Expose notes-to-source and curated-source helpers for clarification loops
+- `bd-yae.7.2` — Expose output language and settings parity needed by the BA workflow
+- `bd-yae.7.3` — Expose report and data-table helpers for structured drafting assistance
+- `bd-yae.7.4` — Expose mind map export and stability guards for non-core artifact helpers
+- `bd-yae.7.5` — Expose optional audio, video, slide, and infographic helpers behind explicit experimental flags
+
+### 27.9 Documentation beads
+
+- `bd-yae.8.1` — Write the BA workflow guide and output-bundle contract documentation
+- `bd-yae.8.2` — Update README, MCP tool reference, and runnable examples for the BA runner surface
+- `bd-yae.8.3` — Document fixture strategy, canaries, rerun semantics, and contributor expectations
+
+### 27.10 Dependency overlay highlights
+
+The parent/child hierarchy is not the whole graph. The following cross-cutting constraints were also encoded:
+
+- Phase-to-phase blocking from `bd-yae.1` through `bd-yae.6` to preserve the main delivery path.
+- Adapter/model/run-store work in Phase 0 blocks the first executable source-intelligence tasks in Phase 1.
+- Source snapshots and manifests block evidence normalization, terminology, screen catalogs, and canonical extraction in Phase 2.
+- Canonical extraction and gap review block readiness, renderers, contracts, and mock data in Phase 3.
+- Bundle assembly plus the run state machine block the pipeline macro and rerun logic in Phase 4.
+- Bundle validation, fixtures, and pipeline execution block golden tests, metrics, and contributor docs in Phase 5 and the documentation track.
+- Optional parity work in Phase 6 depends only on the relevant audit/foundation work so it can proceed in parallel once the foundation is stable.
+
+### 27.11 Verification status of the created graph
+
+After creation, the graph was normalized and checked:
+
+- `br sync --flush-only` completed successfully.
+- `br dep cycles --json` returned zero cycles.
+- `br lint --json` returned zero issues after normalizing epic descriptions to include `## Success Criteria`.
+
+This section exists so that future contributors can compare the design document with the actual bead graph and confirm that the issue database still reflects the intended execution model.

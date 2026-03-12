@@ -1,0 +1,12 @@
+{
+  "source_key": "phase0-parity-matrix-inline",
+  "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+  "content_hash": "0e41b635cf12cd5639dd274de588849a5d62f4a87f9b733169568d42c628ed65",
+  "fulltext_path": "docs/features/convert-from-mcp-to-cli/runs/run-20260312T141020Z-a5fc8e53/snapshots/phase0-parity-matrix-inline/phase0-parity-matrix-inline-0e41b635cf12/fulltext.txt",
+  "guide_path": "docs/features/convert-from-mcp-to-cli/runs/run-20260312T141020Z-a5fc8e53/snapshots/phase0-parity-matrix-inline/phase0-parity-matrix-inline-0e41b635cf12/guide.json",
+  "freshness": "fresh",
+  "notebook_source_id": "be5989ed-a219-45c2-b914-649073192cb2",
+  "title": "Phase 0 capability parity matrix",
+  "source_type": "markdown",
+  "char_count": 8513
+}

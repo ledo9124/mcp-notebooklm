@@ -1,7 +1,7 @@
 # MCP Tool Reference
 
 **Status:** Active  
-**Last Updated:** 2026-03-05  
+**Last Updated:** 2026-03-12  
 **Server Module:** `src/notebooklm_mcp`
 
 This document describes the NotebookLM MCP tool surface, including input/output schemas, defaults, constraints, examples, and important edge/error behavior.
@@ -55,13 +55,379 @@ If either condition is missing, the call returns an `invalid_params` error with 
 ## Registered Tool Categories
 
 Current `register_tools(...)` wiring includes:
+- ba runner
 - notebooks
+- notes
 - sources
 - chat
 - chat settings
+- artifacts
+- mind maps
+- experimental artifacts
+- settings
+- ops
 - workflows
 
 Operational tools are implemented in `tools/ops.py` and documented below as availability notes.
+
+---
+
+## BA Runner
+
+The repository now exposes a workflow-native `ba.*` tool family alongside the generic `notebooklm_*` parity tools. `ba.run_pipeline` is the main happy-path entry point. `ba.start_run` and `ba.register_sources` support staged control, `ba.status` inspects persisted state, `ba.validate_bundle` reruns deterministic QA, and `ba.rerun_impacted` performs selective reruns against an existing bundle baseline.
+
+All `ba.*` tools return a shared envelope inside the standard MCP `structuredContent` wrapper:
+
+```json
+{
+  "ok": true,
+  "tool": "ba.run_pipeline",
+  "feature_key": "customer-onboarding",
+  "run_id": "run-20260312T000000Z-abc12345",
+  "resolved_output_dir": "/abs/path/docs/features/customer-onboarding",
+  "result": {"...": "tool-specific payload"},
+  "warnings": []
+}
+```
+
+Notes:
+- `resolved_output_dir` is the feature root under `<output_dir>/docs/features/<feature_key>`.
+- `warnings` is omitted when empty.
+- `result` varies by tool.
+
+### BA Source Object
+
+`ba.register_sources` and `ba.run_pipeline` accept a `sources` array of typed BA source objects:
+
+- `path_or_url_or_text: string` (required)
+- `source_key: string` (optional; auto-generated when omitted)
+- `source_type: "PRIMARY_REQUIREMENT" | "PRIMARY_CONTRACT" | "SUPPORTING_GLOSSARY" | "SUPPORTING_RULE" | "SUPPORTING_DESIGN" | "SUPPORTING_TECH" | "SUPPORTING_CLARIFICATION" | "SUPPORTING_DECISION" | "OPTIONAL_CONTEXT"` (required)
+- `priority: "REQUIRED" | "HIGH" | "NORMAL" | "LOW"` (optional, default `NORMAL`)
+- `title: string|null` (optional)
+- `notes: string[]` (optional, default `[]`)
+- `content_kind: "URL" | "FILE_PATH" | "INLINE_TEXT"` (optional; inferred when omitted)
+
+### Primary Flow
+
+1. Create or identify a NotebookLM notebook with the generic `notebooklm_*` tools.
+2. Call `ba.run_pipeline` with `notebook_id`, `feature_key`, and typed `sources`.
+3. Inspect `ba.status` if the run halts, degrades, or needs resume guidance.
+4. Call `ba.validate_bundle` after manual bundle edits or external mutations.
+5. Call `ba.rerun_impacted` when only a subset of sources changed.
+
+For a runnable stdio MCP example, see [`docs/examples/ba-runner-mcp-flow.py`](examples/ba-runner-mcp-flow.py).
+
+### `ba.start_run`
+
+Description: bootstrap a persisted BA run root and initial run-state snapshot.
+
+Input schema:
+- `feature_key: string` (required, non-empty)
+- `run_id: string|null` (optional; auto-generated when omitted)
+- `mode: "auto" | "balanced" | "fe_first" | "clarification_first"` (optional, default `"auto"`)
+- `output_dir: string|null` (optional; defaults to the server working directory)
+- `notebook_lifecycle: "REUSE_FEATURE_NOTEBOOK" | "EPHEMERAL_RUN_NOTEBOOK"` (optional, default `"REUSE_FEATURE_NOTEBOOK"`)
+- `assumption_profile: object|null` (optional)
+
+Envelope `result` schema:
+```json
+{
+  "run_id": "string",
+  "mode_requested": "AUTO|BALANCED|FE_FIRST|CLARIFICATION_FIRST",
+  "notebook_lifecycle": "REUSE_FEATURE_NOTEBOOK|EPHEMERAL_RUN_NOTEBOOK",
+  "assumption_profile": {},
+  "run_metadata_path": "string",
+  "run_state_path": "string",
+  "metadata": {"...": "persisted run metadata"},
+  "state": {"...": "persisted run state"}
+}
+```
+
+Example:
+```json
+{
+  "name": "ba.start_run",
+  "arguments": {
+    "feature_key": "customer-onboarding",
+    "mode": "balanced",
+    "output_dir": "/workspace"
+  }
+}
+```
+
+Edge cases:
+- Repeating `ba.start_run` with the same `feature_key`/`run_id` returns the persisted run state and adds a warning instead of resetting the run.
+
+### `ba.register_sources`
+
+Description: persist the typed BA source manifest before downstream workflow stages execute.
+
+Input schema:
+- `feature_key: string` (required)
+- `run_id: string` (required)
+- `sources: object[]` (required; see [BA Source Object](#ba-source-object))
+- `output_dir: string|null` (optional)
+- `update_only: boolean` (optional, default `false`)
+
+Envelope `result` schema:
+```json
+{
+  "state": {"...": "updated run state"},
+  "source_registration": {
+    "feature_key": "string",
+    "run_id": "string",
+    "registered_sources": [{"...": "normalized source rows"}],
+    "manifest": {"...": "source manifest"},
+    "warnings": ["string"],
+    "missing_critical_sources": ["PRIMARY_REQUIREMENT"]
+  },
+  "source_registration_path": "string"
+}
+```
+
+Example:
+```json
+{
+  "name": "ba.register_sources",
+  "arguments": {
+    "feature_key": "customer-onboarding",
+    "run_id": "run-20260312T000000Z-abc12345",
+    "sources": [
+      {
+        "source_key": "requirements",
+        "title": "Requirements",
+        "path_or_url_or_text": "# Customer onboarding\nUsers can create an account.",
+        "source_type": "PRIMARY_REQUIREMENT",
+        "priority": "REQUIRED",
+        "content_kind": "INLINE_TEXT"
+      }
+    ]
+  }
+}
+```
+
+Edge cases:
+- `ba.register_sources` requires `ba.start_run` to have completed first.
+- `update_only=true` reuses the existing manifest and updates matching entries instead of registering a brand-new set.
+
+### `ba.status`
+
+Description: inspect persisted BA progress, step states, halt reasons, and resumability hints without reading bundle files directly.
+
+Input schema:
+- `feature_key: string` (required)
+- `run_id: string` (required)
+- `output_dir: string|null` (optional)
+
+Envelope `result` schema:
+```json
+{
+  "metadata": {"...": "run metadata"},
+  "state": {"...": "run state snapshot"},
+  "progress": {
+    "total_planned_steps": 15,
+    "recorded_steps": 3,
+    "completed_steps": 3,
+    "current_step": "string|null",
+    "current_tool": "string|null",
+    "next_step": "string|null",
+    "next_tool": "string|null",
+    "completed_step_names": ["string"],
+    "not_started_step_names": ["string"]
+  },
+  "resumability": {
+    "can_resume": true,
+    "resume_step": "string|null",
+    "resume_tool": "string|null",
+    "requires_explicit_step": false,
+    "hint": "string|null"
+  },
+  "steps": [{"...": "step rows with tool names and timing"}],
+  "last_event": {"...": "most recent run event"},
+  "run_metadata_path": "string",
+  "run_state_path": "string"
+}
+```
+
+Example:
+```json
+{
+  "name": "ba.status",
+  "arguments": {
+    "feature_key": "customer-onboarding",
+    "run_id": "run-20260312T000000Z-abc12345"
+  }
+}
+```
+
+Edge cases:
+- Missing runs return a validation error telling the caller to start the run first.
+- Paused runs include resumability hints that point back to the next `ba.*` step/tool.
+
+### `ba.validate_bundle`
+
+Description: rerun deterministic bundle QA, persist per-screen `qa-report.json`, and summarize pass/warn/fail findings.
+
+Input schema:
+- `feature_key: string` (required)
+- `run_id: string` (required)
+- `output_dir: string|null` (optional)
+
+Envelope `result` schema:
+```json
+{
+  "metadata": {"...": "run metadata"},
+  "state": {"...": "current run state"},
+  "readiness": {"...": "recomputed readiness summary"},
+  "validation": {
+    "executed": true,
+    "status": "PASS|WARN|FAIL",
+    "finding_count": 0,
+    "warning_count": 0,
+    "qa_report_paths": {"screen-id": "string"},
+    "report": {
+      "run_id": "string",
+      "feature_key": "string",
+      "status": "PASS|WARN|FAIL",
+      "findings": [{"...": "validation finding"}],
+      "warnings": ["string"]
+    }
+  }
+}
+```
+
+Example:
+```json
+{
+  "name": "ba.validate_bundle",
+  "arguments": {
+    "feature_key": "customer-onboarding",
+    "run_id": "run-20260312T000000Z-abc12345"
+  }
+}
+```
+
+Edge cases:
+- `ba.validate_bundle` requires an existing rendered BA bundle baseline from a prior `ba.run_pipeline` run.
+- `validation.status="FAIL"` means the bundle should not be treated as trustworthy until the findings are resolved.
+
+### `ba.run_pipeline`
+
+Description: execute the current BA workflow end to end, from run bootstrap through validation, with persisted state updates at each stage.
+
+Input schema:
+- `notebook_id: string` (required)
+- `feature_key: string` (required)
+- `sources: object[]` (required; see [BA Source Object](#ba-source-object))
+- `run_id: string|null` (optional)
+- `mode: "auto" | "balanced" | "fe_first" | "clarification_first"` (optional, default `"auto"`)
+- `output_dir: string|null` (optional)
+- `notebook_lifecycle: "REUSE_FEATURE_NOTEBOOK" | "EPHEMERAL_RUN_NOTEBOOK"` (optional, default `"REUSE_FEATURE_NOTEBOOK"`)
+- `assumption_profile: object|null` (optional)
+- `update_only: boolean` (optional, default `false`)
+- `dry_run: boolean` (optional, default `false`)
+- `poll_budget_seconds: number` (optional, default `120.0`)
+- `ready_timeout_policy: "FAIL" | "DEGRADE"` (optional, default `"DEGRADE"`)
+
+Envelope `result` schema:
+```json
+{
+  "notebook_id": "string",
+  "dry_run": false,
+  "state": {"...": "final run state"},
+  "step_results": {"...": "per-step outputs keyed by step name"},
+  "bundle_files": {"relative/path": "/abs/path"},
+  "validation": {
+    "executed": true,
+    "status": "PASS|WARN|FAIL"
+  },
+  "stopped_after_step": "string|null"
+}
+```
+
+Example:
+```json
+{
+  "name": "ba.run_pipeline",
+  "arguments": {
+    "notebook_id": "nb-123",
+    "feature_key": "customer-onboarding",
+    "mode": "balanced",
+    "output_dir": "/workspace",
+    "sources": [
+      {
+        "source_key": "requirements",
+        "title": "Customer onboarding requirements",
+        "path_or_url_or_text": "# Customer onboarding\nUsers can create an account with email and full name.",
+        "source_type": "PRIMARY_REQUIREMENT",
+        "priority": "REQUIRED",
+        "content_kind": "INLINE_TEXT"
+      },
+      {
+        "source_key": "contract",
+        "title": "Customer onboarding contract",
+        "path_or_url_or_text": "POST /api/customers returns customerId, status, and validation errors.",
+        "source_type": "PRIMARY_CONTRACT",
+        "priority": "HIGH",
+        "content_kind": "INLINE_TEXT"
+      }
+    ]
+  }
+}
+```
+
+Edge cases:
+- `dry_run=true` stops after `EVALUATE_READINESS`; contract generation, rendering, and validation do not run.
+- The pipeline can halt or degrade during ingest, source-quality checks, readiness evaluation, or final validation. Inspect `result.state`, `result.validation`, and `result.stopped_after_step`.
+- On success, `bundle_files` includes the rendered feature/screen artifacts plus any persisted QA report paths.
+
+### `ba.rerun_impacted`
+
+Description: compare current source snapshots to the persisted baseline, rerun only impacted screens when safe, and persist a rerun changelog.
+
+Input schema:
+- `notebook_id: string` (required)
+- `feature_key: string` (required)
+- `run_id: string` (required)
+- `output_dir: string|null` (optional)
+- `source_keys: string[]|null` (optional; restricts the rerun to a subset of registered sources)
+- `poll_budget_seconds: number` (optional, default `120.0`)
+- `ready_timeout_policy: "FAIL" | "DEGRADE"` (optional, default `"DEGRADE"`)
+
+Envelope `result` schema:
+```json
+{
+  "notebook_id": "string",
+  "applied": true,
+  "selected_source_keys": ["string"],
+  "updated_screen_ids": ["string"],
+  "plan": {"...": "rerun plan with decision, impacted screens, and escalation reasons"},
+  "impacted_screens_path": "string",
+  "changelog_path": "string",
+  "bundle_files": {"relative/path": "/abs/path"},
+  "source_registration_path": "string",
+  "source_manifest_path": "string",
+  "screen_catalog_path": "string",
+  "terminology_path": "string"
+}
+```
+
+Example:
+```json
+{
+  "name": "ba.rerun_impacted",
+  "arguments": {
+    "notebook_id": "nb-123",
+    "feature_key": "customer-onboarding",
+    "run_id": "run-20260312T000000Z-abc12345",
+    "source_keys": ["requirements"]
+  }
+}
+```
+
+Edge cases:
+- `ba.rerun_impacted` requires a prior rendered BA baseline with persisted source snapshots.
+- If there are no meaningful changes, or if the change fans out too broadly for a safe selective rerun, `applied` is `false` and the tool still persists `impacted-screens.json` plus `changelog.md` describing the decision.
 
 ---
 

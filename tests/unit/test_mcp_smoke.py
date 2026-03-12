@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from notebooklm.rpc.types import SourceStatus
-from notebooklm.types import Notebook, Source, SourceFulltext
+from notebooklm.types import GenerationStatus, Notebook, Source, SourceFulltext
 from notebooklm_mcp._config import MCPConfig
 from notebooklm_mcp._errors import MCPToolError
 from notebooklm_mcp.prompts import register_prompts
@@ -95,6 +95,12 @@ def test_smoke_registers_mcp_surface() -> None:
         "notebooklm_notebooks_rename",
         "notebooklm_notebooks_delete",
         "notebooklm_notebooks_get_summary",
+        "notebooklm_notes_list",
+        "notebooklm_notes_get",
+        "notebooklm_notes_create",
+        "notebooklm_notes_save",
+        "notebooklm_notes_delete",
+        "notebooklm_notes_create_curated_source",
         "notebooklm_sources_list",
         "notebooklm_sources_add_url",
         "notebooklm_sources_add_text",
@@ -109,10 +115,36 @@ def test_smoke_registers_mcp_surface() -> None:
         "notebooklm_settings_get",
         "notebooklm_settings_patch",
         "notebooklm_settings_reset",
+        "notebooklm_reports_generate",
+        "notebooklm_reports_wait",
+        "notebooklm_reports_download",
+        "notebooklm_reports_export",
+        "notebooklm_data_tables_generate",
+        "notebooklm_data_tables_wait",
+        "notebooklm_data_tables_download",
+        "notebooklm_data_tables_export",
+        "notebooklm_mind_maps_generate",
+        "notebooklm_mind_maps_download",
+        "notebooklm_audio_overviews_generate",
+        "notebooklm_audio_overviews_wait",
+        "notebooklm_audio_overviews_download",
+        "notebooklm_video_overviews_generate",
+        "notebooklm_video_overviews_wait",
+        "notebooklm_video_overviews_download",
+        "notebooklm_infographics_generate",
+        "notebooklm_infographics_wait",
+        "notebooklm_infographics_download",
+        "notebooklm_slide_decks_generate",
+        "notebooklm_slide_decks_wait",
+        "notebooklm_slide_decks_download",
+        "notebooklm_output_language_get",
+        "notebooklm_output_language_set",
         "notebooklm_diagnose",
         "notebooklm_debug_stats",
         "notebooklm_workflow_bootstrap_notebook",
         "notebooklm_workflow_research",
+        "ba.start_run",
+        "ba.register_sources",
     }
     assert expected_tools.issubset(server.tools)
 
@@ -191,6 +223,19 @@ async def test_smoke_structured_output_and_resource_resolution(
     client = SimpleNamespace(
         notebooks=_NotebooksAPI(),
         sources=_SourcesAPI(),
+        artifacts=SimpleNamespace(
+            generate_audio=AsyncMock(
+                return_value=GenerationStatus(task_id="aud-1", status="pending")
+            ),
+            generate_report=AsyncMock(return_value=GenerationStatus(task_id="rep-1", status="pending")),
+            generate_mind_map=AsyncMock(
+                return_value={"mind_map": {"name": "Coverage"}, "note_id": "note-9"}
+            ),
+        ),
+        settings=SimpleNamespace(
+            get_output_language=AsyncMock(return_value="ja"),
+            set_output_language=AsyncMock(return_value="ja"),
+        ),
     )
     app = _make_app(client)
     server = _FakeServer()
@@ -210,6 +255,40 @@ async def test_smoke_structured_output_and_resource_resolution(
     source_payload = sources_list["structuredContent"]["sources"]
     assert source_payload[0]["status"] == "ready"
     assert source_payload[1]["status"] == "processing"
+
+    language_result = await server.tools["notebooklm_output_language_get"](_ctx(app, server))
+    language_payload = language_result["structuredContent"]
+    assert language_payload["language"] == "ja"
+    assert language_payload["scope"] == "global"
+
+    report_result = await server.tools["notebooklm_reports_generate"](
+        _ctx(app, server),
+        notebook_id="nb-1",
+    )
+    report_payload = report_result["structuredContent"]
+    assert report_payload["artifact_kind"] == "report"
+    assert report_payload["draft_assistance_only"] is True
+    assert report_payload["task_id"] == "rep-1"
+
+    audio_result = await server.tools["notebooklm_audio_overviews_generate"](
+        _ctx(app, server),
+        notebook_id="nb-1",
+        audio_format="brief",
+    )
+    audio_payload = audio_result["structuredContent"]
+    assert audio_payload["artifact_kind"] == "audio"
+    assert audio_payload["experimental"] is True
+    assert audio_payload["task_id"] == "aud-1"
+
+    mind_map_result = await server.tools["notebooklm_mind_maps_generate"](
+        _ctx(app, server),
+        notebook_id="nb-1",
+        source_ids=["src-1"],
+    )
+    mind_map_payload = mind_map_result["structuredContent"]
+    assert mind_map_payload["artifact_kind"] == "mind_map"
+    assert mind_map_payload["draft_assistance_only"] is True
+    assert mind_map_payload["note_id"] == "note-9"
 
     notebooks_resource = await server.resources["notebooklm://notebooks"](_ctx(app, server))
     parsed_notebooks_resource = json.loads(notebooks_resource)

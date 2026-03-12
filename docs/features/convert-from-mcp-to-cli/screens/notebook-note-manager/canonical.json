@@ -1,0 +1,203 @@
+{
+  "schema_version": "ba.canonical_screen.v1.0",
+  "feature_key": "convert-from-mcp-to-cli",
+  "screen_id": "notebook-note-manager",
+  "mode": "AUTO",
+  "run_id": "run-20260312T141020Z-a5fc8e53",
+  "shared_facts": [
+    {
+      "fact_id": "notebook-note-manager-shared-business-rule-aab605",
+      "domain": "SHARED",
+      "category": "business rule",
+      "value": "Notebook notes must be managed as first-class entities, distinct from text sources [1], [2].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "notebook-note-manager-shared-business-rule-d23c8a",
+      "domain": "SHARED",
+      "category": "business rule",
+      "value": "Mind-map artifacts utilize note-backed storage in the underlying SDK [3].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    }
+  ],
+  "fe_facts": [
+    {
+      "fact_id": "notebook-note-manager-fe-command-251f6a",
+      "domain": "FE",
+      "category": "command",
+      "value": "Dedicated note management commands are implemented in src/notebooklm/cli/note.py [3].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "notebook-note-manager-fe-field-33889a",
+      "domain": "FE",
+      "category": "field",
+      "value": "The CLI 'ask' command provides a --save-as-note flag to create notes from chat responses [3].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "notebook-note-manager-fe-field-774155",
+      "domain": "FE",
+      "category": "field",
+      "value": "The CLI 'history' command supports a --save flag for persisting history as notes [3].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    }
+  ],
+  "be_facts": [
+    {
+      "fact_id": "notebook-note-manager-be-sdk-module-73e77a",
+      "domain": "BE",
+      "category": "SDK Module",
+      "value": "src/notebooklm/_notes.py exposes the core CRUD functionality for notebook notes [3].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "notebook-note-manager-be-mcp-implementati-c4803b",
+      "domain": "BE",
+      "category": "MCP implementation",
+      "value": "The MCP server lacks a dedicated tool module for notes; note creation is currently siloed within other tools [4].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "notebook-note-manager-be-logic-gap-be6fbe",
+      "domain": "BE",
+      "category": "logic gap",
+      "value": "The notebooklm_workflow_research macro in MCP creates a text source via client.sources.add_text() instead of a proper note [1], [2].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    }
+  ],
+  "dependencies": [
+    "src/notebooklm/_notes.py [1]",
+    "src/notebooklm/_sources.py",
+    "src/notebooklm/cli/chat.py",
+    "src/notebooklm/cli/note.py",
+    "src/notebooklm_mcp/ba/",
+    "src/notebooklm_mcp/tools/workflows.py"
+  ],
+  "contradictions": [
+    {
+      "contradiction_id": "notebook-note-manager-contradiction-inconsistent-note-be-93ab98",
+      "summary": "Inconsistent 'Note' behavior between MCP tools",
+      "severity": "MEDIUM",
+      "claims": [
+        {
+          "claim": "The MCP chat tool creates real notebook notes via client.notes.create() [2].",
+          "evidence": []
+        },
+        {
+          "claim": "The MCP workflow tool saves 'research notes' as text sources via client.sources.add_text() [2].",
+          "evidence": []
+        }
+      ],
+      "open_question": "How should the BA adapter normalize note semantics (real note vs. text-source creation) for downstream modules [3], [2]?"
+    }
+  ],
+  "missing_info": [
+    {
+      "gap_id": "notebook-note-manager-missing_requirement_detail-current-cli-support--7edaff",
+      "kind": "MISSING_REQUIREMENT_DETAIL",
+      "summary": "Current CLI support for note-to-source conversion is implied in comments but not explicitly implemented in the public code surface [1].",
+      "severity": "MEDIUM",
+      "screen_id": "notebook-note-manager",
+      "owner": null,
+      "blocking_workstreams": [],
+      "evidence": []
+    },
+    {
+      "gap_id": "notebook-note-manager-missing_requirement_detail-the-full-set-of-crud-1ac2ff",
+      "kind": "MISSING_REQUIREMENT_DETAIL",
+      "summary": "The full set of CRUD arguments for the CLI note commands is not detailed in the available excerpts [3].",
+      "severity": "MEDIUM",
+      "screen_id": "notebook-note-manager",
+      "owner": null,
+      "blocking_workstreams": [],
+      "evidence": []
+    }
+  ],
+  "open_questions": [
+    {
+      "question_id": "notebook-note-manager-q-implementation-status-of-9042d5",
+      "summary": "Implementation status of note-to-source conversion [3].",
+      "owner": null,
+      "severity": "MEDIUM",
+      "screen_id": "notebook-note-manager",
+      "blocking_workstreams": [],
+      "evidence": []
+    },
+    {
+      "question_id": "notebook-note-manager-q-is-note-export-functiona-fd08db",
+      "summary": "Is note export functionality intended to be part of the note-manager screen or the artifact-lifecycle manager [1]?",
+      "owner": null,
+      "severity": "MEDIUM",
+      "screen_id": "notebook-note-manager",
+      "blocking_workstreams": [],
+      "evidence": []
+    },
+    {
+      "question_id": "notebook-note-manager-q-normalization-of-inconsi-ed09a7",
+      "summary": "Normalization of inconsistent behavior where workflows create text-sources instead of notes [1], [4].",
+      "owner": null,
+      "severity": "MEDIUM",
+      "screen_id": "notebook-note-manager",
+      "blocking_workstreams": [],
+      "evidence": []
+    },
+    {
+      "question_id": "notebook-note-manager-q-will-the-ba-adapter-prio-e11e53",
+      "summary": "Will the BA adapter prioritize converting research results into real notes or maintain the existing text-source behavior [3]?",
+      "owner": null,
+      "severity": "MEDIUM",
+      "screen_id": "notebook-note-manager",
+      "blocking_workstreams": [],
+      "evidence": []
+    }
+  ],
+  "quality_summary": {
+    "parse_quality": "HIGH",
+    "notes": [
+      "Identified a critical contradiction in how 'notes' are handled in MCP workflows versus chat.",
+      "The facts clearly distinguish between the robust SDK/CLI note support and the fragmented, inconsistent MCP implementation."
+    ],
+    "degraded": false
+  }
+}

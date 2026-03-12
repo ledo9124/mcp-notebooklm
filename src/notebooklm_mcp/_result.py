@@ -10,6 +10,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from pydantic import BaseModel
+
 
 def make_tool_result(data: Any, *, indent: int = 2) -> dict[str, Any]:
     """Return MCP-style dual output with structured JSON and text fallback."""
@@ -38,6 +40,9 @@ def to_json_compatible(value: Any) -> Any:
 
     if isinstance(value, Path):
         return str(value)
+
+    if isinstance(value, BaseModel):
+        return to_json_compatible(value.model_dump(mode="json"))
 
     if dataclasses.is_dataclass(value) and not isinstance(value, type):
         return to_json_compatible(dataclasses.asdict(value))

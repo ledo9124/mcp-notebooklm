@@ -1,0 +1,24 @@
+{
+  "scenario": "missing_contract",
+  "feature_key": "customer-create",
+  "source_keys": [
+    "glossary",
+    "requirements"
+  ],
+  "note_keys": [],
+  "expected_readiness_decision": "READY_FOR_FE_WITH_PROVISIONAL_CONTRACT",
+  "expected_resolved_modes": {
+    "customer-form": "FE_FIRST"
+  },
+  "expected_gap_ids": [
+    "missing-backend-contract",
+    "assume-customer-create-response"
+  ],
+  "expected_contradiction_ids": [],
+  "expected_open_question_ids": [
+    "customer-create-response-shape"
+  ],
+  "expected_contract_status": "PROVISIONAL",
+  "should_degrade": false,
+  "rationale": "Requirements are strong enough for FE work, but the missing backend contract should remain explicit and provisional."
+}

@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from notebooklm.rpc.types import ChatGoal, ChatResponseLength, SourceStatus
-from notebooklm.types import AskResult, ChatSettings, Notebook, Source
+from notebooklm.types import AskResult, ChatSettings, Note, Notebook, Source
 from notebooklm_mcp._errors import MCPToolError
 from notebooklm_mcp.tools import workflows as workflow_tools
 
@@ -309,6 +309,7 @@ async def test_research_workflow_success_with_citations_and_saved_note() -> None
     client = MagicMock()
     client.sources = MagicMock()
     client.chat = MagicMock()
+    client.notes = MagicMock()
 
     client.sources.list = AsyncMock(
         side_effect=[
@@ -340,8 +341,13 @@ async def test_research_workflow_success_with_citations_and_saved_note() -> None
             source="server",
         )
     )
-    client.sources.add_text = AsyncMock(
-        return_value=Source(id="src-note", title="Research Note (auto)", status=SourceStatus.READY)
+    client.notes.create = AsyncMock(
+        return_value=Note(
+            id="note-1",
+            notebook_id="nb-3",
+            title="Research Note (auto)",
+            content="saved",
+        )
     )
 
     app = _FakeAppContext(client=client)
@@ -371,7 +377,11 @@ async def test_research_workflow_success_with_citations_and_saved_note() -> None
         }
     ]
     assert payload["used_settings"] == {"goal": "default", "response_length": "default"}
-    assert payload["note"] == {"created": True, "source_id": "src-note"}
+    assert payload["note"] == {
+        "created": True,
+        "note_id": "note-1",
+        "title": "Research Note (auto)",
+    }
     assert len(ctx.progress_calls) >= 3
 
 

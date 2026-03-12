@@ -859,12 +859,16 @@ async def notebooklm_workflow_research(
                 include_question=note_include_question,
             )
             async with _acquire_slot(app):
-                source = await app.client.sources.add_text(
+                note = await app.client.notes.create(
                     notebook_id,
                     note_title_value,
                     note_content,
                 )
-            note_result = {"created": True, "source_id": source.id}
+            note_result = {
+                "created": True,
+                "note_id": note.id,
+                "title": note.title or note_title_value,
+            }
         except Exception as exc:  # pragma: no cover - exercised by warning-path tests
             warnings.append(f"Save note step failed: {sanitize_error_message(str(exc))}")
 

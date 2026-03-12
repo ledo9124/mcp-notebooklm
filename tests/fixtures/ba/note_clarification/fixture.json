@@ -1,0 +1,7 @@
+{
+  "scenario": "note_clarification",
+  "description": "Note-derived clarification sources that stay distinct from primary BA inputs.",
+  "sources_dir": "sources",
+  "notes_dir": "notes",
+  "expected_dir": "expected"
+}

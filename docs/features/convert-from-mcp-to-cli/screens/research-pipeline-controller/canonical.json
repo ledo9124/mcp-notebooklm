@@ -1,0 +1,151 @@
+{
+  "schema_version": "ba.canonical_screen.v1.0",
+  "feature_key": "convert-from-mcp-to-cli",
+  "screen_id": "research-pipeline-controller",
+  "mode": "AUTO",
+  "run_id": "run-20260312T141020Z-a5fc8e53",
+  "shared_facts": [
+    {
+      "fact_id": "research-pipeline-controller-shared-business-rule-f6414e",
+      "domain": "SHARED",
+      "category": "business rule",
+      "value": "Granular research control requires three distinct primitives: starting research jobs, polling for status, and importing discovered sources [1].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "research-pipeline-controller-shared-business-rule-cc2af1",
+      "domain": "SHARED",
+      "category": "business rule",
+      "value": "The existing MCP research implementation is restricted to a high-level macro (notebooklm_workflow_research) which does not support staged or selective research behavior [1], [2].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    }
+  ],
+  "fe_facts": [
+    {
+      "fact_id": "research-pipeline-controller-fe-command-cbc320",
+      "domain": "FE",
+      "category": "command",
+      "value": "The CLI initiates research via the 'add-research' command located in src/notebooklm/cli/source.py [1].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "research-pipeline-controller-fe-ui-behavior-ed2d93",
+      "domain": "FE",
+      "category": "UI behavior",
+      "value": "CLI provides status, wait, and import flows through src/notebooklm/cli/research.py [1].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    }
+  ],
+  "be_facts": [
+    {
+      "fact_id": "research-pipeline-controller-be-sdk-substrate-6cda57",
+      "domain": "BE",
+      "category": "SDK substrate",
+      "value": "The underlying SDK (src/notebooklm/_research.py) exposes start(), poll(), and import_sources() methods [1].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "research-pipeline-controller-be-tooling-gap-90e1d1",
+      "domain": "BE",
+      "category": "tooling gap",
+      "value": "No dedicated research tool module is registered in the current MCP server boundary; research is only reachable via the workflows module [3], [1].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    }
+  ],
+  "dependencies": [
+    "src/notebooklm/_research.py",
+    "src/notebooklm/_research.py [1]",
+    "src/notebooklm/cli/research.py",
+    "src/notebooklm/cli/source.py",
+    "src/notebooklm_mcp/tools/workflows.py"
+  ],
+  "contradictions": [
+    {
+      "contradiction_id": "research-pipeline-controller-contradiction-research-parity-stat-764151",
+      "summary": "Research parity status conflict",
+      "severity": "MEDIUM",
+      "claims": [
+        {
+          "claim": "Direct research controls are described as 'absent from MCP' [4].",
+          "evidence": []
+        },
+        {
+          "claim": "Research has 'Partial MCP parity' because of the high-level macro [1].",
+          "evidence": []
+        }
+      ],
+      "open_question": "Does the conversion requirement mandate wrapping the existing macro or exposing the raw SDK primitives as new CLI-native entry points?"
+    }
+  ],
+  "missing_info": [
+    {
+      "gap_id": "research-pipeline-controller-missing_requirement_detail-specific-cli-flags-a-201a87",
+      "kind": "MISSING_REQUIREMENT_DETAIL",
+      "summary": "Specific CLI flags and argument structures for 'status', 'wait', and 'import' flows in src/notebooklm/cli/research.py are not detailed in the excerpts [1].",
+      "severity": "MEDIUM",
+      "screen_id": "research-pipeline-controller",
+      "owner": null,
+      "blocking_workstreams": [],
+      "evidence": []
+    }
+  ],
+  "open_questions": [
+    {
+      "question_id": "research-pipeline-controller-q-how-to-bridge-the-gap-be-bade94",
+      "summary": "How to bridge the gap between high-level MCP workflow macros and raw SDK research primitives [5].",
+      "owner": null,
+      "severity": "MEDIUM",
+      "screen_id": "research-pipeline-controller",
+      "blocking_workstreams": [],
+      "evidence": []
+    },
+    {
+      "question_id": "research-pipeline-controller-q-will-the-cli-implementat-f1136a",
+      "summary": "Will the CLI implementation for the research-pipeline-controller continue to use the source.py entry point for initiation, or will all research-related controls be unified under a single research CLI module [1]?",
+      "owner": null,
+      "severity": "MEDIUM",
+      "screen_id": "research-pipeline-controller",
+      "blocking_workstreams": [],
+      "evidence": []
+    }
+  ],
+  "quality_summary": {
+    "parse_quality": "HIGH",
+    "notes": [
+      "Extracted specific file paths for SDK, CLI, and MCP implementations.",
+      "Identified clear distinction between macro-level workflows and granular primitives.",
+      "The CLI quickstart excerpt [5] provided a header but no content, limiting specific syntax facts for that source."
+    ],
+    "degraded": false
+  }
+}

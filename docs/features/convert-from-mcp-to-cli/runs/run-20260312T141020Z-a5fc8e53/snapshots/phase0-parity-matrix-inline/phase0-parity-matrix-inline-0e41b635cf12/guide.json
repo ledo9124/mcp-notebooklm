@@ -1,0 +1,10 @@
+{
+  "summary": "Ce document analyse les **écarts de fonctionnalités** entre le kit de développement (SDK) d'origine et l'interface serveur actuelle (MCP) afin de préparer la phase initiale du projet \"BA-runner\". L'auteur souligne que le serveur actuel présente des **lacunes critiques**, notamment une incapacité à extraire l'intégralité du contenu des sources et une absence de gestion pour les notes et les paramètres linguistiques globaux. Pour remédier à ces manques, le rapport préconise la création d'un **adaptateur dédié** qui communique directement avec le SDK plutôt que de passer par l'interface limitée existante. En structurant ainsi le développement, l'équipe peut garantir une **fidélité des données** et un contrôle précis sur la génération d'artefacts sans attendre une mise à jour complète des outils génériques.",
+  "keywords": [
+    "Parité des capacités",
+    "Adaptateur BA dédié",
+    "Lacunes du MCP",
+    "Fidélité des sources",
+    "Gestion des artefacts"
+  ]
+}

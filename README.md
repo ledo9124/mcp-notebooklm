@@ -137,6 +137,7 @@ asyncio.run(main())
 
 Why use MCP here:
 - Agent-native tool calling for notebooks, sources, chat, settings, and workflow macros
+- Two-tier surface: generic NotebookLM parity tools plus workflow-native `ba.*` tools for deterministic BA implementation-pack runs
 - Built-in resources and prompt templates for common NotebookLM workflows
 - Structured output (`structuredContent`) with text JSON fallback for compatibility
 - Optional destructive-tool safety gate (`NOTEBOOKLM_MCP_ENABLE_DESTRUCTIVE_TOOLS=1` + `confirm=true`)
@@ -205,6 +206,65 @@ notebooklm-mcp serve --http --host 0.0.0.0
 notebooklm-mcp serve --http -v
 ```
 
+### BA Runner Quickstart
+
+The MCP surface now exposes two layers:
+
+- Generic parity tools under `notebooklm_*` for notebooks, sources, notes, chat, settings, artifacts, and research.
+- Workflow-native BA tools under `ba.*` for evidence-first implementation-pack generation.
+
+Current public BA tools:
+
+- `ba.start_run`
+- `ba.register_sources`
+- `ba.status`
+- `ba.validate_bundle`
+- `ba.run_pipeline`
+- `ba.rerun_impacted`
+
+Most automation should start with `ba.run_pipeline`; the other `ba.*` tools exist for stepwise control, inspection, standalone validation reruns, and targeted incremental reruns after source changes.
+
+Minimal `ba.run_pipeline` example:
+
+```json
+{
+  "name": "ba.run_pipeline",
+  "arguments": {
+    "notebook_id": "nb-123",
+    "feature_key": "customer-onboarding",
+    "mode": "balanced",
+    "output_dir": "/absolute/path/to/workspace",
+    "sources": [
+      {
+        "source_key": "requirements",
+        "title": "Customer onboarding requirements",
+        "path_or_url_or_text": "# Customer onboarding\nUsers can create an account with email, full name, and plan selection.",
+        "source_type": "PRIMARY_REQUIREMENT",
+        "priority": "REQUIRED",
+        "content_kind": "INLINE_TEXT"
+      },
+      {
+        "source_key": "contract",
+        "title": "Customer onboarding contract",
+        "path_or_url_or_text": "POST /api/customers creates an account and returns customerId plus status.",
+        "source_type": "PRIMARY_CONTRACT",
+        "priority": "HIGH",
+        "content_kind": "INLINE_TEXT"
+      }
+    ]
+  }
+}
+```
+
+Notes:
+
+- `ba.run_pipeline` persists the bundle under `<output_dir>/docs/features/<feature_key>/`.
+- `ba.status` exposes the persisted run state, next step, and resumability hints.
+- `ba.validate_bundle` reruns deterministic QA checks after manual edits or external mutations.
+- `ba.rerun_impacted` reuses the stored baseline to update only impacted screens when source changes stay narrow enough.
+- For a runnable stdio MCP example, see [BA Runner MCP Flow](docs/examples/ba-runner-mcp-flow.py).
+- For request/response details on every BA tool, see [MCP Tool Reference](docs/mcp-tools.md#ba-runner).
+
 ### Logging
 
 - **Default:** clean, minimal output — only startup banner and errors
@@ -232,9 +292,10 @@ Claude Desktop HTTP config example (`claude_desktop_config.json`):
 For Claude Desktop setup and troubleshooting, see:
 - [Claude Desktop MCP Setup](docs/mcp-claude-desktop.md)
 - [MCP Tool Reference](docs/mcp-tools.md)
+- [BA Runner MCP Flow](docs/examples/ba-runner-mcp-flow.py)
 - [OpenAI Agents SDK MCP Example](docs/examples/openai-agents-example.py)
 
-For multi-agent contributor coordination in this repo (session sync, inbox checks, progress updates, and file reservations), see [AGENT.md](AGENT.md).
+For multi-agent contributor coordination in this repo (session sync, inbox checks, progress updates, and file reservations), see [AGENTS.md](AGENTS.md).
 
 ## Useful CLI Commands
 
@@ -265,6 +326,7 @@ See [Configuration](docs/configuration.md) for details and precedence rules.
 - [Development Guide](docs/development.md)
 - [MCP Tool Reference](docs/mcp-tools.md)
 - [Claude Desktop MCP Setup](docs/mcp-claude-desktop.md)
+- [BA Runner MCP Flow](docs/examples/ba-runner-mcp-flow.py)
 - [OpenAI Agents SDK MCP Example](docs/examples/openai-agents-example.py)
 - [RPC Development](docs/rpc-development.md)
 - [RPC Reference](docs/rpc-reference.md)

@@ -1,0 +1,128 @@
+{
+  "feature_key": "convert-from-mcp-to-cli",
+  "run_id": "run-20260312T140841Z-25a77fbc",
+  "registered_sources": [
+    {
+      "source_key": "feature-requirement",
+      "path_or_url_or_text": "# Feature: convert from MCP to CLI\n\nObjective:\n- Create an implementation pack for a feature named `convert from mcp to cli`.\n\nRequired scope:\n- Use repository evidence to identify the current MCP-oriented surfaces and the corresponding CLI capabilities that already exist.\n- Describe the changes needed to shift the user-facing workflow from MCP-oriented entry points to CLI-native entry points where the repo already supports them.\n- Keep parity gaps explicit when the repo shows that SDK or CLI support differs from MCP support.\n- Do not invent capabilities, commands, or behavior that are not supported by the current repository evidence.\n\nConstraints:\n- Prefer repository-backed facts over assumptions.\n- Treat missing or partial parity as warnings or open questions rather than silent assumptions.",
+      "source_type": "PRIMARY_REQUIREMENT",
+      "priority": "REQUIRED",
+      "notes": [],
+      "content_kind": "INLINE_TEXT",
+      "source_ref": "# Feature: convert from MCP to CLI\n\nObjective:\n- Create an implementation pack for a feature named `convert from mcp to cli`.\n\nRequired scope:\n- Use repository evidence to identify the current MCP-oriented surfaces and the corresponding CLI capabilities that already exist.\n- Describe the changes needed to shift the user-facing workflow from MCP-oriented entry points to CLI-native entry points where the repo already supports them.\n- Keep parity gaps explicit when the repo shows that SDK or CLI support differs from MCP support.\n- Do not invent capabilities, commands, or behavior that are not supported by the current repository evidence.\n\nConstraints:\n- Prefer repository-backed facts over assumptions.\n- Treat missing or partial parity as warnings or open questions rather than silent assumptions.",
+      "title": "Feature requirement: convert from MCP to CLI"
+    },
+    {
+      "source_key": "cli-quickstart",
+      "path_or_url_or_text": "README.md",
+      "source_type": "SUPPORTING_TECH",
+      "priority": "HIGH",
+      "notes": [
+        "Repository README includes the CLI quickstart and examples."
+      ],
+      "content_kind": "FILE_PATH",
+      "source_ref": "README.md",
+      "title": "CLI quickstart and usage"
+    },
+    {
+      "source_key": "phase0-parity-matrix",
+      "path_or_url_or_text": "docs/ba-phase0-capability-parity-matrix.md",
+      "source_type": "SUPPORTING_TECH",
+      "priority": "HIGH",
+      "notes": [
+        "Compares SDK, CLI, and MCP surfaces relevant to BA work."
+      ],
+      "content_kind": "FILE_PATH",
+      "source_ref": "docs/ba-phase0-capability-parity-matrix.md",
+      "title": "Phase 0 capability parity matrix"
+    },
+    {
+      "source_key": "ba-runner-parity-audit",
+      "path_or_url_or_text": "docs/ba-runner-parity-audit.md",
+      "source_type": "SUPPORTING_TECH",
+      "priority": "HIGH",
+      "notes": [
+        "Repo-grounded audit of current MCP and CLI capability coverage."
+      ],
+      "content_kind": "FILE_PATH",
+      "source_ref": "docs/ba-runner-parity-audit.md",
+      "title": "BA runner parity audit"
+    }
+  ],
+  "manifest": {
+    "schema_version": "ba.source_manifest.v1.0",
+    "run_id": "run-20260312T140841Z-25a77fbc",
+    "feature_key": "convert-from-mcp-to-cli",
+    "rows": [
+      {
+        "source_key": "feature-requirement",
+        "source_type": "PRIMARY_REQUIREMENT",
+        "priority": "REQUIRED",
+        "content_kind": "INLINE_TEXT",
+        "source_ref": "# Feature: convert from MCP to CLI\n\nObjective:\n- Create an implementation pack for a feature named `convert from mcp to cli`.\n\nRequired scope:\n- Use repository evidence to identify the current MCP-oriented surfaces and the corresponding CLI capabilities that already exist.\n- Describe the changes needed to shift the user-facing workflow from MCP-oriented entry points to CLI-native entry points where the repo already supports them.\n- Keep parity gaps explicit when the repo shows that SDK or CLI support differs from MCP support.\n- Do not invent capabilities, commands, or behavior that are not supported by the current repository evidence.\n\nConstraints:\n- Prefer repository-backed facts over assumptions.\n- Treat missing or partial parity as warnings or open questions rather than silent assumptions.",
+        "title": "Feature requirement: convert from MCP to CLI",
+        "notebook_source_id": null,
+        "snapshot_id": null,
+        "parse_quality": null,
+        "freshness": null,
+        "status": "REGISTERED",
+        "notes": [],
+        "used_in_screens": []
+      },
+      {
+        "source_key": "cli-quickstart",
+        "source_type": "SUPPORTING_TECH",
+        "priority": "HIGH",
+        "content_kind": "FILE_PATH",
+        "source_ref": "README.md",
+        "title": "CLI quickstart and usage",
+        "notebook_source_id": null,
+        "snapshot_id": null,
+        "parse_quality": null,
+        "freshness": null,
+        "status": "REGISTERED",
+        "notes": [
+          "Repository README includes the CLI quickstart and examples."
+        ],
+        "used_in_screens": []
+      },
+      {
+        "source_key": "phase0-parity-matrix",
+        "source_type": "SUPPORTING_TECH",
+        "priority": "HIGH",
+        "content_kind": "FILE_PATH",
+        "source_ref": "docs/ba-phase0-capability-parity-matrix.md",
+        "title": "Phase 0 capability parity matrix",
+        "notebook_source_id": null,
+        "snapshot_id": null,
+        "parse_quality": null,
+        "freshness": null,
+        "status": "REGISTERED",
+        "notes": [
+          "Compares SDK, CLI, and MCP surfaces relevant to BA work."
+        ],
+        "used_in_screens": []
+      },
+      {
+        "source_key": "ba-runner-parity-audit",
+        "source_type": "SUPPORTING_TECH",
+        "priority": "HIGH",
+        "content_kind": "FILE_PATH",
+        "source_ref": "docs/ba-runner-parity-audit.md",
+        "title": "BA runner parity audit",
+        "notebook_source_id": null,
+        "snapshot_id": null,
+        "parse_quality": null,
+        "freshness": null,
+        "status": "REGISTERED",
+        "notes": [
+          "Repo-grounded audit of current MCP and CLI capability coverage."
+        ],
+        "used_in_screens": []
+      }
+    ],
+    "warnings": []
+  },
+  "warnings": [],
+  "missing_critical_sources": []
+}

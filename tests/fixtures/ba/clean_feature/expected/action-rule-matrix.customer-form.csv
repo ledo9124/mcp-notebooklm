@@ -1,0 +1,3 @@
+row_id,screen_id,fact_id,source_domain,fact_status,action_name,trigger,rule_summary,outcome,evidence_count,evidence_refs
+form-save-rule-action,customer-form,form-save-rule,SHARED,CONFIRMED,Save customer,User clicks Save,Duplicate email addresses block creation immediately.,Show inline duplicate-email validation and keep Save disabled.,1,requirements@requirements-clean-001:10-14
+vip-approval-flag-action,customer-form,vip-approval-flag,SHARED,CONFIRMED,Save customer,Requested loyalty tier is VIP,VIP customers require an approval flag before save completes.,Return approvalFlag=pending until manager review completes.,1,requirements@requirements-clean-001:8-9

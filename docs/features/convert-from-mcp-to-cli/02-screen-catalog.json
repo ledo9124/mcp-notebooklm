@@ -1,0 +1,246 @@
+{
+  "schema_version": "ba.screen_catalog.v1.0",
+  "run_id": "run-20260312T141020Z-a5fc8e53",
+  "feature_key": "convert-from-mcp-to-cli",
+  "screens": [
+    {
+      "screen_id": "artifact-export-hub",
+      "screen_name": "Artifact & Export Hub",
+      "purpose": "Generates and exports structured reports, data tables, and mind maps [1], [6].",
+      "roles": [
+        "User"
+      ],
+      "entry_points": [
+        "CLI command: artifact",
+        "CLI command: download",
+        "CLI command: generate"
+      ],
+      "exit_points": [
+        "Local filesystem",
+        "Shell prompt"
+      ],
+      "main_actions": [
+        "Download artifact",
+        "Export artifact to external targets",
+        "Generate report/data-table/mind-map"
+      ],
+      "dependencies": [
+        "src/notebooklm/_artifacts.py [1]",
+        "src/notebooklm/cli/artifact.py",
+        "src/notebooklm/cli/download.py",
+        "src/notebooklm/cli/generate.py"
+      ],
+      "related_sources": [
+        "ba-runner-parity-audit-inline",
+        "phase0-parity-matrix-inline"
+      ],
+      "evidence": [],
+      "open_questions": [
+        {
+          "question_id": "artifact-export-hub-q-whether-the-cli-should-e-a96970",
+          "summary": "Whether the CLI should explicitly hide the note-backed storage quirk of mind maps [1].",
+          "owner": null,
+          "severity": "MEDIUM",
+          "screen_id": "artifact-export-hub",
+          "blocking_workstreams": [],
+          "evidence": []
+        }
+      ]
+    },
+    {
+      "screen_id": "chat-interaction-configuration",
+      "screen_name": "Chat Interaction & Configuration",
+      "purpose": "Engages in notebook chat while managing goal-oriented settings and session history [1].",
+      "roles": [
+        "User"
+      ],
+      "entry_points": [
+        "CLI command: chat"
+      ],
+      "exit_points": [
+        "Note Manager (via save-as-note)",
+        "Shell prompt"
+      ],
+      "main_actions": [
+        "Ask question (--save-as-note)",
+        "Configure chat goals",
+        "Reset chat settings",
+        "Update response length/custom prompts",
+        "View history (--save)"
+      ],
+      "dependencies": [
+        "src/notebooklm/_chat.py [1]",
+        "src/notebooklm/cli/chat.py"
+      ],
+      "related_sources": [
+        "phase0-parity-matrix-inline"
+      ],
+      "evidence": [],
+      "open_questions": []
+    },
+    {
+      "screen_id": "cli-source-management-console",
+      "screen_name": "CLI Source Management Console",
+      "purpose": "Provides full-fidelity source intelligence including fulltext access, metadata audit, and freshness management [1], [2].",
+      "roles": [
+        "Developer",
+        "User"
+      ],
+      "entry_points": [
+        "CLI command: source"
+      ],
+      "exit_points": [
+        "Artifact Generation Hub",
+        "Shell prompt"
+      ],
+      "main_actions": [
+        "Check freshness/stale status",
+        "Generate source guide",
+        "Refresh source",
+        "View fulltext",
+        "Wait for readiness"
+      ],
+      "dependencies": [
+        "NotebookLMClient SDK get_fulltext/get_guide [1]",
+        "src/notebooklm/cli/source.py"
+      ],
+      "related_sources": [
+        "ba-runner-parity-audit-inline",
+        "phase0-parity-matrix-inline"
+      ],
+      "evidence": [],
+      "open_questions": [
+        {
+          "question_id": "cli-source-management-console-q-how-to-resolve-the-gap-b-f16f01",
+          "summary": "How to resolve the gap between MCP preview-capped content and SDK fulltext for consistent snapshotting [2].",
+          "owner": null,
+          "severity": "MEDIUM",
+          "screen_id": "cli-source-management-console",
+          "blocking_workstreams": [],
+          "evidence": []
+        }
+      ]
+    },
+    {
+      "screen_id": "global-account-settings",
+      "screen_name": "Global Account Settings",
+      "purpose": "Manages account-wide preferences such as output language, which are currently absent from MCP [3], [5].",
+      "roles": [
+        "User"
+      ],
+      "entry_points": [
+        "CLI command: language"
+      ],
+      "exit_points": [
+        "Shell prompt"
+      ],
+      "main_actions": [
+        "Get current output language",
+        "List supported languages",
+        "Set global output language"
+      ],
+      "dependencies": [
+        "src/notebooklm/_settings.py [1]",
+        "src/notebooklm/cli/language.py"
+      ],
+      "related_sources": [
+        "ba-runner-parity-audit-inline",
+        "phase0-parity-matrix-inline"
+      ],
+      "evidence": [],
+      "open_questions": []
+    },
+    {
+      "screen_id": "notebook-note-manager",
+      "screen_name": "Notebook Note Manager",
+      "purpose": "Manages dedicated notebook notes as first-class entities, distinct from text sources [3], [1].",
+      "roles": [
+        "User"
+      ],
+      "entry_points": [
+        "CLI command: note"
+      ],
+      "exit_points": [
+        "Shell prompt"
+      ],
+      "main_actions": [
+        "Create note",
+        "Delete note",
+        "Read note content",
+        "Update note"
+      ],
+      "dependencies": [
+        "src/notebooklm/_notes.py [1]",
+        "src/notebooklm/cli/note.py"
+      ],
+      "related_sources": [
+        "ba-runner-parity-audit-inline",
+        "phase0-parity-matrix-inline"
+      ],
+      "evidence": [],
+      "open_questions": [
+        {
+          "question_id": "notebook-note-manager-q-implementation-status-of-9042d5",
+          "summary": "Implementation status of note-to-source conversion [3].",
+          "owner": null,
+          "severity": "MEDIUM",
+          "screen_id": "notebook-note-manager",
+          "blocking_workstreams": [],
+          "evidence": []
+        },
+        {
+          "question_id": "notebook-note-manager-q-normalization-of-inconsi-ed09a7",
+          "summary": "Normalization of inconsistent behavior where workflows create text-sources instead of notes [1], [4].",
+          "owner": null,
+          "severity": "MEDIUM",
+          "screen_id": "notebook-note-manager",
+          "blocking_workstreams": [],
+          "evidence": []
+        }
+      ]
+    },
+    {
+      "screen_id": "research-pipeline-controller",
+      "screen_name": "Research Pipeline Controller",
+      "purpose": "Provides granular control over research jobs, polling, and the importation of discovered sources [1], [5].",
+      "roles": [
+        "Developer",
+        "User"
+      ],
+      "entry_points": [
+        "CLI command: research",
+        "CLI command: source add-research"
+      ],
+      "exit_points": [
+        "Shell prompt",
+        "Source Management Console (after import)"
+      ],
+      "main_actions": [
+        "Import discovered sources",
+        "Poll job status",
+        "Start research job",
+        "Wait for completion"
+      ],
+      "dependencies": [
+        "src/notebooklm/_research.py [1]",
+        "src/notebooklm/cli/research.py"
+      ],
+      "related_sources": [
+        "ba-runner-parity-audit-inline",
+        "phase0-parity-matrix-inline"
+      ],
+      "evidence": [],
+      "open_questions": [
+        {
+          "question_id": "research-pipeline-controller-q-how-to-bridge-the-gap-be-bade94",
+          "summary": "How to bridge the gap between high-level MCP workflow macros and raw SDK research primitives [5].",
+          "owner": null,
+          "severity": "MEDIUM",
+          "screen_id": "research-pipeline-controller",
+          "blocking_workstreams": [],
+          "evidence": []
+        }
+      ]
+    }
+  ]
+}

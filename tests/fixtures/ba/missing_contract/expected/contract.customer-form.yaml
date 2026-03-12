@@ -1,0 +1,154 @@
+openapi: 3.0.3
+info:
+  title: customer-create / customer-form provisional contract
+  version: 0.1.0-provisional
+  description: Generated for FE-first implementation. This contract is provisional and not approved backend truth.
+paths:
+  /customers:
+    post:
+      operationId: customer_form_post_create_customer
+      summary: Create Customer
+      description: Generated provisional endpoint for FE-first delivery.
+      tags:
+        - customer-form
+      parameters: []
+      responses:
+        200:
+          description: Provisional successful response.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  approvalstate:
+                    type: string
+                    description: "Derived from provisional response summary: approvalState."
+                    x-field-status: PROVISIONAL
+                    x-source-evidence:
+                      - "requirements@requirements-missing-001:4-6"
+                  customerid:
+                    type: integer
+                    description: "Derived from provisional response summary: customerId."
+                    x-field-status: PROVISIONAL
+                    x-source-evidence:
+                      - "requirements@requirements-missing-001:4-6"
+                x-field-status: PROVISIONAL
+                x-source-evidence:
+                  - "requirements@requirements-missing-001:4-6"
+        400:
+          description: Provisional validation failure response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        500:
+          description: Provisional server error response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerError"
+      x-contract-status: PROVISIONAL
+      x-provisional-endpoint-id: POST /customers
+      x-source-evidence:
+        - "requirements@requirements-missing-001:4-6"
+      x-open-questions:
+        - question_id: customer-create-response-shape
+          summary: "What response envelope should Create Customer return while approval is pending?"
+          owner: Tech Lead
+          severity: HIGH
+          blocking_workstreams:
+            - BE
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                email:
+                  type: string
+                  x-field-status: CONFIRMED
+                  x-source-evidence:
+                    - "requirements@requirements-missing-001:4-4"
+                  title: Email
+                  format: email
+                legalname:
+                  type: string
+                  description: "Derived from provisional request summary: legalName."
+                  x-field-status: PROVISIONAL
+                  x-source-evidence:
+                    - "requirements@requirements-missing-001:4-6"
+                loyaltytier:
+                  type: string
+                  description: "Derived from provisional request summary: loyaltyTier."
+                  x-field-status: PROVISIONAL
+                  x-source-evidence:
+                    - "requirements@requirements-missing-001:4-6"
+                salesownerid:
+                  type: integer
+                  description: "Derived from provisional request summary: salesOwnerId."
+                  x-field-status: PROVISIONAL
+                  x-source-evidence:
+                    - "requirements@requirements-missing-001:4-6"
+              required:
+                - email
+              x-field-status: PROVISIONAL
+              x-source-evidence:
+                - "requirements@requirements-missing-001:4-6"
+components:
+  schemas:
+    ValidationError:
+      type: object
+      additionalProperties: false
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        field_errors:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              field:
+                type: string
+              issue:
+                type: string
+      x-contract-status: PROVISIONAL
+      x-error-kind: validation_error
+    ServerError:
+      type: object
+      additionalProperties: false
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        field_errors:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              field:
+                type: string
+              issue:
+                type: string
+      x-contract-status: PROVISIONAL
+      x-error-kind: server_error
+x-contract-status: PROVISIONAL
+x-generated-screen-id: customer-form
+x-workflow-mode: FE_FIRST
+x-source-evidence:
+  - "requirements@requirements-missing-001:4-6"
+x-open-questions:
+  - question_id: customer-create-response-shape
+    summary: "What response envelope should Create Customer return while approval is pending?"
+    owner: Tech Lead
+    severity: HIGH
+    blocking_workstreams:
+      - BE
+x-json-schema-version: "https://json-schema.org/draft/2020-12/schema"

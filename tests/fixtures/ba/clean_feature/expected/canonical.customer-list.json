@@ -1,0 +1,117 @@
+{
+  "schema_version": "ba.canonical_screen.v1.0",
+  "feature_key": "customer-create",
+  "screen_id": "customer-list",
+  "mode": "BALANCED",
+  "run_id": "run-clean-golden",
+  "shared_facts": [
+    {
+      "fact_id": "list-refresh-rule",
+      "domain": "SHARED",
+      "category": "business_rule",
+      "value": {
+        "action_name": "Open customer",
+        "trigger": "Create Customer completes successfully",
+        "rule": "Return to Customer List with an updated status chip.",
+        "outcome": "Customer List shows the latest approval state immediately."
+      },
+      "status": "CONFIRMED",
+      "confidence": null,
+      "evidence": [
+        {
+          "source_key": "requirements",
+          "snapshot_id": "requirements-clean-001",
+          "locator": "11-14",
+          "quote": null
+        }
+      ],
+      "note": null,
+      "rationale": null,
+      "origin": null
+    }
+  ],
+  "fe_facts": [
+    {
+      "fact_id": "list-customer-name",
+      "domain": "FE",
+      "category": "field",
+      "value": {
+        "field_name": "customer_name",
+        "label": "Customer Name",
+        "field_type": "text",
+        "required": false
+      },
+      "status": "CONFIRMED",
+      "confidence": null,
+      "evidence": [
+        {
+          "source_key": "requirements",
+          "snapshot_id": "requirements-clean-001",
+          "locator": "3-5",
+          "quote": null
+        }
+      ],
+      "note": null,
+      "rationale": null,
+      "origin": null
+    },
+    {
+      "fact_id": "list-loyalty-tier",
+      "domain": "FE",
+      "category": "field",
+      "value": {
+        "field_name": "loyalty_tier",
+        "label": "Loyalty Tier",
+        "field_type": "text",
+        "required": false
+      },
+      "status": "CONFIRMED",
+      "confidence": null,
+      "evidence": [
+        {
+          "source_key": "requirements",
+          "snapshot_id": "requirements-clean-001",
+          "locator": "3-5",
+          "quote": null
+        }
+      ],
+      "note": null,
+      "rationale": null,
+      "origin": null
+    },
+    {
+      "fact_id": "list-status",
+      "domain": "FE",
+      "category": "field",
+      "value": {
+        "field_name": "status",
+        "label": "Status",
+        "field_type": "chip",
+        "required": false
+      },
+      "status": "CONFIRMED",
+      "confidence": null,
+      "evidence": [
+        {
+          "source_key": "requirements",
+          "snapshot_id": "requirements-clean-001",
+          "locator": "3-5",
+          "quote": null
+        }
+      ],
+      "note": null,
+      "rationale": null,
+      "origin": null
+    }
+  ],
+  "be_facts": [],
+  "dependencies": [],
+  "contradictions": [],
+  "missing_info": [],
+  "open_questions": [],
+  "quality_summary": {
+    "parse_quality": "HIGH",
+    "notes": [],
+    "degraded": false
+  }
+}

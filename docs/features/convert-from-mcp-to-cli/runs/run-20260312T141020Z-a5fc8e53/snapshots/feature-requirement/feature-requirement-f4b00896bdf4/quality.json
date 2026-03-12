@@ -1,0 +1,16 @@
+{
+  "source_key": "feature-requirement",
+  "snapshot_id": "feature-requirement-f4b00896bdf4",
+  "parse_quality": "HIGH",
+  "character_count": 798,
+  "heading_count": 3,
+  "table_density": 0.0,
+  "encoding_issues": [],
+  "suspected_scan_indicators": [],
+  "missing_sections": [
+    "overview",
+    "requirements",
+    "acceptance_criteria"
+  ],
+  "recommendation": "PROCEED"
+}

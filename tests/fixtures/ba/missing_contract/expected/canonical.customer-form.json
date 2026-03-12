@@ -1,0 +1,239 @@
+{
+  "schema_version": "ba.canonical_screen.v1.0",
+  "feature_key": "customer-create",
+  "screen_id": "customer-form",
+  "mode": "BALANCED",
+  "run_id": "run-missing-contract-golden",
+  "shared_facts": [
+    {
+      "fact_id": "approval-banner-rule",
+      "domain": "SHARED",
+      "category": "business_rule",
+      "value": {
+        "action_name": "Save customer",
+        "trigger": "Requested loyalty tier is VIP",
+        "rule": "Show a manager-approval banner before submission.",
+        "outcome": "FE preserves captured values while approval state stays provisional."
+      },
+      "status": "CONFIRMED",
+      "confidence": null,
+      "evidence": [
+        {
+          "source_key": "requirements",
+          "snapshot_id": "requirements-missing-001",
+          "locator": "4-6",
+          "quote": null
+        }
+      ],
+      "note": null,
+      "rationale": null,
+      "origin": null
+    }
+  ],
+  "fe_facts": [
+    {
+      "fact_id": "field-legal-name",
+      "domain": "FE",
+      "category": "field",
+      "value": {
+        "field_name": "legal_name",
+        "label": "Legal Name",
+        "field_type": "text",
+        "required": true
+      },
+      "status": "CONFIRMED",
+      "confidence": null,
+      "evidence": [
+        {
+          "source_key": "requirements",
+          "snapshot_id": "requirements-missing-001",
+          "locator": "4-4",
+          "quote": null
+        }
+      ],
+      "note": null,
+      "rationale": null,
+      "origin": null
+    },
+    {
+      "fact_id": "field-email",
+      "domain": "FE",
+      "category": "field",
+      "value": {
+        "field_name": "email",
+        "label": "Email",
+        "field_type": "email",
+        "required": true
+      },
+      "status": "CONFIRMED",
+      "confidence": null,
+      "evidence": [
+        {
+          "source_key": "requirements",
+          "snapshot_id": "requirements-missing-001",
+          "locator": "4-4",
+          "quote": null
+        }
+      ],
+      "note": null,
+      "rationale": null,
+      "origin": null
+    },
+    {
+      "fact_id": "field-loyalty-tier",
+      "domain": "FE",
+      "category": "field",
+      "value": {
+        "field_name": "loyalty_tier",
+        "label": "Loyalty Tier",
+        "field_type": "select",
+        "required": true
+      },
+      "status": "CONFIRMED",
+      "confidence": null,
+      "evidence": [
+        {
+          "source_key": "requirements",
+          "snapshot_id": "requirements-missing-001",
+          "locator": "4-5",
+          "quote": null
+        }
+      ],
+      "note": null,
+      "rationale": null,
+      "origin": null
+    },
+    {
+      "fact_id": "field-sales-owner",
+      "domain": "FE",
+      "category": "field",
+      "value": {
+        "field_name": "sales_owner_id",
+        "label": "Sales Owner",
+        "field_type": "text",
+        "required": true
+      },
+      "status": "CONFIRMED",
+      "confidence": null,
+      "evidence": [
+        {
+          "source_key": "requirements",
+          "snapshot_id": "requirements-missing-001",
+          "locator": "4-4",
+          "quote": null
+        }
+      ],
+      "note": null,
+      "rationale": null,
+      "origin": null
+    },
+    {
+      "fact_id": "loading-state",
+      "domain": "FE",
+      "category": "loading_state",
+      "value": "Persist the captured form values while the provisional create request is in flight.",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "Backend payload details are still undefined in the BA source.",
+      "origin": "structured_extraction"
+    }
+  ],
+  "be_facts": [
+    {
+      "fact_id": "endpoint-create-customer",
+      "domain": "BE",
+      "category": "endpoint",
+      "value": {
+        "endpoint_name": "Create Customer",
+        "method": "POST",
+        "path": "/customers",
+        "request_body": "legalName, email, loyaltyTier, salesOwnerId",
+        "response_body": "customerId, approvalState"
+      },
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [
+        {
+          "source_key": "requirements",
+          "snapshot_id": "requirements-missing-001",
+          "locator": "4-6",
+          "quote": null
+        }
+      ],
+      "note": null,
+      "rationale": "The backend payload is not yet specified in the BA source.",
+      "origin": "structured_extraction"
+    }
+  ],
+  "dependencies": [
+    "Create Customer"
+  ],
+  "contradictions": [],
+  "missing_info": [
+    {
+      "gap_id": "missing-backend-contract",
+      "kind": "MISSING_BACKEND_CONTRACT",
+      "summary": "Authoritative Create Customer response schema is still missing.",
+      "severity": "HIGH",
+      "screen_id": "customer-form",
+      "owner": "Tech Lead",
+      "blocking_workstreams": [
+        "BE"
+      ],
+      "evidence": [
+        {
+          "source_key": "requirements",
+          "snapshot_id": "requirements-missing-001",
+          "locator": "4-6",
+          "quote": null
+        }
+      ]
+    },
+    {
+      "gap_id": "assume-customer-create-response",
+      "kind": "REQUIRED_ASSUMPTION",
+      "summary": "Assume the provisional response echoes saved customer values and approval state.",
+      "severity": "MEDIUM",
+      "screen_id": "customer-form",
+      "owner": "Tech Lead",
+      "blocking_workstreams": [
+        "FE"
+      ],
+      "evidence": [
+        {
+          "source_key": "requirements",
+          "snapshot_id": "requirements-missing-001",
+          "locator": "4-6",
+          "quote": null
+        }
+      ]
+    }
+  ],
+  "open_questions": [
+    {
+      "question_id": "customer-create-response-shape",
+      "summary": "What response envelope should Create Customer return while approval is pending?",
+      "owner": "Tech Lead",
+      "severity": "HIGH",
+      "screen_id": "customer-form",
+      "blocking_workstreams": [
+        "BE"
+      ],
+      "evidence": [
+        {
+          "source_key": "requirements",
+          "snapshot_id": "requirements-missing-001",
+          "locator": "4-6",
+          "quote": null
+        }
+      ]
+    }
+  ],
+  "quality_summary": {
+    "parse_quality": "HIGH",
+    "notes": [],
+    "degraded": false
+  }
+}

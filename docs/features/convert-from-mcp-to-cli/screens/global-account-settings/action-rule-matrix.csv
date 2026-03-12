@@ -1,0 +1,5 @@
+row_id,screen_id,fact_id,source_domain,fact_status,action_name,trigger,rule_summary,outcome,evidence_count,evidence_refs
+global-account-settings-shared-business-rule-14c028-action,global-account-settings,global-account-settings-shared-business-rule-14c028,SHARED,PROVISIONAL,Business Rule,,Global output language is an account-global setting rather than a notebook-scoped preference [1].,,0,
+global-account-settings-shared-business-rule-1b4d7c-action,global-account-settings,global-account-settings-shared-business-rule-1b4d7c,SHARED,PROVISIONAL,Business Rule,,"The global language setting is required to ensure output parity for language-sensitive BA drafting and artifact generation [1], [2].",,0,
+global-account-settings-fe-interaction-d9c257-action,global-account-settings,global-account-settings-fe-interaction-d9c257,FE,PROVISIONAL,Interaction,,The CLI supports retrieving the current account-global language setting [1].,,0,
+global-account-settings-fe-interaction-987eaa-action,global-account-settings,global-account-settings-fe-interaction-987eaa,FE,PROVISIONAL,Interaction,,The CLI supports updating the account-global language setting [1].,,0,

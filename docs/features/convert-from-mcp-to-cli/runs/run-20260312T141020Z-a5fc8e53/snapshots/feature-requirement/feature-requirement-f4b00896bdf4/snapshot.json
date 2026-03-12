@@ -1,0 +1,12 @@
+{
+  "source_key": "feature-requirement",
+  "snapshot_id": "feature-requirement-f4b00896bdf4",
+  "content_hash": "f4b00896bdf4c55a587dcb1fc49a924605933d776d796f08928126b0c74a812a",
+  "fulltext_path": "docs/features/convert-from-mcp-to-cli/runs/run-20260312T141020Z-a5fc8e53/snapshots/feature-requirement/feature-requirement-f4b00896bdf4/fulltext.txt",
+  "guide_path": "docs/features/convert-from-mcp-to-cli/runs/run-20260312T141020Z-a5fc8e53/snapshots/feature-requirement/feature-requirement-f4b00896bdf4/guide.json",
+  "freshness": "fresh",
+  "notebook_source_id": "efa59066-3be6-431e-a862-a14bbdef1583",
+  "title": "Feature requirement: convert from MCP to CLI",
+  "source_type": "markdown",
+  "char_count": 798
+}

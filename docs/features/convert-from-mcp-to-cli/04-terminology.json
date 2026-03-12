@@ -1,0 +1,147 @@
+{
+  "schema_version": "ba.terminology.v1.0",
+  "run_id": "run-20260312T141020Z-a5fc8e53",
+  "feature_key": "convert-from-mcp-to-cli",
+  "entries": [
+    {
+      "standard_term": "Artifact",
+      "aliases": [],
+      "semantic_notes": [
+        "Generated outputs such as reports, data tables, and mind maps derived from notebook data [6], [7], [11]."
+      ],
+      "evidence": [],
+      "ambiguity_flags": [
+        "alias_requires_evidence:Data-table",
+        "alias_requires_evidence:Mind-map",
+        "alias_requires_evidence:Report",
+        "The entire artifact lifecycle is present in the SDK and CLI but is currently unregistered in the MCP server [7], [11]."
+      ]
+    },
+    {
+      "standard_term": "BA runner",
+      "aliases": [],
+      "semantic_notes": [
+        "A planned subsystem (src/notebooklm_mcp/ba/) designed to automate analyst workflows by leveraging the NotebookLM SDK substrate [1], [2]."
+      ],
+      "evidence": [],
+      "ambiguity_flags": [
+        "alias_requires_evidence:BA",
+        "alias_requires_evidence:BA-runner"
+      ]
+    },
+    {
+      "standard_term": "Capability adapter",
+      "aliases": [],
+      "semantic_notes": [
+        "A proposed architectural layer that wraps the NotebookLMClient directly to provide capabilities missing from the generic MCP tool set [1], [3], [2]."
+      ],
+      "evidence": [],
+      "ambiguity_flags": [
+        "alias_requires_evidence:BA adapter",
+        "alias_requires_evidence:BA capability adapter"
+      ]
+    },
+    {
+      "standard_term": "CLI",
+      "aliases": [],
+      "semantic_notes": [
+        "A Click-based wrapper over the SDK that currently exposes significantly more functionality than the MCP layer [4], [5]."
+      ],
+      "evidence": [],
+      "ambiguity_flags": [
+        "alias_requires_evidence:CLI-native entry points",
+        "alias_requires_evidence:src/notebooklm/cli/"
+      ]
+    },
+    {
+      "standard_term": "MCP",
+      "aliases": [],
+      "semantic_notes": [
+        "The FastMCP server implementation that exposes a narrow subset of SDK functionality via tools, resources, and prompts [4], [5], [2]."
+      ],
+      "evidence": [],
+      "ambiguity_flags": [
+        "alias_requires_evidence:MCP layer",
+        "alias_requires_evidence:MCP-oriented surfaces",
+        "alias_requires_evidence:src/notebooklm_mcp/"
+      ]
+    },
+    {
+      "standard_term": "Note",
+      "aliases": [],
+      "semantic_notes": [
+        "First-class CRUD objects within a notebook, distinct from source content [6], [7]."
+      ],
+      "evidence": [],
+      "ambiguity_flags": [
+        "alias_requires_evidence:Notebook note",
+        "alias_requires_evidence:Real notebook note",
+        "Current MCP implementation is inconsistent; the workflow macro creates 'text sources' while labeling them as notes [6], [7], [9]."
+      ]
+    },
+    {
+      "standard_term": "Output language",
+      "aliases": [],
+      "semantic_notes": [
+        "A global user setting that determines the language used for generated content [6], [7], [10]."
+      ],
+      "evidence": [],
+      "ambiguity_flags": [
+        "alias_requires_evidence:Account-global setting",
+        "alias_requires_evidence:Global output language",
+        "This capability is fully supported in the SDK and CLI but is entirely absent from the MCP surface [6], [7]."
+      ]
+    },
+    {
+      "standard_term": "Research",
+      "aliases": [],
+      "semantic_notes": [
+        "Granular controls for starting discovery, polling status, and importing results [7], [10]."
+      ],
+      "evidence": [],
+      "ambiguity_flags": [
+        "alias_requires_evidence:Direct research controls",
+        "alias_requires_evidence:Research primitives",
+        "MCP only exposes a high-level 'macro' workflow, whereas the CLI provides raw access to underlying primitives [7], [10]."
+      ]
+    },
+    {
+      "standard_term": "SDK",
+      "aliases": [],
+      "semantic_notes": [
+        "The core implementation layer (src/notebooklm/) that provides the real substrate for both the CLI and MCP interfaces [4], [2]."
+      ],
+      "evidence": [],
+      "ambiguity_flags": [
+        "alias_requires_evidence:notebooklm-py",
+        "alias_requires_evidence:NotebookLMClient",
+        "alias_requires_evidence:SDK substrate"
+      ]
+    },
+    {
+      "standard_term": "Source",
+      "aliases": [],
+      "semantic_notes": [
+        "Grounding data entities, including operations for Drive ingestion, refreshing, and freshness checking [6], [7]."
+      ],
+      "evidence": [],
+      "ambiguity_flags": [
+        "alias_requires_evidence:notebooklm_sources",
+        "alias_requires_evidence:Source intelligence",
+        "MCP content access is 'preview-capped' (truncated), whereas the CLI and SDK provide 'fulltext' access required for high-fidelity snapshotting [7], [8]."
+      ]
+    },
+    {
+      "standard_term": "Text source",
+      "aliases": [],
+      "semantic_notes": [
+        "A source created from synthesized text via the add_text() method [7], [9]."
+      ],
+      "evidence": [],
+      "ambiguity_flags": [
+        "alias_requires_evidence:Research note",
+        "The term 'research note' is used in MCP workflow tools to describe what is technically a text source, colliding with the 'note' entity semantics [6], [9]."
+      ]
+    }
+  ]
+}

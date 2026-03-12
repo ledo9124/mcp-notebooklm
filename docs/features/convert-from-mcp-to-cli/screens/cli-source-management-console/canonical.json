@@ -1,0 +1,183 @@
+{
+  "schema_version": "ba.canonical_screen.v1.0",
+  "feature_key": "convert-from-mcp-to-cli",
+  "screen_id": "cli-source-management-console",
+  "mode": "AUTO",
+  "run_id": "run-20260312T141020Z-a5fc8e53",
+  "shared_facts": [
+    {
+      "fact_id": "cli-source-management-console-shared-business-rule-0222d7",
+      "domain": "SHARED",
+      "category": "business rule",
+      "value": "Source snapshotting for BA runs must bypass current MCP tools because MCP content access is preview-capped and truncated, whereas the CLI/SDK provide full-fidelity fulltext [1], [2], [3].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "cli-source-management-console-shared-scope-ef7eec",
+      "domain": "SHARED",
+      "category": "scope",
+      "value": "Full-fidelity source intelligence requires fulltext access, metadata audit, and freshness management (refresh/stale checks) [4], [5].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    }
+  ],
+  "fe_facts": [
+    {
+      "fact_id": "cli-source-management-console-fe-command-1ddea4",
+      "domain": "FE",
+      "category": "command",
+      "value": "The CLI source console (src/notebooklm/cli/source.py) exposes 'fulltext' to retrieve the complete, uncapped text of a source [2].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "cli-source-management-console-fe-command-1d41f1",
+      "domain": "FE",
+      "category": "command",
+      "value": "The CLI provides a 'guide' command to access source-level intelligence/guides [2].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "cli-source-management-console-fe-status-field-5b4c73",
+      "domain": "FE",
+      "category": "status field",
+      "value": "The CLI exposes source freshness status via the 'stale' command [2].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "cli-source-management-console-fe-ui-behavior-3ee20c",
+      "domain": "FE",
+      "category": "UI behavior",
+      "value": "The CLI provides 'refresh' and 'wait' commands to manage and monitor the source ingestion/update lifecycle [2].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    }
+  ],
+  "be_facts": [
+    {
+      "fact_id": "cli-source-management-console-be-sdk-method-b7c330",
+      "domain": "BE",
+      "category": "SDK method",
+      "value": "src/notebooklm/_sources.py provides the underlying methods: get_fulltext(), get_guide(), check_freshness(), refresh(), and wait_until_ready() [2].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "cli-source-management-console-be-feature-gap-d7f4d8",
+      "domain": "BE",
+      "category": "feature gap",
+      "value": "Drive-based source addition (add_drive) is present in the SDK/CLI substrate but absent from the MCP surface [6], [7].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    }
+  ],
+  "dependencies": [
+    "BA capability adapter (src/notebooklm_mcp/ba/)",
+    "NotebookLMClient SDK get_fulltext/get_guide [1]",
+    "src/notebooklm/_sources.py",
+    "src/notebooklm/cli/source.py"
+  ],
+  "contradictions": [
+    {
+      "contradiction_id": "cli-source-management-console-contradiction-source-content-get-v-75cf2c",
+      "summary": "Source content 'get' vs. 'preview' disparity",
+      "severity": "MEDIUM",
+      "claims": [
+        {
+          "claim": "MCP tool notebooklm_sources_get_content implies it retrieves source content [2].",
+          "evidence": []
+        },
+        {
+          "claim": "MCP sources_get_content actually returns a preview truncated to min(requested_max, config.source_content_max_chars) [3].",
+          "evidence": []
+        }
+      ],
+      "open_question": "How should the CLI console represent the distinction between 'fulltext' and 'preview' to ensure users understand they are getting the raw substrate [2]?"
+    }
+  ],
+  "missing_info": [
+    {
+      "gap_id": "cli-source-management-console-missing_requirement_detail-specific-output-form-7dcf09",
+      "kind": "MISSING_REQUIREMENT_DETAIL",
+      "summary": "Specific output formatting or schema for the 'metadata audit' result within the CLI source management console [4].",
+      "severity": "MEDIUM",
+      "screen_id": "cli-source-management-console",
+      "owner": null,
+      "blocking_workstreams": [],
+      "evidence": []
+    }
+  ],
+  "open_questions": [
+    {
+      "question_id": "cli-source-management-console-q-does-the-metadata-audit--391d69",
+      "summary": "Does the 'metadata audit' include access logs or strictly structural metadata (size, type, freshness) [4], [8]?",
+      "owner": null,
+      "severity": "MEDIUM",
+      "screen_id": "cli-source-management-console",
+      "blocking_workstreams": [],
+      "evidence": []
+    },
+    {
+      "question_id": "cli-source-management-console-q-how-to-resolve-the-gap-b-f16f01",
+      "summary": "How to resolve the gap between MCP preview-capped content and SDK fulltext for consistent snapshotting [2].",
+      "owner": null,
+      "severity": "MEDIUM",
+      "screen_id": "cli-source-management-console",
+      "blocking_workstreams": [],
+      "evidence": []
+    },
+    {
+      "question_id": "cli-source-management-console-q-what-is-the-specific-val-4d165d",
+      "summary": "What is the specific value of config.source_content_max_chars that triggers truncation in the current MCP implementation [3]?",
+      "owner": null,
+      "severity": "MEDIUM",
+      "screen_id": "cli-source-management-console",
+      "blocking_workstreams": [],
+      "evidence": []
+    }
+  ],
+  "quality_summary": {
+    "parse_quality": "HIGH",
+    "notes": [
+      "The CLI/SDK substrate is clearly identified as the authoritative source for full-fidelity data over MCP.",
+      "The source intelligence concern is well-documented in the Parity Matrix and Parity Audit.",
+      "Tightly scoped to source-related intelligence as requested."
+    ],
+    "degraded": false
+  }
+}

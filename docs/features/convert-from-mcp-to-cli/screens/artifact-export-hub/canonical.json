@@ -1,0 +1,239 @@
+{
+  "schema_version": "ba.canonical_screen.v1.0",
+  "feature_key": "convert-from-mcp-to-cli",
+  "screen_id": "artifact-export-hub",
+  "mode": "AUTO",
+  "run_id": "run-20260312T141020Z-a5fc8e53",
+  "shared_facts": [
+    {
+      "fact_id": "artifact-export-hub-shared-business-rule-e2968a",
+      "domain": "SHARED",
+      "category": "business rule",
+      "value": "Artifact generation and export functionality includes structured reports, data tables, and mind maps [1], [2].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "artifact-export-hub-shared-business-rule-4c0b51",
+      "domain": "SHARED",
+      "category": "business rule",
+      "value": "There is a complete parity gap for artifacts; no artifact tool module or resource currently exists in the MCP layer [3], [2], [4].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "artifact-export-hub-shared-business-rule-8073df",
+      "domain": "SHARED",
+      "category": "business rule",
+      "value": "Artifact generation is sensitive to the account-global output language setting [2], [5].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "artifact-export-hub-shared-business-rule-2635ac",
+      "domain": "SHARED",
+      "category": "business rule",
+      "value": "Mind maps have a unique storage dependency where they are backed by the notes system [2].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    }
+  ],
+  "fe_facts": [
+    {
+      "fact_id": "artifact-export-hub-fe-cli-command-299298",
+      "domain": "FE",
+      "category": "CLI command",
+      "value": "Artifact generation flows are implemented in src/notebooklm/cli/generate.py [2].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "artifact-export-hub-fe-cli-command-eca1df",
+      "domain": "FE",
+      "category": "CLI command",
+      "value": "Artifact download flows are implemented in src/notebooklm/cli/download.py [2].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "artifact-export-hub-fe-cli-command-abe7c1",
+      "domain": "FE",
+      "category": "CLI command",
+      "value": "General artifact export management is implemented in src/notebooklm/cli/artifact.py [2].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "artifact-export-hub-fe-ui-behavior-b10d1e",
+      "domain": "FE",
+      "category": "UI behavior",
+      "value": "The CLI supports global output-language management via src/notebooklm/cli/language.py which influences artifact content [2].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    }
+  ],
+  "be_facts": [
+    {
+      "fact_id": "artifact-export-hub-be-sdk-namespace-b05b7d",
+      "domain": "BE",
+      "category": "SDK namespace",
+      "value": "The NotebookLMClient facade exposes an 'artifacts' namespace for managing the artifact lifecycle [6].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "artifact-export-hub-be-api-endpoint-55539b",
+      "domain": "BE",
+      "category": "API endpoint",
+      "value": "src/notebooklm/_artifacts.py provides methods for generating, downloading, and exporting reports (generate_report, download_report, export_report) [2].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "artifact-export-hub-be-api-endpoint-46d290",
+      "domain": "BE",
+      "category": "API endpoint",
+      "value": "src/notebooklm/_artifacts.py provides methods for data tables (generate_data_table, download_data_table, export_data_table) [2].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "artifact-export-hub-be-api-endpoint-0a65ba",
+      "domain": "BE",
+      "category": "API endpoint",
+      "value": "src/notebooklm/_artifacts.py provides methods for mind maps (generate_mind_map, download_mind_map) [2].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "artifact-export-hub-be-api-endpoint-dcfd58",
+      "domain": "BE",
+      "category": "API endpoint",
+      "value": "src/notebooklm/_notes.py exposes list_mind_maps() due to note-backed storage architecture [2].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    }
+  ],
+  "dependencies": [
+    "BA capability adapter (Planned wrapper for SDK artifact calls)",
+    "src/notebooklm/_artifacts.py (Core SDK logic)",
+    "src/notebooklm/_artifacts.py [1]",
+    "src/notebooklm/_notes.py (Mind-map storage)",
+    "src/notebooklm/_settings.py (Output language influence)",
+    "src/notebooklm/cli/artifact.py",
+    "src/notebooklm/cli/download.py",
+    "src/notebooklm/cli/generate.py"
+  ],
+  "contradictions": [],
+  "missing_info": [
+    {
+      "gap_id": "artifact-export-hub-missing_requirement_detail-specific-external-ex-e8aa0b",
+      "kind": "MISSING_REQUIREMENT_DETAIL",
+      "summary": "Specific external export destinations (e.g., Drive, local filesystem, or third-party) supported by export_report() are not detailed [2].",
+      "severity": "MEDIUM",
+      "screen_id": "artifact-export-hub",
+      "owner": null,
+      "blocking_workstreams": [],
+      "evidence": []
+    },
+    {
+      "gap_id": "artifact-export-hub-missing_requirement_detail-polling-and-wait-tim-ef3034",
+      "kind": "MISSING_REQUIREMENT_DETAIL",
+      "summary": "Polling and wait-time requirements for artifact generation (long-running jobs) are mentioned as necessary for the BA runner but not specified for the general CLI hub [7].",
+      "severity": "MEDIUM",
+      "screen_id": "artifact-export-hub",
+      "owner": null,
+      "blocking_workstreams": [],
+      "evidence": []
+    }
+  ],
+  "open_questions": [
+    {
+      "question_id": "artifact-export-hub-q-should-the-cli-artifact--5548dc",
+      "summary": "Should the CLI 'artifact-export-hub' explicitly expose or hide the fact that mind maps are stored as notes [2]?",
+      "owner": null,
+      "severity": "MEDIUM",
+      "screen_id": "artifact-export-hub",
+      "blocking_workstreams": [],
+      "evidence": []
+    },
+    {
+      "question_id": "artifact-export-hub-q-whether-the-cli-should-e-a96970",
+      "summary": "Whether the CLI should explicitly hide the note-backed storage quirk of mind maps [1].",
+      "owner": null,
+      "severity": "MEDIUM",
+      "screen_id": "artifact-export-hub",
+      "blocking_workstreams": [],
+      "evidence": []
+    },
+    {
+      "question_id": "artifact-export-hub-q-will-the-cli-hub-include-f0c9aa",
+      "summary": "Will the CLI hub include a unified 'poll' command for all artifact types, or will this be handled internally by the generate commands [7], [2]?",
+      "owner": null,
+      "severity": "MEDIUM",
+      "screen_id": "artifact-export-hub",
+      "blocking_workstreams": [],
+      "evidence": []
+    }
+  ],
+  "quality_summary": {
+    "parse_quality": "HIGH",
+    "notes": [
+      "The artifact concern area is well-documented in the parity matrix as a known MCP gap but fully supported in SDK/CLI.",
+      "The link between artifacts and global language settings is explicitly noted in the parity audit."
+    ],
+    "degraded": false
+  }
+}

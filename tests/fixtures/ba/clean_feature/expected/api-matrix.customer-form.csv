@@ -1,0 +1,2 @@
+row_id,screen_id,fact_id,source_domain,fact_status,interface_name,interaction_type,method,target,request_summary,response_summary,evidence_count,evidence_refs
+endpoint-create-customer-api,customer-form,endpoint-create-customer,BE,CONFIRMED,Create Customer,ENDPOINT,POST,/customers,"legalName, email, loyaltyTier, salesOwnerId","customerId, status, approvalFlag",1,api-contract@api-contract-clean-001:3-18

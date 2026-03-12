@@ -1,0 +1,20 @@
+Feature: convert from MCP to CLI
+Objective:
+Create an implementation pack for a feature named 
+convert from mcp to cli
+.
+•
+Required scope:
+Use repository evidence to identify the current MCP-oriented surfaces and the corresponding CLI capabilities that already exist.
+•
+Describe the changes needed to shift the user-facing workflow from MCP-oriented entry points to CLI-native entry points where the repo already supports them.
+•
+Keep parity gaps explicit when the repo shows that SDK or CLI support differs from MCP support.
+•
+Do not invent capabilities, commands, or behavior that are not supported by the current repository evidence.
+•
+Constraints:
+Prefer repository-backed facts over assumptions.
+•
+Treat missing or partial parity as warnings or open questions rather than silent assumptions.
+•

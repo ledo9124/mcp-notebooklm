@@ -1,0 +1,203 @@
+{
+  "schema_version": "ba.canonical_screen.v1.0",
+  "feature_key": "convert-from-mcp-to-cli",
+  "screen_id": "global-account-settings",
+  "mode": "AUTO",
+  "run_id": "run-20260312T141020Z-a5fc8e53",
+  "shared_facts": [
+    {
+      "fact_id": "global-account-settings-shared-business-rule-14c028",
+      "domain": "SHARED",
+      "category": "business rule",
+      "value": "Global output language is an account-global setting rather than a notebook-scoped preference [1].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "global-account-settings-shared-business-rule-1b4d7c",
+      "domain": "SHARED",
+      "category": "business rule",
+      "value": "The global language setting is required to ensure output parity for language-sensitive BA drafting and artifact generation [1], [2].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "global-account-settings-shared-constraint-17ba38",
+      "domain": "SHARED",
+      "category": "constraint",
+      "value": "No matching tool or resource for global settings is currently registered in the MCP server [3], [1].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    }
+  ],
+  "fe_facts": [
+    {
+      "fact_id": "global-account-settings-fe-interaction-d9c257",
+      "domain": "FE",
+      "category": "interaction",
+      "value": "The CLI supports retrieving the current account-global language setting [1].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "global-account-settings-fe-interaction-987eaa",
+      "domain": "FE",
+      "category": "interaction",
+      "value": "The CLI supports updating the account-global language setting [1].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "global-account-settings-fe-field-047ec0",
+      "domain": "FE",
+      "category": "field",
+      "value": "The CLI provides functionality to list available language options [1].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    }
+  ],
+  "be_facts": [
+    {
+      "fact_id": "global-account-settings-be-sdk-module-485498",
+      "domain": "BE",
+      "category": "SDK module",
+      "value": "src/notebooklm/_settings.py manages the global output language logic [1].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "global-account-settings-be-endpoint-d1af07",
+      "domain": "BE",
+      "category": "endpoint",
+      "value": "get_output_language()",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "global-account-settings-be-endpoint-d2f7bf",
+      "domain": "BE",
+      "category": "endpoint",
+      "value": "set_output_language()",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "global-account-settings-be-cli-module-62db73",
+      "domain": "BE",
+      "category": "CLI module",
+      "value": "src/notebooklm/cli/language.py implements the language management commands [1].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "global-account-settings-be-facade-acef1d",
+      "domain": "BE",
+      "category": "facade",
+      "value": "NotebookLMClient exposes settings as a top-level namespaced API [4].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    }
+  ],
+  "dependencies": [
+    "Artifact generation (Report, Data-table, Mind-map)",
+    "BA capability adapter (src/notebooklm_mcp/ba/)",
+    "Drafting assistance flows",
+    "src/notebooklm/_settings.py [1]",
+    "src/notebooklm/cli/language.py"
+  ],
+  "contradictions": [],
+  "missing_info": [
+    {
+      "gap_id": "global-account-settings-missing_requirement_detail-list-of-specific-lan-1be34e",
+      "kind": "MISSING_REQUIREMENT_DETAIL",
+      "summary": "List of specific language codes or locales supported by the get/set/list commands [1].",
+      "severity": "MEDIUM",
+      "screen_id": "global-account-settings",
+      "owner": null,
+      "blocking_workstreams": [],
+      "evidence": []
+    },
+    {
+      "gap_id": "global-account-settings-missing_requirement_detail-information-on-wheth-6c3b62",
+      "kind": "MISSING_REQUIREMENT_DETAIL",
+      "summary": "Information on whether a 'reset' or 'default' behavior is available for global settings [1].",
+      "severity": "MEDIUM",
+      "screen_id": "global-account-settings",
+      "owner": null,
+      "blocking_workstreams": [],
+      "evidence": []
+    }
+  ],
+  "open_questions": [
+    {
+      "question_id": "global-account-settings-q-does-changing-the-global-01942a",
+      "summary": "Does changing the global language setting impact existing artifacts or only newly generated ones?",
+      "owner": null,
+      "severity": "MEDIUM",
+      "screen_id": "global-account-settings",
+      "blocking_workstreams": [],
+      "evidence": []
+    },
+    {
+      "question_id": "global-account-settings-q-what-is-the-default-syst-b3bc35",
+      "summary": "What is the default system language if a user has not explicitly configured a global preference?",
+      "owner": null,
+      "severity": "MEDIUM",
+      "screen_id": "global-account-settings",
+      "blocking_workstreams": [],
+      "evidence": []
+    }
+  ],
+  "quality_summary": {
+    "parse_quality": "HIGH",
+    "notes": [
+      "Distinct boundaries are maintained between notebook-scoped chat settings (with existing MCP parity) and global account settings (missing MCP parity).",
+      "Sources consistently identify the parity gap where global settings exist in the SDK and CLI but are absent from MCP [5], [1], [2]."
+    ],
+    "degraded": false
+  }
+}
