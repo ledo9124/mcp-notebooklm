@@ -10,17 +10,49 @@ from .types import Notebook, NotebookDescription, SuggestedTopic
 logger = logging.getLogger(__name__)
 
 
+def _parse_get_notebook_result(result: Any) -> Notebook:
+    """Parse the GET_NOTEBOOK RPC response into a Notebook dataclass."""
+    nb_info = result[0] if result and isinstance(result, list) and len(result) > 0 else []
+    return Notebook.from_api_response(nb_info)
+
+
+async def _delete_notebook_rpc(core: ClientCore, notebook_id: str) -> bool:
+    """Legacy/internal helper for notebook deletion outside the MVP SDK surface."""
+    logger.debug("Deleting notebook: %s", notebook_id)
+    params = [[notebook_id], [2]]
+    await core.rpc_call(RPCMethod.DELETE_NOTEBOOK, params)
+    return True
+
+
+async def _rename_notebook_rpc(core: ClientCore, notebook_id: str, new_title: str) -> Notebook:
+    """Legacy/internal helper for notebook rename outside the MVP SDK surface."""
+    logger.debug("Renaming notebook %s to: %s", notebook_id, new_title)
+    params = [notebook_id, [[None, None, None, [None, new_title]]]]
+    await core.rpc_call(
+        RPCMethod.RENAME_NOTEBOOK,
+        params,
+        source_path="/",
+        allow_null=True,
+    )
+    result = await core.rpc_call(
+        RPCMethod.GET_NOTEBOOK,
+        [notebook_id, None, [2], None, 0],
+        source_path=f"/notebook/{notebook_id}",
+    )
+    return _parse_get_notebook_result(result)
+
+
 class NotebooksAPI:
     """Operations on NotebookLM notebooks.
 
-    Provides methods for listing, creating, getting, deleting, and renaming
-    notebooks, as well as getting AI-generated descriptions.
+    Provides the minimal notebook surface kept in the MVP:
+    list, create, get, summarize, and raw inspection helpers.
 
     Usage:
         async with NotebookLMClient.from_storage() as client:
             notebooks = await client.notebooks.list()
             new_nb = await client.notebooks.create("My Research")
-            await client.notebooks.rename(new_nb.id, "Better Title")
+            desc = await client.notebooks.get_description(new_nb.id)
     """
 
     def __init__(self, core: ClientCore):
@@ -77,46 +109,7 @@ class NotebooksAPI:
             params,
             source_path=f"/notebook/{notebook_id}",
         )
-        # get_notebook returns [nb_info, ...] where nb_info contains the notebook data
-        nb_info = result[0] if result and isinstance(result, list) and len(result) > 0 else []
-        return Notebook.from_api_response(nb_info)
-
-    async def delete(self, notebook_id: str) -> bool:
-        """Delete a notebook.
-
-        Args:
-            notebook_id: The notebook ID to delete.
-
-        Returns:
-            True if deletion succeeded.
-        """
-        logger.debug("Deleting notebook: %s", notebook_id)
-        params = [[notebook_id], [2]]
-        await self._core.rpc_call(RPCMethod.DELETE_NOTEBOOK, params)
-        return True
-
-    async def rename(self, notebook_id: str, new_title: str) -> Notebook:
-        """Rename a notebook.
-
-        Args:
-            notebook_id: The notebook ID.
-            new_title: The new title for the notebook.
-
-        Returns:
-            The renamed Notebook object (fetched after rename).
-        """
-        logger.debug("Renaming notebook %s to: %s", notebook_id, new_title)
-        # Payload format discovered via browser traffic capture:
-        # [notebook_id, [[null, null, null, [null, new_title]]]]
-        params = [notebook_id, [[None, None, None, [None, new_title]]]]
-        await self._core.rpc_call(
-            RPCMethod.RENAME_NOTEBOOK,
-            params,
-            source_path="/",  # Home page context, not notebook page
-            allow_null=True,
-        )
-        # Fetch and return the updated notebook
-        return await self.get(notebook_id)
+        return _parse_get_notebook_result(result)
 
     async def get_summary(self, notebook_id: str) -> str:
         """Get raw summary text for a notebook.
@@ -187,19 +180,6 @@ class NotebooksAPI:
 
         return NotebookDescription(summary=summary, suggested_topics=suggested_topics)
 
-    async def remove_from_recent(self, notebook_id: str) -> None:
-        """Remove a notebook from the recently viewed list.
-
-        Args:
-            notebook_id: The notebook ID to remove from recent.
-        """
-        params = [notebook_id]
-        await self._core.rpc_call(
-            RPCMethod.REMOVE_RECENTLY_VIEWED,
-            params,
-            allow_null=True,
-        )
-
     async def get_raw(self, notebook_id: str) -> Any:
         """Get raw notebook data from API.
 
@@ -218,71 +198,3 @@ class NotebooksAPI:
             params,
             source_path=f"/notebook/{notebook_id}",
         )
-
-    async def share(
-        self, notebook_id: str, public: bool = True, artifact_id: str | None = None
-    ) -> dict:
-        """Toggle notebook sharing.
-
-        Note: This method uses SHARE_ARTIFACT for artifact-level sharing.
-        For notebook-level sharing with user management, use client.sharing instead:
-
-            await client.sharing.set_public(notebook_id, True)
-            await client.sharing.add_user(notebook_id, email, SharePermission.VIEWER)
-
-        Sharing is a NOTEBOOK-LEVEL setting. When enabled, ALL artifacts in the
-        notebook become accessible via their URLs.
-
-        Args:
-            notebook_id: The notebook ID.
-            public: If True, enable sharing. If False, disable sharing.
-            artifact_id: Optional artifact ID for generating a deep-link URL.
-
-        Returns:
-            Dict with 'public' status, 'url', and 'artifact_id'.
-        """
-        share_options = [1] if public else [0]
-        if artifact_id:
-            params = [share_options, notebook_id, artifact_id]
-        else:
-            params = [share_options, notebook_id]
-
-        await self._core.rpc_call(
-            RPCMethod.SHARE_ARTIFACT,
-            params,
-            source_path=f"/notebook/{notebook_id}",
-            allow_null=True,
-        )
-
-        # Build share URL
-        base_url = f"https://notebooklm.google.com/notebook/{notebook_id}"
-        if public and artifact_id:
-            url = f"{base_url}?artifactId={artifact_id}"
-        elif public:
-            url = base_url
-        else:
-            url = None
-
-        return {
-            "public": public,
-            "url": url,
-            "artifact_id": artifact_id,
-        }
-
-    def get_share_url(self, notebook_id: str, artifact_id: str | None = None) -> str:
-        """Get share URL for a notebook or artifact.
-
-        This does NOT toggle sharing - it just returns the URL format.
-        Use share() to enable/disable sharing.
-
-        Args:
-            notebook_id: The notebook ID.
-            artifact_id: Optional artifact ID for a deep-link URL.
-
-        Returns:
-            The share URL string.
-        """
-        base_url = f"https://notebooklm.google.com/notebook/{notebook_id}"
-        if artifact_id:
-            return f"{base_url}?artifactId={artifact_id}"
-        return base_url

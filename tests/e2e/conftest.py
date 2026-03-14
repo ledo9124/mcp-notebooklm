@@ -18,6 +18,7 @@ try:
 except ImportError:
     pass  # python-dotenv not installed, rely on shell environment
 
+from notebooklm._notebooks import _delete_notebook_rpc
 from notebooklm import NotebookLMClient
 from notebooklm.auth import (
     AuthTokens,
@@ -220,7 +221,7 @@ async def cleanup_notebooks(created_notebooks, auth_tokens):
         async with NotebookLMClient(auth_tokens) as client:
             for nb_id in created_notebooks:
                 try:
-                    await client.notebooks.delete(nb_id)
+                    await _delete_notebook_rpc(client._core, nb_id)
                 except Exception as e:
                     warnings.warn(f"Failed to cleanup notebook {nb_id}: {e}", stacklevel=2)
 
@@ -473,7 +474,7 @@ async def generation_notebook_id(client):
         # Delete stored file first (idempotent), then attempt notebook delete (best effort)
         _delete_stored_generation_notebook_id()
         try:
-            await client.notebooks.delete(notebook_id)
+            await _delete_notebook_rpc(client._core, notebook_id)
         except Exception as e:
             warnings.warn(f"Failed to delete generation notebook {notebook_id}: {e}", stacklevel=2)
 
@@ -668,7 +669,7 @@ async def multi_source_notebook_id(client):
     if auto_created and _is_ci_environment():
         _delete_stored_multi_source_notebook_id()
         try:
-            await client.notebooks.delete(notebook_id)
+            await _delete_notebook_rpc(client._core, notebook_id)
         except Exception as e:
             warnings.warn(
                 f"Failed to delete multi-source notebook {notebook_id}: {e}", stacklevel=2

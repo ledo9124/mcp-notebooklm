@@ -215,23 +215,6 @@ class TestGetNotebook:
         assert "source-path=%2Fnotebook%2Fnb_123" in str(request.url)
 
 
-class TestDeleteNotebook:
-    @pytest.mark.asyncio
-    async def test_delete_notebook(
-        self,
-        auth_tokens,
-        httpx_mock: HTTPXMock,
-        build_rpc_response,
-    ):
-        response = build_rpc_response(RPCMethod.DELETE_NOTEBOOK, [True])
-        httpx_mock.add_response(content=response.encode())
-
-        async with NotebookLMClient(auth_tokens) as client:
-            result = await client.notebooks.delete("nb_123")
-
-        assert result is True
-
-
 class TestSummary:
     @pytest.mark.asyncio
     async def test_get_summary(
@@ -249,98 +232,8 @@ class TestSummary:
         assert "Summary" in result
 
 
-class TestRenameNotebook:
-    @pytest.mark.asyncio
-    async def test_rename_notebook(
-        self,
-        auth_tokens,
-        httpx_mock: HTTPXMock,
-        build_rpc_response,
-    ):
-        # First response for rename (returns null)
-        rename_response = build_rpc_response(RPCMethod.RENAME_NOTEBOOK, None)
-        httpx_mock.add_response(content=rename_response.encode())
-        # Second response for get_notebook call after rename
-        get_response = build_rpc_response(
-            RPCMethod.GET_NOTEBOOK,
-            [
-                [
-                    "New Title",
-                    [],
-                    "nb_123",
-                    "📘",
-                    None,
-                    [None, None, None, None, None, [1704067200, 0]],
-                ]
-            ],
-        )
-        httpx_mock.add_response(content=get_response.encode())
-
-        async with NotebookLMClient(auth_tokens) as client:
-            notebook = await client.notebooks.rename("nb_123", "New Title")
-
-        assert isinstance(notebook, Notebook)
-        assert notebook.id == "nb_123"
-        assert notebook.title == "New Title"
-
-    @pytest.mark.asyncio
-    async def test_rename_notebook_request_format(
-        self,
-        auth_tokens,
-        httpx_mock: HTTPXMock,
-        build_rpc_response,
-    ):
-        # Rename response (returns null)
-        rename_response = build_rpc_response(RPCMethod.RENAME_NOTEBOOK, None)
-        httpx_mock.add_response(content=rename_response.encode())
-        # Get notebook response after rename
-        get_response = build_rpc_response(
-            RPCMethod.GET_NOTEBOOK,
-            [
-                [
-                    "Renamed",
-                    [],
-                    "nb_123",
-                    "📘",
-                    None,
-                    [None, None, None, None, None, [1704067200, 0]],
-                ]
-            ],
-        )
-        httpx_mock.add_response(content=get_response.encode())
-
-        async with NotebookLMClient(auth_tokens) as client:
-            await client.notebooks.rename("nb_123", "Renamed")
-
-        request = httpx_mock.get_requests()[0]
-        assert RPCMethod.RENAME_NOTEBOOK.value in str(request.url)
-        assert "source-path=%2F" in str(request.url)
-
-
 class TestNotebooksAPIAdditional:
     """Additional integration tests for NotebooksAPI."""
-
-    @pytest.mark.asyncio
-    async def test_share_notebook(
-        self,
-        auth_tokens,
-        httpx_mock: HTTPXMock,
-        build_rpc_response,
-    ):
-        """Test sharing a notebook."""
-        response = build_rpc_response(
-            RPCMethod.SHARE_ARTIFACT,
-            None,  # Share returns null, we build the URL
-        )
-        httpx_mock.add_response(content=response.encode())
-
-        async with NotebookLMClient(auth_tokens) as client:
-            result = await client.notebooks.share("nb_123", public=True)
-
-        assert result["public"] is True
-        assert "nb_123" in result["url"]
-        request = httpx_mock.get_request()
-        assert RPCMethod.SHARE_ARTIFACT.value in str(request.url)
 
     @pytest.mark.asyncio
     async def test_get_summary_additional(
@@ -360,23 +253,6 @@ class TestNotebooksAPIAdditional:
             result = await client.notebooks.get_summary("nb_123")
 
         assert "summary" in result.lower()
-
-    @pytest.mark.asyncio
-    async def test_remove_from_recent(
-        self,
-        auth_tokens,
-        httpx_mock: HTTPXMock,
-        build_rpc_response,
-    ):
-        """Test removing notebook from recent list."""
-        response = build_rpc_response("fejl7e", None)  # REMOVE_RECENTLY_VIEWED
-        httpx_mock.add_response(content=response.encode())
-
-        async with NotebookLMClient(auth_tokens) as client:
-            await client.notebooks.remove_from_recent("nb_123")
-
-        request = httpx_mock.get_request()
-        assert "fejl7e" in str(request.url)
 
     @pytest.mark.asyncio
     async def test_get_raw(
@@ -669,65 +545,3 @@ class TestDescribeEdgeCases:
         assert description.summary == "A summary"
         assert description.suggested_topics == []
 
-
-class TestShareEdgeCases:
-    """Tests for share() and get_share_url() branch edge cases."""
-
-    @pytest.mark.asyncio
-    async def test_share_with_artifact_id(
-        self,
-        auth_tokens,
-        httpx_mock: HTTPXMock,
-        build_rpc_response,
-    ):
-        """Line 260: share() public=True with artifact_id builds deep-link URL."""
-        response = build_rpc_response(RPCMethod.SHARE_ARTIFACT, None)
-        httpx_mock.add_response(content=response.encode())
-
-        async with NotebookLMClient(auth_tokens) as client:
-            result = await client.notebooks.share("nb_123", public=True, artifact_id="art_456")
-
-        assert result["public"] is True
-        assert result["url"] == "https://notebooklm.google.com/notebook/nb_123?artifactId=art_456"
-        assert result["artifact_id"] == "art_456"
-
-    @pytest.mark.asyncio
-    async def test_share_public_false_returns_none_url(
-        self,
-        auth_tokens,
-        httpx_mock: HTTPXMock,
-        build_rpc_response,
-    ):
-        """Line 264: share() public=False sets url to None."""
-        response = build_rpc_response(RPCMethod.SHARE_ARTIFACT, None)
-        httpx_mock.add_response(content=response.encode())
-
-        async with NotebookLMClient(auth_tokens) as client:
-            result = await client.notebooks.share("nb_123", public=False)
-
-        assert result["public"] is False
-        assert result["url"] is None
-
-    @pytest.mark.asyncio
-    async def test_get_share_url_without_artifact(
-        self,
-        auth_tokens,
-        httpx_mock: HTTPXMock,
-    ):
-        """Line 288: get_share_url() without artifact_id returns base URL."""
-        async with NotebookLMClient(auth_tokens) as client:
-            url = client.notebooks.get_share_url("nb_123")
-
-        assert url == "https://notebooklm.google.com/notebook/nb_123"
-
-    @pytest.mark.asyncio
-    async def test_get_share_url_with_artifact(
-        self,
-        auth_tokens,
-        httpx_mock: HTTPXMock,
-    ):
-        """Lines 285-287: get_share_url() with artifact_id appends query param."""
-        async with NotebookLMClient(auth_tokens) as client:
-            url = client.notebooks.get_share_url("nb_123", artifact_id="art_789")
-
-        assert url == "https://notebooklm.google.com/notebook/nb_123?artifactId=art_789"

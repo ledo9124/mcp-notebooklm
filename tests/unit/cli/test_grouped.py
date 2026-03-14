@@ -31,9 +31,6 @@ class TestSectionedHelp:
         assert "Notebooks:" in result.output
         assert "list" in result.output
         assert "create" in result.output
-        assert "delete" in result.output
-        assert "rename" in result.output
-        assert "share" in result.output
         assert "summary" in result.output
 
     def test_help_shows_chat_section(self, runner):
@@ -42,8 +39,8 @@ class TestSectionedHelp:
         assert result.exit_code == 0
         assert "Chat:" in result.output
         assert "ask" in result.output
-        assert "configure" in result.output
-        assert "history" in result.output
+        assert "configure" not in result.output
+        assert "history" not in result.output
 
     def test_help_shows_command_groups_section(self, runner):
         """Verify Command Groups section appears with subcommand listings."""
@@ -52,8 +49,8 @@ class TestSectionedHelp:
         assert "Command Groups" in result.output
         # These should show subcommands, not help text
         assert "source" in result.output
-        assert "artifact" in result.output
-        assert "note" in result.output
+        assert "language" not in result.output
+        assert "share" not in result.output
 
     def test_help_shows_artifact_actions_section(self, runner):
         """Verify Artifact Actions section appears with type listings."""
@@ -61,7 +58,14 @@ class TestSectionedHelp:
         assert result.exit_code == 0
         assert "Artifact Actions" in result.output
         assert "generate" in result.output
-        assert "download" in result.output
+        assert "download" not in result.output
+
+    def test_help_shows_other_section_for_auth(self, runner):
+        """Verify auth diagnostics remain discoverable at the root shell."""
+        result = runner.invoke(cli, ["--help"])
+        assert result.exit_code == 0
+        assert "Other:" in result.output
+        assert "auth" in result.output
 
     def test_source_group_shows_subcommands(self, runner):
         """Verify source group subcommands are listed in help."""
@@ -78,7 +82,8 @@ class TestSectionedHelp:
         assert result.exit_code == 0
         # Generate types should appear
         assert "audio" in result.output
-        assert "video" in result.output
+        assert "report" in result.output
+        assert "video" not in result.output
 
     def test_no_commands_section_header(self, runner):
         """Verify the default 'Commands:' section header is replaced by sections."""
@@ -116,6 +121,7 @@ class TestSectionedHelpOrder:
         chat_pos = output.find("Chat:")
         groups_pos = output.find("Command Groups")
         actions_pos = output.find("Artifact Actions")
+        other_pos = output.find("Other:")
 
         # Verify they all exist
         assert session_pos > 0
@@ -123,6 +129,7 @@ class TestSectionedHelpOrder:
         assert chat_pos > 0
         assert groups_pos > 0
         assert actions_pos > 0
+        assert other_pos > 0
 
         # Verify order
-        assert session_pos < notebooks_pos < chat_pos < groups_pos < actions_pos
+        assert session_pos < notebooks_pos < chat_pos < groups_pos < actions_pos < other_pos

@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """OpenAI Agents SDK + notebooklm_mcp integration example.
 
+Legacy/frozen note:
+    This example is retained as historical reference while the mainline branch
+    is focused on the CLI/SDK MVP and does not actively ship notebooklm_mcp.
+
 This example demonstrates MCP interoperability with OpenAI Agents SDK by
 connecting to notebooklm_mcp over stdio and running a basic workflow:
 1. List notebooks

@@ -1,16 +1,13 @@
 """Tests for CLI helper functions."""
 
+import importlib
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from notebooklm import Artifact
 from notebooklm.cli.helpers import (
     clear_context,
-    cli_name_to_artifact_type,
-    # Type display helpers
-    get_artifact_type_display,
     get_auth_tokens,
     # Auth helpers
     get_client,
@@ -31,103 +28,6 @@ from notebooklm.cli.helpers import (
     # Decorator
     with_client,
 )
-from notebooklm.types import ArtifactType
-
-# =============================================================================
-# ARTIFACT TYPE DISPLAY TESTS
-# =============================================================================
-
-
-def _make_artifact(
-    artifact_type: int,
-    variant: int | None = None,
-    title: str = "Test Artifact",
-) -> Artifact:
-    """Helper to create Artifact for testing get_artifact_type_display.
-
-    For report subtypes, pass appropriate title:
-    - "Briefing Doc: ..." for briefing_doc
-    - "Study Guide: ..." for study_guide
-    - "Blog Post: ..." for blog_post
-    """
-    return Artifact(
-        id="test-id",
-        title=title,
-        _artifact_type=artifact_type,
-        _variant=variant,
-        status=3,  # Completed
-    )
-
-
-class TestGetArtifactTypeDisplay:
-    def test_audio_type(self):
-        art = _make_artifact(1)
-        assert get_artifact_type_display(art) == "🎧 Audio"
-
-    def test_report_type(self):
-        art = _make_artifact(2)
-        assert get_artifact_type_display(art) == "📄 Report"
-
-    def test_video_type(self):
-        art = _make_artifact(3)
-        assert get_artifact_type_display(art) == "🎬 Video"
-
-    def test_quiz_type_without_variant(self):
-        art = _make_artifact(4, variant=2)
-        assert get_artifact_type_display(art) == "📝 Quiz"
-
-    def test_quiz_type_with_variant_2(self):
-        art = _make_artifact(4, variant=2)
-        assert get_artifact_type_display(art) == "📝 Quiz"
-
-    def test_flashcards_type_with_variant_1(self):
-        art = _make_artifact(4, variant=1)
-        assert get_artifact_type_display(art) == "🃏 Flashcards"
-
-    def test_mind_map_type(self):
-        art = _make_artifact(5)
-        assert get_artifact_type_display(art) == "🧠 Mind Map"
-
-    def test_infographic_type(self):
-        art = _make_artifact(7)
-        assert get_artifact_type_display(art) == "🖼️ Infographic"
-
-    def test_slide_deck_type(self):
-        art = _make_artifact(8)
-        assert get_artifact_type_display(art) == "📊 Slide Deck"
-
-    def test_data_table_type(self):
-        art = _make_artifact(9)
-        assert get_artifact_type_display(art) == "📈 Data Table"
-
-    @pytest.mark.filterwarnings("ignore::notebooklm.types.UnknownTypeWarning")
-    def test_unknown_type(self):
-        art = _make_artifact(999)
-        # Unknown types return "Unknown (<kind>)" format
-        display = get_artifact_type_display(art)
-        assert "Unknown" in display
-
-    def test_report_subtype_briefing_doc(self):
-        # report_subtype is computed from title
-        art = _make_artifact(2, title="Briefing Doc: Test Topic")
-        assert get_artifact_type_display(art) == "📋 Briefing Doc"
-
-    def test_report_subtype_study_guide(self):
-        art = _make_artifact(2, title="Study Guide: Test Topic")
-        assert get_artifact_type_display(art) == "📚 Study Guide"
-
-    def test_report_subtype_blog_post(self):
-        art = _make_artifact(2, title="Blog Post: Test Topic")
-        assert get_artifact_type_display(art) == "✍️ Blog Post"
-
-    def test_report_subtype_generic(self):
-        art = _make_artifact(2, title="Report: Test Topic")
-        assert get_artifact_type_display(art) == "📄 Report"
-
-    def test_report_subtype_unknown(self):
-        """Unknown report subtype should return default Report"""
-        art = _make_artifact(2, title="Some Random Title")
-        assert get_artifact_type_display(art) == "📄 Report"
 
 
 class TestGetSourceTypeDisplay:
@@ -169,41 +69,17 @@ class TestGetSourceTypeDisplay:
         assert get_source_type_display("future_type") == "❓ future_type"
 
 
-class TestCliNameToArtifactType:
-    def test_audio(self):
-        assert cli_name_to_artifact_type("audio") == ArtifactType.AUDIO
+class TestCliPackageExports:
+    def test_cli_package_no_longer_reexports_helper_barrel(self):
+        cli_package = importlib.import_module("notebooklm.cli")
 
-    def test_video(self):
-        assert cli_name_to_artifact_type("video") == ArtifactType.VIDEO
-
-    def test_slide_deck(self):
-        assert cli_name_to_artifact_type("slide-deck") == ArtifactType.SLIDE_DECK
-
-    def test_quiz(self):
-        assert cli_name_to_artifact_type("quiz") == ArtifactType.QUIZ
-
-    def test_flashcard_alias(self):
-        # CLI uses singular "flashcard", maps to ArtifactType.FLASHCARDS
-        assert cli_name_to_artifact_type("flashcard") == ArtifactType.FLASHCARDS
-
-    def test_mind_map(self):
-        assert cli_name_to_artifact_type("mind-map") == ArtifactType.MIND_MAP
-
-    def test_infographic(self):
-        assert cli_name_to_artifact_type("infographic") == ArtifactType.INFOGRAPHIC
-
-    def test_data_table(self):
-        assert cli_name_to_artifact_type("data-table") == ArtifactType.DATA_TABLE
-
-    def test_report(self):
-        assert cli_name_to_artifact_type("report") == ArtifactType.REPORT
-
-    def test_all_returns_none(self):
-        assert cli_name_to_artifact_type("all") is None
-
-    def test_invalid_type_raises_keyerror(self):
-        with pytest.raises(KeyError):
-            cli_name_to_artifact_type("invalid-type")
+        assert hasattr(cli_package, "generate")
+        assert hasattr(cli_package, "source")
+        assert hasattr(cli_package, "research")
+        assert hasattr(cli_package, "register_session_commands")
+        assert not hasattr(cli_package, "get_language")
+        assert not hasattr(cli_package, "resolve_artifact_id")
+        assert not hasattr(cli_package, "artifact_option")
 
 
 # =============================================================================

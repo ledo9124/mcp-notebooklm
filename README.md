@@ -21,13 +21,11 @@ Unofficial async Python API + CLI for Google NotebookLM.
 
 ## What It Covers
 
-- Notebook lifecycle: create, list, rename, delete, summary
-- Sources: URL, YouTube, file upload, pasted text, Google Drive, source fulltext/guide/freshness
-- Chat: ask, settings parity (style + response length), history, save to notes
+- Notebook bootstrap: auth/session setup, list/create, summary, and context selection
+- Sources: URL, YouTube, file upload, pasted text, and readiness waiting
+- Chat: ask with follow-up continuity and structured citations
 - Research: web/drive research runs, poll/wait, import discovered sources
-- Artifacts: audio, video, slide deck, infographic, report, quiz, flashcards, data table, mind map
-- Sharing: public access, view level, and per-user permissions
-- CLI skill integration: `notebooklm skill install` for Claude Code workflows
+- Artifacts: audio generation plus report generation (`briefing-doc`, `study-guide`)
 
 ## Installation
 
@@ -83,24 +81,18 @@ notebooklm research wait --import-all
 
 # 3) Ask questions
 notebooklm ask "What are the main themes?"
-notebooklm ask "Give me a study plan" --save-as-note --note-title "Study plan"
+notebooklm ask "Give me a study plan" --json
 
-# 4) Generate artifacts (wait for completion before downloading)
+# 4) Generate artifacts (`--wait` prints the ready URL)
 notebooklm generate audio "Focus on key debates" --format deep-dive --wait
-notebooklm generate quiz --difficulty hard --wait
-notebooklm generate slide-deck --wait
-
-# 5) Download artifacts
-notebooklm download audio ./podcast.mp3
-notebooklm download quiz --format markdown ./quiz.md
-notebooklm download slide-deck --format pptx ./slides.pptx
+notebooklm generate report --format study-guide --wait
 ```
 
 ## Python Quickstart
 
 ```python
 import asyncio
-from notebooklm import NotebookLMClient, QuizDifficulty
+from notebooklm import NotebookLMClient
 
 
 async def main():
@@ -117,181 +109,29 @@ async def main():
         answer = await client.chat.ask(nb.id, "Summarize the core argument")
         print(answer.answer)
 
-        # Generate + download quiz
-        quiz = await client.artifacts.generate_quiz(nb.id, difficulty=QuizDifficulty.HARD)
-        await client.artifacts.wait_for_completion(nb.id, quiz.task_id)
-        await client.artifacts.download_quiz(
-            nb.id,
-            "quiz.md",
-            artifact_id=quiz.task_id,
-            output_format="markdown",
-        )
+        # Generate a study guide and print the completed NotebookLM URL
+        guide = await client.artifacts.generate_study_guide(nb.id)
+        final = await client.artifacts.wait_for_completion(nb.id, guide.task_id)
+        print(final.url)
 
 
 asyncio.run(main())
 ```
 
-## MCP Server
+## Legacy/Frozen MCP Surface
 
-`notebooklm-py` also ships an MCP server (`notebooklm_mcp`) so agent hosts can call NotebookLM via standardized tools/resources.
+`src/notebooklm_mcp/**` and `src/notebooklm_mcp/ba/**` remain in the repository as legacy/frozen reference code while the mainline branch is being pruned down to a supportable CLI/SDK MVP.
 
-Why use MCP here:
-- Agent-native tool calling for notebooks, sources, chat, settings, and workflow macros
-- Two-tier surface: generic NotebookLM parity tools plus workflow-native `ba.*` tools for deterministic BA implementation-pack runs
-- Built-in resources and prompt templates for common NotebookLM workflows
-- Structured output (`structuredContent`) with text JSON fallback for compatibility
-- Optional destructive-tool safety gate (`NOTEBOOKLM_MCP_ENABLE_DESTRUCTIVE_TOOLS=1` + `confirm=true`)
+Current branch policy:
+- the active product contract is the `notebooklm` CLI plus the Python SDK under `src/notebooklm/**`
+- the historical MCP server and BA runner are not part of the active MVP promise on this branch
+- packaging, default test expectations, and README positioning now treat MCP/BA as archived reference material rather than current product surface
 
-### Quick start (Linux / macOS)
+For the repo-local boundary definition and re-entry criteria, see [MCP/BA Boundary Inventory](docs/mvp-pruning-mcp-ba-boundary.md).
 
-```bash
-# Install MCP runtime support
-pip install "notebooklm-py[mcp,browser]"
-playwright install chromium
-
-# Authenticate NotebookLM
-notebooklm login
-
-# Run MCP server (stdio transport — default)
-notebooklm-mcp serve
-
-# Run with HTTP transport (recommended for remote/agent use)
-notebooklm-mcp serve --http
-```
-
-### Quick start (Windows PowerShell)
-
-```powershell
-# Install MCP runtime support
-pip install "notebooklm-py[mcp,browser]"
-playwright install chromium
-
-# Authenticate NotebookLM
-notebooklm login
-
-# Run MCP server (stdio transport — default)
-notebooklm-mcp serve
-
-# Run with HTTP transport
-notebooklm-mcp serve --http
-```
-
-### Transport modes
-
-| Transport | Start command | Agent connection |
-| --- | --- | --- |
-| `stdio` (default) | `notebooklm-mcp serve` | Local subprocess (no URL) |
-| `streamable-http` (recommended HTTP) | `notebooklm-mcp serve --http` | `http://127.0.0.1:8764/mcp` |
-| `sse` (legacy HTTP) | `notebooklm-mcp serve --sse` | `http://127.0.0.1:8765/sse` |
-
-> **Backward compatibility:** `python -m notebooklm_mcp` and the legacy `--transport` flag still work.
-
-### HTTP configuration
-
-- Defaults: `NOTEBOOKLM_MCP_HOST=127.0.0.1`, `NOTEBOOKLM_MCP_PORT=8764`
-- Environment variables: `NOTEBOOKLM_MCP_HOST`, `NOTEBOOKLM_MCP_PORT`
-- CLI overrides: `--host`, `--port` (higher precedence than env vars)
-- Effective precedence: CLI flags > env vars > built-in defaults
-
-### Examples
-
-```bash
-# Start HTTP on custom port
-notebooklm-mcp serve --http --port 9000
-
-# Start on all interfaces (explicit risk acceptance)
-notebooklm-mcp serve --http --host 0.0.0.0
-
-# Enable verbose debug logging
-notebooklm-mcp serve --http -v
-```
-
-### BA Runner Quickstart
-
-The MCP surface now exposes two layers:
-
-- Generic parity tools under `notebooklm_*` for notebooks, sources, notes, chat, settings, artifacts, and research.
-- Workflow-native BA tools under `ba.*` for evidence-first implementation-pack generation.
-
-Current public BA tools:
-
-- `ba.start_run`
-- `ba.register_sources`
-- `ba.status`
-- `ba.validate_bundle`
-- `ba.run_pipeline`
-- `ba.rerun_impacted`
-
-Most automation should start with `ba.run_pipeline`; the other `ba.*` tools exist for stepwise control, inspection, standalone validation reruns, and targeted incremental reruns after source changes.
-
-Minimal `ba.run_pipeline` example:
-
-```json
-{
-  "name": "ba.run_pipeline",
-  "arguments": {
-    "notebook_id": "nb-123",
-    "feature_key": "customer-onboarding",
-    "mode": "balanced",
-    "output_dir": "/absolute/path/to/workspace",
-    "sources": [
-      {
-        "source_key": "requirements",
-        "title": "Customer onboarding requirements",
-        "path_or_url_or_text": "# Customer onboarding\nUsers can create an account with email, full name, and plan selection.",
-        "source_type": "PRIMARY_REQUIREMENT",
-        "priority": "REQUIRED",
-        "content_kind": "INLINE_TEXT"
-      },
-      {
-        "source_key": "contract",
-        "title": "Customer onboarding contract",
-        "path_or_url_or_text": "POST /api/customers creates an account and returns customerId plus status.",
-        "source_type": "PRIMARY_CONTRACT",
-        "priority": "HIGH",
-        "content_kind": "INLINE_TEXT"
-      }
-    ]
-  }
-}
-```
-
-Notes:
-
-- `ba.run_pipeline` persists the bundle under `<output_dir>/docs/features/<feature_key>/`.
-- `ba.status` exposes the persisted run state, next step, and resumability hints.
-- `ba.validate_bundle` reruns deterministic QA checks after manual edits or external mutations.
-- `ba.rerun_impacted` reuses the stored baseline to update only impacted screens when source changes stay narrow enough.
-- For a runnable stdio MCP example, see [BA Runner MCP Flow](docs/examples/ba-runner-mcp-flow.py).
-- For request/response details on every BA tool, see [MCP Tool Reference](docs/mcp-tools.md#ba-runner).
-
-### Logging
-
-- **Default:** clean, minimal output — only startup banner and errors
-- **Verbose (`-v`):** DEBUG level with timestamps and logger names
-- `NOTEBOOKLM_MCP_LOG_LEVEL` environment variable is also supported
-- All logs go to **stderr** (safe for stdio transport)
-
-Security note:
-
-- The default bind is loopback (`127.0.0.1`) to keep the MCP endpoint local-only.
-- Binding to `0.0.0.0` exposes NotebookLM operations to your network. Do this only when intentionally deploying behind trusted network controls.
-
-Claude Desktop HTTP config example (`claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "notebooklm-http": {
-      "url": "http://127.0.0.1:8764/mcp"
-    }
-  }
-}
-```
-
-For Claude Desktop setup and troubleshooting, see:
-- [Claude Desktop MCP Setup](docs/mcp-claude-desktop.md)
+Legacy reference docs retained in-tree:
 - [MCP Tool Reference](docs/mcp-tools.md)
+- [Claude Desktop MCP Setup](docs/mcp-claude-desktop.md)
 - [BA Runner MCP Flow](docs/examples/ba-runner-mcp-flow.py)
 - [OpenAI Agents SDK MCP Example](docs/examples/openai-agents-example.py)
 
@@ -300,11 +140,10 @@ For multi-agent contributor coordination in this repo (session sync, inbox check
 ## Useful CLI Commands
 
 - `notebooklm --help`
+- `notebooklm auth check --help`
 - `notebooklm source --help`
 - `notebooklm generate --help`
-- `notebooklm download --help`
-- `notebooklm language list`
-- `notebooklm language set <code>`
+- `notebooklm research --help`
 - `notebooklm status --paths`
 
 ## Configuration
@@ -324,9 +163,12 @@ See [Configuration](docs/configuration.md) for details and precedence rules.
 - [Troubleshooting](docs/troubleshooting.md)
 - [API Stability](docs/stability.md)
 - [Development Guide](docs/development.md)
+- [RPC Development](docs/rpc-development.md)
+- [RPC Reference](docs/rpc-reference.md)
+
+Legacy/frozen MCP references:
+- [MCP/BA Boundary Inventory](docs/mvp-pruning-mcp-ba-boundary.md)
 - [MCP Tool Reference](docs/mcp-tools.md)
 - [Claude Desktop MCP Setup](docs/mcp-claude-desktop.md)
 - [BA Runner MCP Flow](docs/examples/ba-runner-mcp-flow.py)
 - [OpenAI Agents SDK MCP Example](docs/examples/openai-agents-example.py)
-- [RPC Development](docs/rpc-development.md)
-- [RPC Reference](docs/rpc-reference.md)

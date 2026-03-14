@@ -12,7 +12,7 @@ license = { text = "MIT" }
 authors = [
   { name = "Teng Lin" }
 ]
-keywords = ["notebooklm", "google", "api", "cli", "mcp"]
+keywords = ["notebooklm", "google", "api", "cli"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Environment :: Console",
@@ -35,15 +35,9 @@ dependencies = [
 browser = [
   "playwright>=1.49,<2",
 ]
-mcp = [
-  "mcp>=1.0,<2",
-  "pydantic>=2,<3",
-]
 dev = [
   "mypy>=1.10,<2",
-  "mcp>=1.0,<2",
   "playwright>=1.49,<2",
-  "pydantic>=2,<3",
   "pytest>=9,<10",
   "pytest-asyncio>=1,<2",
   "pytest-cov>=6,<7",
@@ -55,9 +49,7 @@ dev = [
 ]
 all = [
   "mypy>=1.10,<2",
-  "mcp>=1.0,<2",
   "playwright>=1.49,<2",
-  "pydantic>=2,<3",
   "pytest>=9,<10",
   "pytest-asyncio>=1,<2",
   "pytest-cov>=6,<7",
@@ -75,7 +67,6 @@ Issues = "https://github.com/teng-lin/notebooklm-py/issues"
 
 [project.scripts]
 notebooklm = "notebooklm.notebooklm_cli:main"
-notebooklm-mcp = "notebooklm_mcp:main"
 
 [tool.setuptools]
 include-package-data = true
@@ -83,10 +74,8 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["notebooklm*", "notebooklm_mcp*"]
-
-[tool.setuptools.package-data]
-"notebooklm.data" = ["SKILL.md"]
+include = ["notebooklm*"]
+exclude = ["notebooklm_mcp*"]
 
 [tool.pytest.ini_options]
 markers = [

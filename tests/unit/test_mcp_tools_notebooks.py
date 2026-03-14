@@ -6,7 +6,7 @@ import asyncio
 import json
 from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -222,6 +222,62 @@ async def test_notebooks_delete_success_when_enabled() -> None:
 
     client.notebooks.delete.assert_awaited_once_with("nb-99")
     assert result["structuredContent"] == {"success": True}  # type: ignore[index]
+
+
+@pytest.mark.asyncio
+async def test_notebooks_delete_falls_back_to_legacy_rpc_helper() -> None:
+    client = SimpleNamespace(
+        _core=object(),
+        notebooks=SimpleNamespace(),
+    )
+    app = _make_app(client)
+    server = _FakeServer(MCPConfig(enable_destructive_tools=True))
+    handlers = register_notebook_tools(server)
+
+    with patch(
+        "notebooklm_mcp.tools.notebooks._delete_notebook_rpc",
+        new=AsyncMock(return_value=True),
+    ) as delete_rpc:
+        result = await handlers["notebooklm_notebooks_delete"](
+            _make_ctx(app, server),
+            notebook_id="nb-legacy",
+            confirm=True,
+        )
+
+    delete_rpc.assert_awaited_once_with(client._core, "nb-legacy")
+    assert result["structuredContent"] == {"success": True}  # type: ignore[index]
+
+
+@pytest.mark.asyncio
+async def test_notebooks_rename_falls_back_to_legacy_rpc_helper() -> None:
+    client = SimpleNamespace(
+        _core=object(),
+        notebooks=SimpleNamespace(),
+    )
+    app = _make_app(client)
+    server = _FakeServer()
+    handlers = register_notebook_tools(server)
+    renamed = Notebook(id="nb-legacy", title="Renamed")
+
+    with patch(
+        "notebooklm_mcp.tools.notebooks._rename_notebook_rpc",
+        new=AsyncMock(return_value=renamed),
+    ) as rename_rpc:
+        result = await handlers["notebooklm_notebooks_rename"](
+            _make_ctx(app, server),
+            notebook_id="nb-legacy",
+            title="Renamed",
+        )
+
+    rename_rpc.assert_awaited_once_with(client._core, "nb-legacy", "Renamed")
+    assert result["structuredContent"] == {  # type: ignore[index]
+        "success": True,
+        "notebook": {
+            "notebook_id": "nb-legacy",
+            "title": "Renamed",
+            "source_count": 0,
+        },
+    }
 
 
 @pytest.mark.asyncio

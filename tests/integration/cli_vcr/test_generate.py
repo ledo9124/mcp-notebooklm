@@ -16,33 +16,14 @@ class TestGenerateCommands:
     """Test 'notebooklm generate' commands."""
 
     @pytest.mark.parametrize(
-        ("command", "cassette", "extra_args"),
+        ("cassette", "extra_args"),
         [
-            ("quiz", "artifacts_generate_quiz.yaml", []),
-            ("flashcards", "artifacts_generate_flashcards.yaml", []),
-            ("report", "artifacts_generate_report.yaml", ["--format", "briefing-doc"]),
-            ("report", "artifacts_generate_study_guide.yaml", ["--format", "study-guide"]),
+            ("artifacts_generate_report.yaml", ["--format", "briefing-doc"]),
+            ("artifacts_generate_study_guide.yaml", ["--format", "study-guide"]),
         ],
     )
-    def test_generate(self, runner, mock_auth_for_vcr, mock_context, command, cassette, extra_args):
-        """Generate commands work with real client."""
+    def test_generate_report(self, runner, mock_auth_for_vcr, mock_context, cassette, extra_args):
+        """Retained generate report commands work with the real client."""
         with notebooklm_vcr.use_cassette(cassette):
-            result = runner.invoke(cli, ["generate", command, *extra_args])
-            assert_command_success(result)
-
-    def test_revise_slide(self, runner, mock_auth_for_vcr, mock_context):
-        """revise-slide command sends REVISE_SLIDE RPC with correct args."""
-        with notebooklm_vcr.use_cassette("artifacts_revise_slide.yaml"):
-            result = runner.invoke(
-                cli,
-                [
-                    "generate",
-                    "revise-slide",
-                    "Move the title up",
-                    "--artifact",
-                    "artifact_456",
-                    "--slide",
-                    "0",
-                ],
-            )
+            result = runner.invoke(cli, ["generate", "report", *extra_args])
             assert_command_success(result)

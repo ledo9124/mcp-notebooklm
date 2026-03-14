@@ -22,34 +22,35 @@ Example:
 import logging
 import re
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from ._artifacts import ArtifactsAPI
 from ._chat import ChatAPI
 from ._core import DEFAULT_TIMEOUT, ClientCore
 from ._notebooks import NotebooksAPI
-from ._notes import NotesAPI
 from ._research import ResearchAPI
-from ._settings import SettingsAPI
-from ._sharing import SharingAPI
 from ._sources import SourcesAPI
 from ._url_utils import is_google_auth_redirect
 from .auth import AuthTokens
 
 logger = logging.getLogger(__name__)
 
+if TYPE_CHECKING:
+    from ._notes import NotesAPI
+    from ._settings import SettingsAPI
+    from ._sharing import SharingAPI
+
 
 class NotebookLMClient:
     """Async client for NotebookLM API.
 
     Provides access to NotebookLM functionality through namespaced sub-clients:
-    - notebooks: Create, list, delete, rename notebooks
+    - notebooks: Create, list, inspect, and summarize notebooks
     - sources: Add, list, delete sources (URLs, text, files, YouTube, Drive)
     - artifacts: Generate and manage AI content (audio, video, reports, etc.)
     - chat: Ask questions and manage conversations
     - research: Start research sessions and import sources
-    - notes: Create and manage user notes
-    - settings: Manage user settings (output language, etc.)
-    - sharing: Manage notebook sharing and permissions
+    - notes/settings/sharing: Deferred legacy domains, loaded lazily when accessed
 
     Usage:
         # Create from saved authentication
@@ -67,9 +68,9 @@ class NotebookLMClient:
         artifacts: ArtifactsAPI for AI-generated content
         chat: ChatAPI for conversations
         research: ResearchAPI for web/drive research
-        notes: NotesAPI for user notes
-        settings: SettingsAPI for user settings
-        sharing: SharingAPI for notebook sharing
+        notes: NotesAPI lazily loaded for deferred note workflows
+        settings: SettingsAPI lazily loaded for deferred settings workflows
+        sharing: SharingAPI lazily loaded for deferred sharing workflows
         auth: The AuthTokens used for authentication
     """
 
@@ -84,21 +85,65 @@ class NotebookLMClient:
         # Note: refresh_auth calls update_auth_headers internally
         self._core = ClientCore(auth, timeout=timeout, refresh_callback=self.refresh_auth)
 
-        # Initialize sub-client APIs
-        # Note: notes must be initialized before artifacts (artifacts uses notes API)
+        # Initialize the active MVP sub-clients eagerly.
         self.notebooks = NotebooksAPI(self._core)
         self.sources = SourcesAPI(self._core)
-        self.notes = NotesAPI(self._core)
-        self.artifacts = ArtifactsAPI(self._core, notes_api=self.notes)
+        self.artifacts = ArtifactsAPI(self._core)
         self.chat = ChatAPI(self._core)
         self.research = ResearchAPI(self._core)
-        self.settings = SettingsAPI(self._core)
-        self.sharing = SharingAPI(self._core)
+
+        # Deferred domains still exist for compatibility with non-MVP callers,
+        # but they should not be constructed during mainline client startup.
+        self._notes: "NotesAPI | None" = None
+        self._settings: "SettingsAPI | None" = None
+        self._sharing: "SharingAPI | None" = None
 
     @property
     def auth(self) -> AuthTokens:
         """Get the authentication tokens."""
         return self._core.auth
+
+    @property
+    def notes(self) -> "NotesAPI":
+        """Lazily construct the deferred notes domain when accessed."""
+        if self._notes is None:
+            from ._notes import NotesAPI
+
+            self._notes = NotesAPI(self._core)
+        return self._notes
+
+    @notes.setter
+    def notes(self, value: "NotesAPI") -> None:
+        """Allow tests and deferred callers to override the notes domain."""
+        self._notes = value
+
+    @property
+    def settings(self) -> "SettingsAPI":
+        """Lazily construct the deferred settings domain when accessed."""
+        if self._settings is None:
+            from ._settings import SettingsAPI
+
+            self._settings = SettingsAPI(self._core)
+        return self._settings
+
+    @settings.setter
+    def settings(self, value: "SettingsAPI") -> None:
+        """Allow tests and deferred callers to override the settings domain."""
+        self._settings = value
+
+    @property
+    def sharing(self) -> "SharingAPI":
+        """Lazily construct the deferred sharing domain when accessed."""
+        if self._sharing is None:
+            from ._sharing import SharingAPI
+
+            self._sharing = SharingAPI(self._core)
+        return self._sharing
+
+    @sharing.setter
+    def sharing(self, value: "SharingAPI") -> None:
+        """Allow tests and deferred callers to override the sharing domain."""
+        self._sharing = value
 
     async def __aenter__(self) -> "NotebookLMClient":
         """Open the client connection."""

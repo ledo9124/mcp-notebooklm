@@ -4,22 +4,21 @@ Command structure:
   notebooklm login                    # Authenticate
   notebooklm use <notebook_id>        # Set current notebook context
   notebooklm status                   # Show current context
+  notebooklm auth check               # Validate auth and diagnose issues
   notebooklm list                     # List notebooks
   notebooklm create <title>           # Create notebook
+  notebooklm summary                  # Summarize the current notebook
   notebooklm ask <question>           # Ask the current notebook a question
 
-  notebooklm source <command>         # Source operations
-  notebooklm artifact <command>       # Artifact management
-  notebooklm generate <type>          # Generate content
-  notebooklm download <type>          # Download content
-  notebooklm note <command>           # Note operations
-  notebooklm research <command>       # Research status/wait
+  notebooklm source <command>         # Source add/list/wait operations
+  notebooklm generate <type>          # Generate audio or report artifacts
+  notebooklm research <command>       # Monitor research started via source add-research
 
 LLM-friendly design:
   # Set context once, then use simple commands
   notebooklm use nb123
-  notebooklm generate video "a funny explainer for kids"
   notebooklm generate audio "deep dive focusing on chapter 3"
+  notebooklm generate report --format briefing-doc
   notebooklm ask "what are the key themes?"
 """
 
@@ -61,18 +60,11 @@ from .auth import DEFAULT_STORAGE_PATH
 
 # Import command groups from cli package
 from .cli import (
-    artifact,
-    download,
     generate,
-    language,
-    note,
     register_chat_commands,
     register_notebook_commands,
-    # Register functions for top-level commands
     register_session_commands,
     research,
-    share,
-    skill,
     source,
 )
 from .cli.grouped import SectionedGroup
@@ -134,14 +126,8 @@ register_chat_commands(cli)
 
 # Register command groups (subcommand style)
 cli.add_command(source)
-cli.add_command(artifact)
 cli.add_command(generate)
-cli.add_command(download)
-cli.add_command(note)
-cli.add_command(share)
-cli.add_command(skill)
 cli.add_command(research)
-cli.add_command(language)
 
 
 # =============================================================================

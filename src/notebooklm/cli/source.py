@@ -3,15 +3,8 @@
 Commands:
     list         List sources in a notebook
     add          Add a source (url, text, file, youtube)
-    get          Get source details
-    fulltext     Get full indexed text content of a source
-    guide        Get AI-generated source summary and keywords
-    stale        Check if a URL/Drive source needs refresh
-    delete       Delete a source
-    rename       Rename a source
-    refresh      Refresh a URL/Drive source
-    add-drive    Add a Google Drive document
     add-research Search web/drive and add sources from results
+    wait         Wait for a source to finish processing
 """
 
 import asyncio
@@ -43,17 +36,12 @@ def source():
     Commands:
       list         List sources in a notebook
       add          Add a source (url, text, file, youtube)
-      get          Get source details
-      fulltext     Get full indexed text content
-      guide        Get AI-generated source summary and keywords
-      stale        Check if source needs refresh
-      delete       Delete a source
-      rename       Rename a source
-      refresh      Refresh a URL/Drive source
+      add-research Search web/drive and add sources from results
+      wait         Wait for a source to finish processing
 
     \b
     Partial ID Support:
-      SOURCE_ID arguments support partial matching. Instead of typing the full
+      `source wait` accepts partial SOURCE_ID values. Instead of typing the full
       UUID, you can use a prefix (e.g., 'abc' matches 'abc123def456...').
     """
     pass
@@ -154,7 +142,7 @@ def source_add(ctx, content, notebook_id, source_type, title, mime_type, json_ou
     \b
     Examples:
       source add https://example.com              # URL
-      source add ./doc.md                         # File content as text
+      source add ./doc.md                         # Local file upload
       source add https://youtube.com/...          # YouTube video
       source add "My notes here"                  # Inline text
       source add "My notes" --title "Research"   # Text with custom title
@@ -209,189 +197,6 @@ def source_add(ctx, content, notebook_id, source_type, title, mime_type, json_ou
     if not json_output:
         with console.status(f"Adding {detected_type} source..."):
             return _run()
-    return _run()
-
-
-@source.command("get")
-@click.argument("source_id")
-@click.option(
-    "-n",
-    "--notebook",
-    "notebook_id",
-    default=None,
-    help="Notebook ID (uses current if not set)",
-)
-@with_client
-def source_get(ctx, source_id, notebook_id, client_auth):
-    """Get source details.
-
-    SOURCE_ID can be a full UUID or a partial prefix (e.g., 'abc' matches 'abc123...').
-    """
-    nb_id = require_notebook(notebook_id)
-
-    async def _run():
-        async with NotebookLMClient(client_auth) as client:
-            nb_id_resolved = await resolve_notebook_id(client, nb_id)
-            # Resolve partial ID to full ID
-            resolved_id = await resolve_source_id(client, nb_id_resolved, source_id)
-            src = await client.sources.get(nb_id_resolved, resolved_id)
-            if src:
-                console.print(f"[bold cyan]Source:[/bold cyan] {src.id}")
-                console.print(f"[bold]Title:[/bold] {src.title}")
-                console.print(f"[bold]Type:[/bold] {get_source_type_display(src.kind)}")
-                if src.url:
-                    console.print(f"[bold]URL:[/bold] {src.url}")
-                if src.created_at:
-                    console.print(
-                        f"[bold]Created:[/bold] {src.created_at.strftime('%Y-%m-%d %H:%M')}"
-                    )
-            else:
-                console.print("[yellow]Source not found[/yellow]")
-
-    return _run()
-
-
-@source.command("delete")
-@click.argument("source_id")
-@click.option(
-    "-n",
-    "--notebook",
-    "notebook_id",
-    default=None,
-    help="Notebook ID (uses current if not set)",
-)
-@click.option("--yes", "-y", is_flag=True, help="Skip confirmation")
-@with_client
-def source_delete(ctx, source_id, notebook_id, yes, client_auth):
-    """Delete a source.
-
-    SOURCE_ID can be a full UUID or a partial prefix (e.g., 'abc' matches 'abc123...').
-    """
-    nb_id = require_notebook(notebook_id)
-
-    async def _run():
-        async with NotebookLMClient(client_auth) as client:
-            nb_id_resolved = await resolve_notebook_id(client, nb_id)
-            # Resolve partial ID to full ID
-            resolved_id = await resolve_source_id(client, nb_id_resolved, source_id)
-
-            if not yes and not click.confirm(f"Delete source {resolved_id}?"):
-                return
-
-            success = await client.sources.delete(nb_id_resolved, resolved_id)
-            if success:
-                console.print(f"[green]Deleted source:[/green] {resolved_id}")
-            else:
-                console.print("[yellow]Delete may have failed[/yellow]")
-
-    return _run()
-
-
-@source.command("rename")
-@click.argument("source_id")
-@click.argument("new_title")
-@click.option(
-    "-n",
-    "--notebook",
-    "notebook_id",
-    default=None,
-    help="Notebook ID (uses current if not set)",
-)
-@with_client
-def source_rename(ctx, source_id, new_title, notebook_id, client_auth):
-    """Rename a source.
-
-    SOURCE_ID can be a full UUID or a partial prefix (e.g., 'abc' matches 'abc123...').
-    """
-    nb_id = require_notebook(notebook_id)
-
-    async def _run():
-        async with NotebookLMClient(client_auth) as client:
-            nb_id_resolved = await resolve_notebook_id(client, nb_id)
-            # Resolve partial ID to full ID
-            resolved_id = await resolve_source_id(client, nb_id_resolved, source_id)
-            src = await client.sources.rename(nb_id_resolved, resolved_id, new_title)
-            console.print(f"[green]Renamed source:[/green] {src.id}")
-            console.print(f"[bold]New title:[/bold] {src.title}")
-
-    return _run()
-
-
-@source.command("refresh")
-@click.argument("source_id")
-@click.option(
-    "-n",
-    "--notebook",
-    "notebook_id",
-    default=None,
-    help="Notebook ID (uses current if not set)",
-)
-@with_client
-def source_refresh(ctx, source_id, notebook_id, client_auth):
-    """Refresh a URL/Drive source.
-
-    SOURCE_ID can be a full UUID or a partial prefix (e.g., 'abc' matches 'abc123...').
-    """
-    nb_id = require_notebook(notebook_id)
-
-    async def _run():
-        async with NotebookLMClient(client_auth) as client:
-            nb_id_resolved = await resolve_notebook_id(client, nb_id)
-            # Resolve partial ID to full ID
-            resolved_id = await resolve_source_id(client, nb_id_resolved, source_id)
-            with console.status("Refreshing source..."):
-                src = await client.sources.refresh(nb_id_resolved, resolved_id)
-
-            if src and src is not True:
-                console.print(f"[green]Source refreshed:[/green] {src.id}")
-                console.print(f"[bold]Title:[/bold] {src.title}")
-            elif src is True:
-                console.print(f"[green]Source refreshed:[/green] {resolved_id}")
-            else:
-                console.print("[yellow]Refresh returned no result[/yellow]")
-
-    return _run()
-
-
-@source.command("add-drive")
-@click.argument("file_id")
-@click.argument("title")
-@click.option(
-    "-n",
-    "--notebook",
-    "notebook_id",
-    default=None,
-    help="Notebook ID (uses current if not set)",
-)
-@click.option(
-    "--mime-type",
-    type=click.Choice(["google-doc", "google-slides", "google-sheets", "pdf"]),
-    default="google-doc",
-    help="Document type (default: google-doc)",
-)
-@with_client
-def source_add_drive(ctx, file_id, title, notebook_id, mime_type, client_auth):
-    """Add a Google Drive document as a source."""
-    from ..rpc import DriveMimeType
-
-    nb_id = require_notebook(notebook_id)
-    mime_map = {
-        "google-doc": DriveMimeType.GOOGLE_DOC.value,
-        "google-slides": DriveMimeType.GOOGLE_SLIDES.value,
-        "google-sheets": DriveMimeType.GOOGLE_SHEETS.value,
-        "pdf": DriveMimeType.PDF.value,
-    }
-    mime = mime_map[mime_type]
-
-    async def _run():
-        async with NotebookLMClient(client_auth) as client:
-            nb_id_resolved = await resolve_notebook_id(client, nb_id)
-            with console.status("Adding Drive source..."):
-                src = await client.sources.add_drive(nb_id_resolved, file_id, title, mime)
-
-            console.print(f"[green]Added Drive source:[/green] {src.id}")
-            console.print(f"[bold]Title:[/bold] {src.title}")
-
     return _run()
 
 
@@ -483,175 +288,6 @@ def source_add_research(
                     console.print(f"[green]Imported {len(imported)} sources[/green]")
             else:
                 console.print(f"[yellow]Status: {status.get('status', 'unknown')}[/yellow]")
-
-    return _run()
-
-
-@source.command("fulltext")
-@click.argument("source_id")
-@click.option(
-    "-n",
-    "--notebook",
-    "notebook_id",
-    default=None,
-    help="Notebook ID (uses current if not set)",
-)
-@click.option("--json", "json_output", is_flag=True, help="Output as JSON")
-@click.option("--output", "-o", type=click.Path(), help="Write content to file")
-@with_client
-def source_fulltext(ctx, source_id, notebook_id, json_output, output, client_auth):
-    """Get full indexed text content of a source.
-
-    Retrieves the complete text content as indexed by NotebookLM. This is the
-    actual text that NotebookLM uses when answering questions about this source.
-
-    SOURCE_ID can be a full UUID or a partial prefix (e.g., 'abc' matches 'abc123...').
-
-    \b
-    Examples:
-      source fulltext abc123                    # Show fulltext in terminal
-      source fulltext abc123 --json             # Output as JSON
-      source fulltext abc123 -o content.txt     # Save to file
-    """
-    nb_id = require_notebook(notebook_id)
-
-    async def _run():
-        async with NotebookLMClient(client_auth) as client:
-            nb_id_resolved = await resolve_notebook_id(client, nb_id)
-            resolved_id = await resolve_source_id(client, nb_id_resolved, source_id)
-
-            with console.status("Fetching fulltext content..."):
-                fulltext = await client.sources.get_fulltext(nb_id_resolved, resolved_id)
-
-            if json_output:
-                from dataclasses import asdict
-
-                json_output_response(asdict(fulltext))
-                return
-
-            if output:
-                Path(output).write_text(fulltext.content, encoding="utf-8")
-                console.print(f"[green]Saved {fulltext.char_count} chars to {output}[/green]")
-                return
-
-            console.print(f"[bold cyan]Source:[/bold cyan] {fulltext.source_id}")
-            console.print(f"[bold]Title:[/bold] {fulltext.title}")
-            console.print(f"[bold]Characters:[/bold] {fulltext.char_count:,}")
-            if fulltext.url:
-                console.print(f"[bold]URL:[/bold] {fulltext.url}")
-            console.print()
-            console.print("[bold cyan]Content:[/bold cyan]")
-            # Show first 2000 chars with truncation notice
-            if len(fulltext.content) > 2000:
-                console.print(fulltext.content[:2000])
-                console.print(
-                    f"\n[dim]... ({fulltext.char_count - 2000:,} more chars, use -o to save full content)[/dim]"
-                )
-            else:
-                console.print(fulltext.content)
-
-    return _run()
-
-
-@source.command("guide")
-@click.argument("source_id")
-@click.option(
-    "-n",
-    "--notebook",
-    "notebook_id",
-    default=None,
-    help="Notebook ID (uses current if not set)",
-)
-@click.option("--json", "json_output", is_flag=True, help="Output as JSON")
-@with_client
-def source_guide(ctx, source_id, notebook_id, json_output, client_auth):
-    """Get AI-generated source summary and keywords.
-
-    Shows the "Source Guide" - an AI-generated overview of what a source contains,
-    including a summary with highlighted keywords and topic tags.
-
-    SOURCE_ID can be a full UUID or a partial prefix (e.g., 'abc' matches 'abc123...').
-
-    \b
-    Examples:
-      source guide abc123                    # Get guide for source
-      source guide abc123 --json             # Output as JSON
-    """
-    nb_id = require_notebook(notebook_id)
-
-    async def _run():
-        async with NotebookLMClient(client_auth) as client:
-            nb_id_resolved = await resolve_notebook_id(client, nb_id)
-            resolved_id = await resolve_source_id(client, nb_id_resolved, source_id)
-
-            with console.status("Generating source guide..."):
-                guide = await client.sources.get_guide(nb_id_resolved, resolved_id)
-
-            if json_output:
-                data = {
-                    "source_id": resolved_id,
-                    "summary": guide.get("summary", ""),
-                    "keywords": guide.get("keywords", []),
-                }
-                json_output_response(data)
-                return
-
-            summary = guide.get("summary", "").strip()
-            keywords = guide.get("keywords", [])
-
-            if not summary and not keywords:
-                console.print("[yellow]No guide available for this source[/yellow]")
-                return
-
-            if summary:
-                console.print("[bold cyan]Summary:[/bold cyan]")
-                console.print(summary)
-                console.print()
-
-            if keywords:
-                console.print("[bold cyan]Keywords:[/bold cyan]")
-                console.print(", ".join(keywords))
-
-    return _run()
-
-
-@source.command("stale")
-@click.argument("source_id")
-@click.option(
-    "-n",
-    "--notebook",
-    "notebook_id",
-    default=None,
-    help="Notebook ID (uses current if not set)",
-)
-@with_client
-def source_stale(ctx, source_id, notebook_id, client_auth):
-    """Check if a URL/Drive source needs refresh.
-
-    Returns exit code 0 if stale (needs refresh), 1 if fresh.
-    This enables shell scripting: if notebooklm source stale ID; then refresh; fi
-
-    SOURCE_ID can be a full UUID or a partial prefix (e.g., 'abc' matches 'abc123...').
-
-    \b
-    Examples:
-      source stale abc123              # Check if stale
-    """
-    nb_id = require_notebook(notebook_id)
-
-    async def _run():
-        async with NotebookLMClient(client_auth) as client:
-            nb_id_resolved = await resolve_notebook_id(client, nb_id)
-            resolved_id = await resolve_source_id(client, nb_id_resolved, source_id)
-            is_fresh = await client.sources.check_freshness(nb_id_resolved, resolved_id)
-
-            if is_fresh:
-                console.print("[green]✓ Source is fresh[/green]")
-                raise SystemExit(1)  # Not stale
-            else:
-                console.print("[yellow]⚠ Source is stale[/yellow]")
-                console.print("[dim]Run 'source refresh' to update[/dim]")
-                raise SystemExit(0)  # Is stale
 
     return _run()
 

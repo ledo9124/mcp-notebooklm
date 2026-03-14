@@ -147,7 +147,7 @@ async with await NotebookLMClient.from_storage() as client:
 
 ### NotebookLMClient
 
-Main client class providing access to all APIs.
+Main client class providing access to the retained MVP APIs plus a few deferred compatibility domains.
 
 ```python
 class NotebookLMClient:
@@ -156,14 +156,18 @@ class NotebookLMClient:
     artifacts: ArtifactsAPI    # AI-generated content
     chat: ChatAPI              # Conversations
     research: ResearchAPI      # Web/Drive research
-    notes: NotesAPI            # User notes
-    sharing: SharingAPI        # Notebook sharing
+    notes: NotesAPI            # Lazy deferred compatibility surface
+    settings: SettingsAPI      # Lazy deferred compatibility surface
+    sharing: SharingAPI        # Lazy deferred compatibility surface
 
     @classmethod
     async def from_storage(cls, path: str = None) -> "NotebookLMClient"
 
     async def refresh_auth(self) -> AuthTokens
 ```
+
+The constructor eagerly builds only `notebooks`, `sources`, `artifacts`, `chat`, and `research`.
+`notes`, `settings`, and `sharing` are cached lazy properties kept for deferred compatibility callers.
 
 ---
 
@@ -174,13 +178,11 @@ class NotebookLMClient:
 | `list()` | - | `list[Notebook]` | List all notebooks |
 | `create(title)` | `title: str` | `Notebook` | Create a notebook |
 | `get(notebook_id)` | `notebook_id: str` | `Notebook` | Get notebook details |
-| `delete(notebook_id)` | `notebook_id: str` | `bool` | Delete a notebook |
-| `rename(notebook_id, new_title)` | `notebook_id: str, new_title: str` | `Notebook` | Rename a notebook |
 | `get_description(notebook_id)` | `notebook_id: str` | `NotebookDescription` | Get AI summary and topics |
 | `get_summary(notebook_id)` | `notebook_id: str` | `str` | Get raw summary text |
-| `share(notebook_id, settings=None)` | `notebook_id: str, settings: dict` | `Any` | Share notebook with settings |
-| `remove_from_recent(notebook_id)` | `notebook_id: str` | `None` | Remove from recently viewed |
 | `get_raw(notebook_id)` | `notebook_id: str` | `Any` | Get raw API response data |
+
+The notebook surface is intentionally minimal in the MVP: create a notebook, inspect it, and pull summary-oriented context from it.
 
 **Example:**
 ```python
@@ -189,9 +191,10 @@ notebooks = await client.notebooks.list()
 for nb in notebooks:
     print(f"{nb.id}: {nb.title} ({nb.sources_count} sources)")
 
-# Create and rename
+# Create and inspect
 nb = await client.notebooks.create("Draft")
-nb = await client.notebooks.rename(nb.id, "Final Version")
+current = await client.notebooks.get(nb.id)
+print(current.title)
 
 # Get AI-generated description (parsed with suggested topics)
 desc = await client.notebooks.get_description(nb.id)
@@ -202,9 +205,6 @@ for topic in desc.suggested_topics:
 # Get raw summary text (unparsed)
 summary = await client.notebooks.get_summary(nb.id)
 print(summary)
-
-# Share a notebook
-await client.notebooks.share(nb.id, settings={"public": True})
 ```
 
 **get_summary vs get_description:**
@@ -266,6 +266,11 @@ print(f"Keywords: {guide['keywords']}")
 
 ### ArtifactsAPI (`client.artifacts`)
 
+The active branch supports audio generation, report generation (`briefing-doc` and
+`study-guide`), and status polling/waiting. Historical helpers for video, quiz,
+flashcards, slide decks, infographics, downloads, and export remain in the SDK
+only as compatibility stubs and now raise `ValidationError` on this branch.
+
 #### Core Methods
 
 | Method | Parameters | Returns | Description |
@@ -276,142 +281,30 @@ print(f"Keywords: {guide['keywords']}")
 | `rename(notebook_id, artifact_id, new_title)` | `str, str, str` | `None` | Rename artifact |
 | `poll_status(notebook_id, task_id)` | `str, str` | `GenerationStatus` | Check generation status |
 | `wait_for_completion(notebook_id, task_id, ...)` | `str, str, ...` | `GenerationStatus` | Wait for generation |
+| `suggest_reports(notebook_id)` | `str` | `list[ReportSuggestion]` | Get AI-suggested report templates |
 
 #### Type-Specific List Methods
 
 | Method | Parameters | Returns | Description |
 |--------|------------|---------|-------------|
 | `list_audio(notebook_id)` | `str` | `list[Artifact]` | List audio overview artifacts |
-| `list_video(notebook_id)` | `str` | `list[Artifact]` | List video overview artifacts |
-| `list_reports(notebook_id)` | `str` | `list[Artifact]` | List report artifacts (Briefing Doc, Study Guide, Blog Post) |
-| `list_quizzes(notebook_id)` | `str` | `list[Artifact]` | List quiz artifacts |
-| `list_flashcards(notebook_id)` | `str` | `list[Artifact]` | List flashcard artifacts |
-| `list_infographics(notebook_id)` | `str` | `list[Artifact]` | List infographic artifacts |
-| `list_slide_decks(notebook_id)` | `str` | `list[Artifact]` | List slide deck artifacts |
-| `list_data_tables(notebook_id)` | `str` | `list[Artifact]` | List data table artifacts |
+| `list_reports(notebook_id)` | `str` | `list[Artifact]` | List report artifacts |
 
 #### Generation Methods
 
 | Method | Parameters | Returns | Description |
 |--------|------------|---------|-------------|
 | `generate_audio(...)` | See below | `GenerationStatus` | Generate podcast |
-| `generate_video(...)` | See below | `GenerationStatus` | Generate video |
-| `generate_report(...)` | See below | `GenerationStatus` | Generate report |
-| `generate_quiz(...)` | See below | `GenerationStatus` | Generate quiz |
-| `generate_flashcards(...)` | See below | `GenerationStatus` | Generate flashcards |
-| `generate_slide_deck(...)` | See below | `GenerationStatus` | Generate slide deck |
-| `generate_infographic(...)` | See below | `GenerationStatus` | Generate infographic |
-| `generate_data_table(...)` | See below | `GenerationStatus` | Generate data table |
-| `generate_mind_map(...)` | See below | `dict` | Generate mind map |
+| `generate_report(...)` | See below | `GenerationStatus` | Generate a briefing doc or study guide |
+| `generate_study_guide(...)` | See below | `GenerationStatus` | Convenience wrapper for `generate_report(..., study-guide)` |
 
-#### Downloading Artifacts
-
-| Method | Parameters | Returns | Description |
-|--------|------------|---------|-------------|
-| `download_audio(notebook_id, output_path, artifact_id=None)` | `str, str, str` | `str` | Download audio to file (MP4/MP3) |
-| `download_video(notebook_id, output_path, artifact_id=None)` | `str, str, str` | `str` | Download video to file (MP4) |
-| `download_infographic(notebook_id, output_path, artifact_id=None)` | `str, str, str` | `str` | Download infographic to file (PNG) |
-| `download_slide_deck(notebook_id, output_path, artifact_id=None)` | `str, str, str` | `str` | Download slide deck as PDF |
-| `download_report(notebook_id, output_path, artifact_id=None)` | `str, str, str` | `str` | Download report as Markdown (.md) |
-| `download_mind_map(notebook_id, output_path, artifact_id=None)` | `str, str, str` | `str` | Download mind map as JSON (.json) |
-| `download_data_table(notebook_id, output_path, artifact_id=None)` | `str, str, str` | `str` | Download data table as CSV (.csv) |
-| `download_quiz(notebook_id, output_path, artifact_id=None, output_format="json")` | `str, str, str, str` | `str` | Download quiz (json/markdown/html) |
-| `download_flashcards(notebook_id, output_path, artifact_id=None, output_format="json")` | `str, str, str, str` | `str` | Download flashcards (json/markdown/html) |
-
-**Download Methods:**
+**Current retrieval path:**
 
 ```python
-# Download the most recent completed audio overview
-path = await client.artifacts.download_audio(nb_id, "podcast.mp4")
-
-# Download a specific audio artifact by ID
-path = await client.artifacts.download_audio(nb_id, "podcast.mp4", artifact_id="abc123")
-
-# Download video overview
-path = await client.artifacts.download_video(nb_id, "video.mp4")
-
-# Download infographic
-path = await client.artifacts.download_infographic(nb_id, "infographic.png")
-
-# Download slide deck as PDF
-path = await client.artifacts.download_slide_deck(nb_id, "./slides.pdf")
-# Returns: "./slides.pdf"
-
-# Download report as Markdown
-path = await client.artifacts.download_report(nb_id, "./study-guide.md")
-# Extracts markdown content from Briefing Doc, Study Guide, Blog Post, etc.
-
-# Download mind map as JSON
-path = await client.artifacts.download_mind_map(nb_id, "./concept-map.json")
-# JSON structure: {"name": "Topic", "children": [{"name": "Subtopic", ...}]}
-
-# Download data table as CSV
-path = await client.artifacts.download_data_table(nb_id, "./data.csv")
-# CSV uses UTF-8 with BOM encoding for Excel compatibility
-
-# Download quiz as JSON (default)
-path = await client.artifacts.download_quiz(nb_id, "quiz.json")
-
-# Download quiz as markdown with answers marked
-path = await client.artifacts.download_quiz(nb_id, "quiz.md", output_format="markdown")
-
-# Download flashcards as JSON (normalizes f/b to front/back)
-path = await client.artifacts.download_flashcards(nb_id, "cards.json")
-
-# Download flashcards as markdown
-path = await client.artifacts.download_flashcards(nb_id, "cards.md", output_format="markdown")
-```
-
-**Notes:**
-- If `artifact_id` is not specified, downloads the first completed artifact of that type
-- Raises `ValueError` if no completed artifact is found
-- Some URLs require browser-based download (handled automatically)
-- Report downloads extract the markdown content from the artifact
-- Mind map downloads return a JSON tree structure with `name` and `children` fields
-- Data table downloads parse the complex rich-text format into CSV rows/columns
-- Quiz/flashcard formats: `json` (structured), `markdown` (readable), `html` (raw)
-
-#### Export Methods
-
-Export artifacts to Google Docs or Google Sheets.
-
-| Method | Parameters | Returns | Description |
-|--------|------------|---------|-------------|
-| `export_report(notebook_id, artifact_id, title, export_type)` | `str, str, str, ExportType` | `Any` | Export report to Google Docs/Sheets |
-| `export_data_table(notebook_id, artifact_id, title)` | `str, str, str` | `Any` | Export data table to Google Sheets |
-| `export(notebook_id, artifact_id, content, title, export_type)` | `str, str, str, str, ExportType` | `Any` | Generic export to Docs/Sheets |
-
-**Export Types (ExportType enum):**
-- `ExportType.DOCS` (1): Export to Google Docs
-- `ExportType.SHEETS` (2): Export to Google Sheets
-
-```python
-from notebooklm import ExportType
-
-# Export a report to Google Docs
-result = await client.artifacts.export_report(
-    nb_id,
-    artifact_id="report_123",
-    title="My Briefing Doc",
-    export_type=ExportType.DOCS
-)
-# result contains the Google Docs URL
-
-# Export a data table to Google Sheets
-result = await client.artifacts.export_data_table(
-    nb_id,
-    artifact_id="table_456",
-    title="Research Data"
-)
-# result contains the Google Sheets URL
-
-# Generic export (e.g., export any artifact to Sheets)
-result = await client.artifacts.export(
-    nb_id,
-    artifact_id="artifact_789",
-    title="Exported Content",
-    export_type=ExportType.SHEETS
-)
+# Start generation and poll until NotebookLM reports completion
+status = await client.artifacts.generate_audio(nb_id)
+final = await client.artifacts.wait_for_completion(nb_id, status.task_id)
+print(final.url)
 ```
 
 **Generation Methods:**
@@ -427,35 +320,17 @@ status = await client.artifacts.generate_audio(
     language="en"
 )
 
-# Video
-status = await client.artifacts.generate_video(
-    notebook_id,
-    source_ids=None,
-    instructions="...",
-    video_format=VideoFormat.EXPLAINER,  # EXPLAINER, BRIEF
-    video_style=VideoStyle.AUTO_SELECT,  # AUTO_SELECT, CLASSIC, WHITEBOARD, KAWAII, ANIME, etc.
-    language="en"
-)
-
-# Report
+# Report (briefing doc or study guide)
 status = await client.artifacts.generate_report(
     notebook_id,
+    report_format=ReportFormat.STUDY_GUIDE,
     source_ids=None,
-    title="...",
-    description="...",
-    format=ReportFormat.STUDY_GUIDE,  # BRIEFING_DOC, STUDY_GUIDE, BLOG_POST, CUSTOM
-    language="en"
+    language="en",
+    extra_instructions="Target audience: beginners",
 )
 
-# Quiz
-status = await client.artifacts.generate_quiz(
-    notebook_id,
-    source_ids=None,
-    instructions="...",
-    quantity=QuizQuantity.STANDARD,    # FEWER, STANDARD
-    difficulty=QuizDifficulty.MEDIUM,  # EASY, MEDIUM, HARD
-    language="en"
-)
+# Convenience wrapper for study guides
+status = await client.artifacts.generate_study_guide(notebook_id)
 ```
 
 **Waiting for Completion:**
@@ -468,12 +343,12 @@ status = await client.artifacts.generate_audio(nb_id)
 final = await client.artifacts.wait_for_completion(
     nb_id,
     status.task_id,
-    timeout=300,      # Max wait time in seconds
-    poll_interval=5   # Seconds between polls
+    timeout=300,         # Max wait time in seconds
+    initial_interval=5,  # Starting poll interval
 )
 
 if final.is_complete:
-    print(f"Download URL: {final.url}")
+    print(f"NotebookLM URL: {final.url}")
 else:
     print(f"Failed or timed out: {final.status}")
 ```
@@ -485,38 +360,12 @@ else:
 | Method | Parameters | Returns | Description |
 |--------|------------|---------|-------------|
 | `ask(notebook_id, question, ...)` | `str, str, ...` | `AskResult` | Ask a question |
-| `try_get_settings(notebook_id)` | `str` | `ChatSettings \| None` | Best-effort settings read (returns `None` on parse failure) |
-| `get_settings(notebook_id, strict=True)` | `str, bool` | `ChatSettings` | Read current chat settings |
-| `set_settings(notebook_id, settings)` | `str, ChatSettings` | `None` | Absolute set (style + length together) |
-| `update_settings(notebook_id, ...)` | `str, ...` | `ChatSettings` | Safe PATCH read-merge-write |
-| `reset_settings(notebook_id)` | `str` | `None` | Reset to `default/default` |
-| `configure(notebook_id, ...)` | `str, ...` | `None` | Legacy absolute-set API |
-| `set_mode(notebook_id, mode)` | `str, ChatMode` | `None` | Legacy predefined mode helper |
-| `get_history(notebook_id, limit=100, conversation_id=None)` | `str, int, str` | `list[tuple[str, str]]` | Get Q&A pairs from most recent conversation |
 | `get_conversation_id(notebook_id)` | `str` | `str \| None` | Get most recent conversation ID from server |
 
-`ChatSettings` models two independent axes:
-- `goal`: `ChatGoal.DEFAULT | ChatGoal.LEARNING_GUIDE | ChatGoal.CUSTOM`
-- `response_length`: `ChatResponseLength.SHORTER | DEFAULT | LONGER`
-
-For `ChatGoal.CUSTOM`, `custom_prompt` is required and validated.
-
-**Method signatures (settings lifecycle):**
-```python
-from notebooklm import UNSET, ChatGoal, ChatResponseLength, ChatSettings
-
-await client.chat.try_get_settings(notebook_id)
-await client.chat.get_settings(notebook_id, strict=True)
-await client.chat.set_settings(notebook_id, ChatSettings(...))
-await client.chat.update_settings(
-    notebook_id,
-    goal=UNSET,
-    response_length=ChatResponseLength.LONGER,
-    custom_prompt=UNSET,
-    strict=True,
-)
-await client.chat.reset_settings(notebook_id)
-```
+The active pruning branch keeps `client.chat` focused on asking questions and
+resuming the most recent conversation when appropriate. Public chat settings
+parity and history helpers are no longer part of the supported ChatAPI surface
+here.
 
 **ask() signature:**
 ```python
@@ -551,46 +400,12 @@ result = await client.chat.ask(
     "Can you elaborate on the first point?",
     conversation_id=result.conversation_id
 )
-
-# 1) Read current settings
-current = await client.chat.get_settings(nb_id)
-print(current.goal, current.response_length, current.source)
-
-# 2) Change only length (safe PATCH; style preserved)
-updated = await client.chat.update_settings(
-    nb_id,
-    response_length=ChatResponseLength.LONGER,
-)
-
-# 3) Set custom instructions + explicit length (absolute set)
-await client.chat.set_settings(
-    nb_id,
-    ChatSettings(
-        goal=ChatGoal.CUSTOM,
-        response_length=ChatResponseLength.LONGER,
-        custom_prompt="Act as a patient tutor. Explain steps before conclusions.",
-        source="default",
-    ),
-)
-
-# 4) Reset back to NotebookLM defaults
-await client.chat.reset_settings(nb_id)
-
-# Legacy absolute-set API (still supported)
-await client.chat.configure(
-    nb_id,
-    goal=ChatGoal.LEARNING_GUIDE,
-    response_length=ChatResponseLength.DEFAULT,
-    custom_prompt=None,
-)
 ```
 
-**When to use which API:**
-- Use `update_settings(...)` for one-axis changes (avoids accidental clobber).
-- Use `set_settings(...)` when you intentionally want to set both style and length.
-- Use `get_settings(strict=False)` for display/reporting paths where graceful fallback is preferred.
-- Use `UNSET` in `update_settings(...)` to leave a field unchanged (instead of overwriting with `None`).
-- Keep `configure(...)` / `set_mode(...)` only for backward compatibility.
+**Continuity notes:**
+- Pass `conversation_id=` explicitly when you want to continue a known thread.
+- If you omit `conversation_id`, the CLI can still resume the most recent server-side conversation via `get_conversation_id(...)`.
+- Structured references are returned on `AskResult.references`, including source IDs and citation numbers when NotebookLM provides them.
 
 ---
 
@@ -657,7 +472,11 @@ print(f"Imported {len(imported)} sources")
 
 ---
 
-### NotesAPI (`client.notes`)
+### NotesAPI (`client.notes`) [Deferred Compatibility]
+
+This SDK surface is still available for compatibility, but note CRUD is outside the
+current mainline MVP. The standalone `notebooklm note ...` CLI group and chat-side
+note-saving flows are intentionally removed from the active CLI surface.
 
 | Method | Parameters | Returns | Description |
 |--------|------------|---------|-------------|
@@ -701,7 +520,10 @@ await client.notes.delete_mind_map(nb_id, mind_map_id)
 
 ---
 
-### SettingsAPI (`client.settings`)
+### SettingsAPI (`client.settings`) [Deferred Compatibility]
+
+This lazy SDK surface is still available for compatibility, but the standalone
+root `notebooklm language ...` command group is no longer part of the active CLI MVP.
 
 | Method | Parameters | Returns | Description |
 |--------|------------|---------|-------------|
@@ -722,11 +544,14 @@ print(f"Language set to: {result}")
 **Important:** Language is a **GLOBAL setting** that affects all notebooks in your account. Supported languages include:
 - `en` (English), `ja` (日本語), `zh_Hans` (中文简体), `zh_Hant` (中文繁體)
 - `ko` (한국어), `es` (Español), `fr` (Français), `de` (Deutsch), `pt_BR` (Português)
-- And [over 70 other languages](cli-reference.md#language-commands-notebooklm-language-cmd)
+- And many other codes defined in `src/notebooklm/cli/language.py`
 
 ---
 
-### SharingAPI (`client.sharing`)
+### SharingAPI (`client.sharing`) [Deferred Compatibility]
+
+This lazy SDK surface remains available for compatibility, but notebook sharing is
+outside the current mainline CLI MVP on this branch.
 
 | Method | Parameters | Returns | Description |
 |--------|------------|---------|-------------|
@@ -985,6 +810,11 @@ print(f"Content type: {fulltext.kind}")  # "pdf", "web_page", etc.
 
 ## Enums
 
+These enums remain importable for compatibility. On the active MVP branch, the
+supported artifact-generation path uses `AudioFormat`, `AudioLength`, and
+`ReportFormat` with `BRIEFING_DOC` or `STUDY_GUIDE`. The other artifact/export/
+sharing enums mainly serve deferred compatibility surfaces.
+
 ### Audio Generation
 
 ```python
@@ -1039,8 +869,8 @@ class QuizDifficulty(Enum):
 class ReportFormat(Enum):
     BRIEFING_DOC = 1
     STUDY_GUIDE = 2
-    BLOG_POST = 3
-    CUSTOM = 4
+    BLOG_POST = 3  # Legacy enum value; not supported on the current branch
+    CUSTOM = 4     # Legacy enum value; not supported on the current branch
 ```
 
 ### Infographics
@@ -1191,8 +1021,8 @@ class ChatMode(Enum):
 ```
 
 **ChatGoal vs ChatMode:**
-- `ChatGoal` is an RPC-level enum used with `client.chat.configure()` for low-level API configuration
-- `ChatMode` is a service-level enum providing predefined configurations for common use cases
+- `ChatGoal` is the low-level enum historically used by the removed chat-settings parity surface
+- `ChatMode` is a service-level enum retained for deferred compatibility and frozen/legacy integrations
 
 ---
 

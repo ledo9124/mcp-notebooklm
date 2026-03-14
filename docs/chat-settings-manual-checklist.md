@@ -1,6 +1,12 @@
 # Chat Settings Manual Verification Checklist
 
+Status: legacy/frozen manual checklist.
+
 Manual checklist for validating chat settings parity between `notebooklm-py` and the NotebookLM Web UI.
+
+This document is retained as historical reference only. The standalone
+`notebooklm configure ...` surface it validates is no longer part of the active
+mainline CLI MVP on this branch.
 
 ## Preconditions
 

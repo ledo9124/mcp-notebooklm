@@ -8,10 +8,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from click.testing import CliRunner
 
-from notebooklm.exceptions import ChatSettingsUpdateError
 from notebooklm.notebooklm_cli import cli
-from notebooklm.rpc import ChatGoal, ChatResponseLength
-from notebooklm.types import UNSET, AskResult, ChatMode, ChatSettings, Notebook
+from notebooklm.types import AskResult, Notebook
 
 from .conftest import create_mock_client, patch_client_for_module, patch_main_cli_client
 
@@ -151,134 +149,6 @@ class TestNotebookCreate:
 
 
 # =============================================================================
-# NOTEBOOK DELETE TESTS
-# =============================================================================
-
-
-class TestNotebookDelete:
-    def test_notebook_delete(self, runner, mock_auth):
-        with patch_main_cli_client() as mock_client_cls:
-            mock_client = create_mock_client()
-            # Mock list for partial ID resolution (returns the notebook to be deleted)
-            mock_client.notebooks.list = AsyncMock(
-                return_value=[
-                    Notebook(
-                        id="nb_to_delete",
-                        title="Test Notebook",
-                        created_at=datetime(2024, 1, 1),
-                        is_owner=True,
-                    ),
-                ]
-            )
-            mock_client.notebooks.delete = AsyncMock(return_value=True)
-            mock_client_cls.return_value = mock_client
-
-            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf", "session")
-                result = runner.invoke(cli, ["delete", "-n", "nb_to_delete", "-y"])
-
-            assert result.exit_code == 0
-            assert "Deleted notebook" in result.output
-            mock_client.notebooks.delete.assert_called_once_with("nb_to_delete")
-
-    def test_notebook_delete_clears_context_if_current(self, runner, mock_auth, tmp_path):
-        context_file = tmp_path / "context.json"
-        context_file.write_text('{"notebook_id": "nb_to_delete"}')
-
-        with patch_main_cli_client() as mock_client_cls:
-            mock_client = create_mock_client()
-            # Mock list for partial ID resolution
-            mock_client.notebooks.list = AsyncMock(
-                return_value=[
-                    Notebook(
-                        id="nb_to_delete",
-                        title="Test Notebook",
-                        created_at=datetime(2024, 1, 1),
-                        is_owner=True,
-                    ),
-                ]
-            )
-            mock_client.notebooks.delete = AsyncMock(return_value=True)
-            mock_client_cls.return_value = mock_client
-
-            with (
-                patch("notebooklm.cli.helpers.get_context_path", return_value=context_file),
-                patch("notebooklm.cli.notebook.get_current_notebook", return_value="nb_to_delete"),
-                patch("notebooklm.cli.notebook.clear_context"),
-                patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch,
-            ):
-                mock_fetch.return_value = ("csrf", "session")
-                result = runner.invoke(cli, ["delete", "-n", "nb_to_delete", "-y"])
-
-            assert result.exit_code == 0
-            assert "Cleared current notebook context" in result.output
-
-    def test_notebook_delete_failure(self, runner, mock_auth):
-        with patch_main_cli_client() as mock_client_cls:
-            mock_client = create_mock_client()
-            # Mock list for partial ID resolution
-            mock_client.notebooks.list = AsyncMock(
-                return_value=[
-                    Notebook(
-                        id="nb_123",
-                        title="Test Notebook",
-                        created_at=datetime(2024, 1, 1),
-                        is_owner=True,
-                    ),
-                ]
-            )
-            mock_client.notebooks.delete = AsyncMock(return_value=False)
-            mock_client_cls.return_value = mock_client
-
-            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf", "session")
-                result = runner.invoke(cli, ["delete", "-n", "nb_123", "-y"])
-
-            assert result.exit_code == 0
-            assert "Delete may have failed" in result.output
-
-
-# =============================================================================
-# NOTEBOOK RENAME TESTS
-# =============================================================================
-
-
-class TestNotebookRename:
-    def test_notebook_rename(self, runner, mock_auth):
-        with patch_main_cli_client() as mock_client_cls:
-            mock_client = create_mock_client()
-            # Mock list for partial ID resolution
-            mock_client.notebooks.list = AsyncMock(
-                return_value=[
-                    Notebook(
-                        id="nb_123",
-                        title="Test Notebook",
-                        created_at=datetime(2024, 1, 1),
-                        is_owner=True,
-                    ),
-                ]
-            )
-            mock_client.notebooks.rename = AsyncMock(return_value=None)
-            mock_client_cls.return_value = mock_client
-
-            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf", "session")
-                result = runner.invoke(cli, ["rename", "New Title", "-n", "nb_123"])
-
-            assert result.exit_code == 0
-            assert "Renamed notebook" in result.output
-            mock_client.notebooks.rename.assert_called_once_with("nb_123", "New Title")
-
-
-# =============================================================================
-# NOTEBOOK SHARE TESTS (moved to share command group)
-# =============================================================================
-
-# Note: Share functionality has moved to 'share' command group.
-# Tests are now in tests/unit/cli/test_share.py
-
-
-# =============================================================================
 # NOTEBOOK SUMMARY TESTS
 # =============================================================================
 
@@ -367,59 +237,6 @@ class TestNotebookSummary:
             assert "No summary available" in result.output
 
 
-# =============================================================================
-# NOTEBOOK HISTORY TESTS
-# =============================================================================
-
-
-class TestNotebookHistory:
-    def test_notebook_history(self, runner, mock_auth):
-        with patch_main_cli_client() as mock_client_cls:
-            mock_client = create_mock_client()
-            mock_client.chat.get_history = AsyncMock(return_value=[("Q1?", "A1"), ("Q2?", "A2")])
-            mock_client.chat.get_conversation_id = AsyncMock(return_value="conv_001")
-            mock_client_cls.return_value = mock_client
-
-            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf", "session")
-                result = runner.invoke(cli, ["history", "-n", "nb_123"])
-
-            assert result.exit_code == 0
-            assert "Conversation History" in result.output
-
-    def test_notebook_history_empty(self, runner, mock_auth):
-        with patch_main_cli_client() as mock_client_cls:
-            mock_client = create_mock_client()
-            mock_client.chat.get_conversation_id = AsyncMock(return_value=None)
-            mock_client.chat.get_history = AsyncMock(return_value=[])
-            mock_client_cls.return_value = mock_client
-
-            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf", "session")
-                result = runner.invoke(cli, ["history", "-n", "nb_123"])
-
-            assert result.exit_code == 0
-            assert "No conversation history" in result.output
-
-    def test_notebook_history_clear_cache(self, runner, mock_auth):
-        with patch_main_cli_client() as mock_client_cls:
-            mock_client = create_mock_client()
-            mock_client.chat.clear_cache = MagicMock(return_value=True)
-            mock_client_cls.return_value = mock_client
-
-            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf", "session")
-                result = runner.invoke(cli, ["history", "--clear"])
-
-            assert result.exit_code == 0
-            assert "cache cleared" in result.output
-
-
-# =============================================================================
-# NOTEBOOK ASK TESTS
-# =============================================================================
-
-
 class TestNotebookAsk:
     def test_notebook_ask(self, runner, mock_auth):
         with patch_main_cli_client() as mock_client_cls:
@@ -467,205 +284,6 @@ class TestNotebookAsk:
 
             assert result.exit_code == 0
             assert "Follow-up answer" in result.output
-
-
-# =============================================================================
-# NOTEBOOK CONFIGURE TESTS
-# =============================================================================
-
-
-class TestNotebookConfigure:
-    def test_notebook_configure_mode(self, runner, mock_auth):
-        with patch_main_cli_client() as mock_client_cls:
-            mock_client = create_mock_client()
-            mock_client.chat.set_mode = AsyncMock(return_value=None)
-            mock_client_cls.return_value = mock_client
-
-            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf", "session")
-                result = runner.invoke(
-                    cli, ["configure", "-n", "nb_123", "--mode", "learning-guide"]
-                )
-
-            assert result.exit_code == 0
-            assert "Chat mode set to: learning-guide" in result.output
-            mock_client.chat.set_mode.assert_awaited_once_with(
-                "nb_123",
-                ChatMode.LEARNING_GUIDE,
-            )
-
-    def test_notebook_configure_persona_uses_patch(self, runner, mock_auth):
-        with patch_main_cli_client() as mock_client_cls:
-            mock_client = create_mock_client()
-            mock_client.chat.update_settings = AsyncMock(
-                return_value=ChatSettings(
-                    goal=ChatGoal.CUSTOM,
-                    response_length=ChatResponseLength.DEFAULT,
-                    custom_prompt="Act as a tutor",
-                    source="server",
-                )
-            )
-            mock_client_cls.return_value = mock_client
-
-            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf", "session")
-                result = runner.invoke(
-                    cli, ["configure", "-n", "nb_123", "--persona", "Act as a tutor"]
-                )
-
-            assert result.exit_code == 0
-            assert "Chat settings updated" in result.output
-            mock_client.chat.update_settings.assert_awaited_once_with(
-                "nb_123",
-                goal=ChatGoal.CUSTOM,
-                response_length=UNSET,
-                custom_prompt="Act as a tutor",
-                strict=True,
-            )
-
-    def test_notebook_configure_response_length_uses_patch(self, runner, mock_auth):
-        with patch_main_cli_client() as mock_client_cls:
-            mock_client = create_mock_client()
-            mock_client.chat.update_settings = AsyncMock(
-                return_value=ChatSettings(
-                    goal=ChatGoal.DEFAULT,
-                    response_length=ChatResponseLength.LONGER,
-                    custom_prompt=None,
-                    source="server",
-                )
-            )
-            mock_client_cls.return_value = mock_client
-
-            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf", "session")
-                result = runner.invoke(
-                    cli, ["configure", "-n", "nb_123", "--response-length", "longer"]
-                )
-
-            assert result.exit_code == 0
-            assert "length=longer" in result.output
-            mock_client.chat.update_settings.assert_awaited_once_with(
-                "nb_123",
-                goal=UNSET,
-                response_length=ChatResponseLength.LONGER,
-                custom_prompt=UNSET,
-                strict=True,
-            )
-
-    def test_notebook_configure_mode_plus_length_does_not_early_return(self, runner, mock_auth):
-        with patch_main_cli_client() as mock_client_cls:
-            mock_client = create_mock_client()
-            mock_client.chat.set_mode = AsyncMock(return_value=None)
-            mock_client.chat.set_settings = AsyncMock(return_value=None)
-            mock_client_cls.return_value = mock_client
-
-            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf", "session")
-                result = runner.invoke(
-                    cli,
-                    [
-                        "configure",
-                        "-n",
-                        "nb_123",
-                        "--mode",
-                        "learning-guide",
-                        "--response-length",
-                        "longer",
-                    ],
-                )
-
-            assert result.exit_code == 0
-            mock_client.chat.set_mode.assert_not_called()
-            mock_client.chat.set_settings.assert_awaited_once_with(
-                "nb_123",
-                ChatSettings(
-                    goal=ChatGoal.LEARNING_GUIDE,
-                    response_length=ChatResponseLength.LONGER,
-                    custom_prompt=None,
-                    source="default",
-                ),
-            )
-
-    def test_notebook_configure_show_json(self, runner, mock_auth):
-        with patch_main_cli_client() as mock_client_cls:
-            mock_client = create_mock_client()
-            mock_client.chat.get_settings = AsyncMock(
-                return_value=ChatSettings(
-                    goal=ChatGoal.CUSTOM,
-                    response_length=ChatResponseLength.DEFAULT,
-                    custom_prompt="x" * 80,
-                    source="server",
-                )
-            )
-            mock_client_cls.return_value = mock_client
-
-            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf", "session")
-                result = runner.invoke(cli, ["configure", "-n", "nb_123", "--show", "--json"])
-
-            assert result.exit_code == 0
-            payload = json.loads(result.output)
-            assert payload["notebook_id"] == "nb_123"
-            assert payload["goal"] == "custom"
-            assert payload["response_length"] == "default"
-            assert payload["custom_prompt_len"] == 80
-            assert payload["source"] == "server"
-            assert payload["custom_prompt"].endswith("...")
-            assert len(payload["custom_prompt"]) <= 63
-
-    def test_notebook_configure_reset(self, runner, mock_auth):
-        with patch_main_cli_client() as mock_client_cls:
-            mock_client = create_mock_client()
-            mock_client.chat.reset_settings = AsyncMock(return_value=None)
-            mock_client_cls.return_value = mock_client
-
-            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf", "session")
-                result = runner.invoke(cli, ["configure", "-n", "nb_123", "--reset"])
-
-            assert result.exit_code == 0
-            mock_client.chat.reset_settings.assert_awaited_once_with("nb_123")
-
-    def test_notebook_configure_rejects_style_prompt_conflict(self, runner, mock_auth):
-        with patch_main_cli_client() as mock_client_cls:
-            mock_client = create_mock_client()
-            mock_client_cls.return_value = mock_client
-
-            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf", "session")
-                result = runner.invoke(
-                    cli,
-                    [
-                        "configure",
-                        "-n",
-                        "nb_123",
-                        "--style",
-                        "default",
-                        "--custom-instructions",
-                        "Do not use this",
-                    ],
-                )
-
-            assert result.exit_code != 0
-            assert "can only be used with --style custom" in result.output
-
-    def test_notebook_configure_force_requires_full_axes(self, runner, mock_auth):
-        with patch_main_cli_client() as mock_client_cls:
-            mock_client = create_mock_client()
-            mock_client.chat.update_settings = AsyncMock(
-                side_effect=ChatSettingsUpdateError("Cannot safely PATCH")
-            )
-            mock_client_cls.return_value = mock_client
-
-            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf", "session")
-                result = runner.invoke(
-                    cli,
-                    ["configure", "-n", "nb_123", "--length", "longer", "--force"],
-                )
-
-            assert result.exit_code != 0
-            assert "--force requires explicit style and length" in result.output
 
 
 # =============================================================================
@@ -743,20 +361,21 @@ class TestNotebookCommandsExist:
         assert result.exit_code == 0
         assert "TITLE" in result.output
 
-    def test_delete_command_exists(self, runner):
-        result = runner.invoke(cli, ["delete", "--help"])
+    def test_summary_command_exists(self, runner):
+        result = runner.invoke(cli, ["summary", "--help"])
         assert result.exit_code == 0
-        assert "Delete a notebook" in result.output
-
-    def test_rename_command_exists(self, runner):
-        result = runner.invoke(cli, ["rename", "--help"])
-        assert result.exit_code == 0
-        assert "Rename a notebook" in result.output
+        assert "Get notebook summary" in result.output
 
     def test_ask_command_exists(self, runner):
         result = runner.invoke(cli, ["ask", "--help"])
         assert result.exit_code == 0
         assert "QUESTION" in result.output
+
+    @pytest.mark.parametrize("command", ["configure", "history"])
+    def test_removed_chat_commands_are_unavailable(self, runner, command):
+        result = runner.invoke(cli, [command, "--help"])
+        assert result.exit_code == 2
+        assert "No such command" in result.output
 
     def test_top_level_help_shows_notebook_commands(self, runner):
         result = runner.invoke(cli, ["--help"])
@@ -764,8 +383,10 @@ class TestNotebookCommandsExist:
         # Verify notebook commands are at top level
         assert "list" in result.output
         assert "create" in result.output
-        assert "delete" in result.output
+        assert "summary" in result.output
         assert "ask" in result.output
+        assert "configure" not in result.output
+        assert "history" not in result.output
         # Verify there's no "notebook" command in the Commands section
         # (it should only appear as part of "NotebookLM" in the description)
         commands_section = (

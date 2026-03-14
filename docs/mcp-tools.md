@@ -1,10 +1,10 @@
 # MCP Tool Reference
 
-**Status:** Active  
+**Status:** Legacy/Frozen Reference  
 **Last Updated:** 2026-03-12  
 **Server Module:** `src/notebooklm_mcp`
 
-This document describes the NotebookLM MCP tool surface, including input/output schemas, defaults, constraints, examples, and important edge/error behavior.
+This document is retained as an archived reference for the frozen `src/notebooklm_mcp/**` and `src/notebooklm_mcp/ba/**` surfaces. The active MVP on this branch does not currently ship or support this MCP surface as part of the mainline product contract. See [MCP/BA Boundary Inventory](mvp-pruning-mcp-ba-boundary.md) for the boundary definition and re-entry criteria.
 
 ## Output Contract (All Tools)
 

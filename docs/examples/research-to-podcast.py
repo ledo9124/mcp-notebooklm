@@ -71,7 +71,7 @@ async def main(topic: str):
 
         if final.is_complete:
             print(f"\n  Success! Audio URL: {final.url}")
-            print("\n  Use 'notebooklm download audio' to save the file")
+            print("  Use the returned URL or the NotebookLM web UI if you need a local copy.")
         else:
             print(f"\n  Generation ended with status: {final.status}")
 

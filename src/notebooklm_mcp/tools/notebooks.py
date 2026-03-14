@@ -12,6 +12,7 @@ except Exception:  # pragma: no cover - optional dependency
     MCPContext = Any
 
 
+from notebooklm._notebooks import _delete_notebook_rpc, _rename_notebook_rpc
 from notebooklm.exceptions import ValidationError
 from notebooklm.types import Notebook, NotebookDescription
 
@@ -83,6 +84,28 @@ def _serialize_summary(description: NotebookDescription, source_count: int) -> d
     }
 
 
+async def _rename_notebook(client: Any, notebook_id: str, title: str) -> Notebook:
+    rename = getattr(getattr(client, "notebooks", None), "rename", None)
+    if rename is not None:
+        try:
+            return await rename(notebook_id, title)
+        except TypeError:
+            if not hasattr(client, "_core"):
+                raise
+    return await _rename_notebook_rpc(client._core, notebook_id, title)
+
+
+async def _delete_notebook(client: Any, notebook_id: str) -> bool:
+    delete = getattr(getattr(client, "notebooks", None), "delete", None)
+    if delete is not None:
+        try:
+            return bool(await delete(notebook_id))
+        except TypeError:
+            if not hasattr(client, "_core"):
+                raise
+    return await _delete_notebook_rpc(client._core, notebook_id)
+
+
 def _register_tool(
     server: Any,
     *,
@@ -148,7 +171,7 @@ def register_notebook_tools(server: Any) -> dict[str, Callable[..., Any]]:
         clean_title = _require_text(title, field="title")
         app = _resolve_app_context(ctx)
         async with app.acquire_slot():
-            renamed = await app.client.notebooks.rename(clean_notebook_id, clean_title)
+            renamed = await _rename_notebook(app.client, clean_notebook_id, clean_title)
         return make_tool_result(
             {
                 "success": True,
@@ -167,7 +190,7 @@ def register_notebook_tools(server: Any) -> dict[str, Callable[..., Any]]:
         clean_notebook_id = _require_text(notebook_id, field="notebook_id")
         app = _resolve_app_context(ctx)
         async with app.acquire_slot():
-            success = await app.client.notebooks.delete(clean_notebook_id)
+            success = await _delete_notebook(app.client, clean_notebook_id)
         return make_tool_result({"success": bool(success)})
 
     @handle_mcp_errors

@@ -1,7 +1,7 @@
 """Chat API for NotebookLM notebook conversations.
 
-Provides operations for asking questions, managing conversations, and
-retrieving conversation history.
+Provides operations for asking questions and keeping follow-up
+conversations usable across asks.
 """
 
 import json
@@ -9,23 +9,15 @@ import logging
 import os
 import re
 import uuid
-import warnings
 from typing import Any
 from urllib.parse import quote, urlencode
 
 import httpx
 
-from ._chat_settings import parse_chat_settings
 from ._core import ClientCore
-from .exceptions import (
-    ChatError,
-    ChatSettingsParseError,
-    ChatSettingsUpdateError,
-    NetworkError,
-    ValidationError,
-)
-from .rpc import QUERY_URL, ChatGoal, ChatResponseLength, RPCMethod
-from .types import UNSET, AskResult, ChatReference, ChatSettings, ConversationTurn
+from .exceptions import ChatError, NetworkError
+from .rpc import QUERY_URL, RPCMethod
+from .types import AskResult, ChatReference
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +33,8 @@ _UUID_PATTERN = re.compile(
 class ChatAPI:
     """Operations for notebook chat/conversations.
 
-    Provides methods for asking questions to notebooks and managing
-    conversation history with follow-up support.
+    Provides methods for asking questions to notebooks and keeping
+    follow-up conversation continuity working.
 
     Usage:
         async with NotebookLMClient.from_storage() as client:
@@ -172,7 +164,7 @@ class ChatAPI:
             response.text
         )
         # Prefer the conversation ID returned by the server over our locally generated UUID,
-        # so that get_conversation_id() and get_conversation_turns() stay in sync.
+        # so follow-up asks stay aligned with the server-backed conversation thread.
         if server_conv_id:
             conversation_id = server_conv_id
 
@@ -190,35 +182,6 @@ class ChatAPI:
             is_follow_up=not is_new_conversation,
             references=references,
             raw_response=response.text[:1000],
-        )
-
-    async def get_conversation_turns(
-        self, notebook_id: str, conversation_id: str, limit: int = 2
-    ) -> Any:
-        """Get turns (individual messages) for a specific conversation.
-
-        Args:
-            notebook_id: The notebook ID.
-            conversation_id: The conversation ID to fetch turns for.
-            limit: Maximum number of turns to retrieve. Turns are returned
-                newest-first, so limit=2 gives the latest Q&A pair.
-
-        Returns:
-            Raw turn data from API. Each turn has:
-              turn[2] == 1: user question, text at turn[3]
-              turn[2] == 2: AI answer, text at turn[4][0][0]
-        """
-        logger.debug(
-            "Getting conversation turns for %s (conversation=%s, limit=%d)",
-            notebook_id,
-            conversation_id,
-            limit,
-        )
-        params: list[Any] = [[], None, None, conversation_id, limit]
-        return await self._core.rpc_call(
-            RPCMethod.GET_CONVERSATION_TURNS,
-            params,
-            source_path=f"/notebook/{notebook_id}",
         )
 
     async def get_conversation_id(self, notebook_id: str) -> str | None:
@@ -246,325 +209,11 @@ class ChatAPI:
                     for conv in group:
                         if isinstance(conv, list) and conv and isinstance(conv[0], str):
                             return conv[0]
-            logger.debug(
-                "No conversation ID found in response (API structure may have changed): %s",
-                raw,
-            )
+                logger.debug(
+                    "No conversation ID found in response (API structure may have changed): %s",
+                    raw,
+                )
         return None
-
-    async def get_history(
-        self,
-        notebook_id: str,
-        limit: int = 100,
-        conversation_id: str | None = None,
-    ) -> list[tuple[str, str]]:
-        """Get Q&A history for the most recent conversation.
-
-        Args:
-            notebook_id: The notebook ID.
-            limit: Maximum number of Q&A turns to retrieve.
-            conversation_id: Use this conversation ID instead of fetching it.
-                Defaults to the most recent conversation if not provided.
-
-        Returns:
-            List of (question, answer) pairs, oldest-first.
-            Returns an empty list if no conversations exist.
-        """
-        logger.debug("Getting conversation history for notebook %s (limit=%d)", notebook_id, limit)
-        conv_id = conversation_id or await self.get_conversation_id(notebook_id)
-        if not conv_id:
-            return []
-
-        try:
-            turns_data = await self.get_conversation_turns(notebook_id, conv_id, limit=limit)
-        except (ChatError, NetworkError) as e:
-            logger.warning("Failed to fetch conversation turns for %s: %s", notebook_id, e)
-            return []
-        # API returns individual turns newest-first: [A2, Q2, A1, Q1, ...]
-        # Reverse to chronological order [Q1, A1, Q2, A2, ...] so the
-        # Q→A forward-pairing parser works correctly.
-        if (
-            turns_data
-            and isinstance(turns_data, list)
-            and turns_data[0]
-            and isinstance(turns_data[0], list)
-        ):
-            turns_data = [list(reversed(turns_data[0]))]
-        return self._parse_turns_to_qa_pairs(turns_data)
-
-    @staticmethod
-    def _parse_turns_to_qa_pairs(turns_data: Any) -> list[tuple[str, str]]:
-        """Parse raw turn data into (question, answer) pairs in array order.
-
-        Pairs are returned in the same order as the input data (newest-first
-        from the API). Callers should reverse if oldest-first is needed.
-        Each user question (turn[2]==1) is followed by its AI answer (turn[2]==2).
-        """
-        if not turns_data or not isinstance(turns_data, list):
-            return []
-        first = turns_data[0]
-        if not isinstance(first, list):
-            return []
-
-        turns = first
-
-        pairs: list[tuple[str, str]] = []
-        i = 0
-        while i < len(turns):
-            turn = turns[i]
-            if not isinstance(turn, list) or len(turn) < 3:
-                i += 1
-                continue
-            if turn[2] == 1 and len(turn) > 3:
-                q = str(turn[3] or "")
-                a = ""
-                # Look for the answer immediately following
-                if i + 1 < len(turns):
-                    next_turn = turns[i + 1]
-                    if isinstance(next_turn, list) and len(next_turn) > 4 and next_turn[2] == 2:
-                        try:
-                            a = str(next_turn[4][0][0] or "")
-                        except (IndexError, TypeError):
-                            pass
-                        i += 1  # skip the answer turn
-                pairs.append((q, a))
-            i += 1
-        return pairs
-
-    def get_cached_turns(self, conversation_id: str) -> list[ConversationTurn]:
-        """Get locally cached conversation turns.
-
-        Args:
-            conversation_id: The conversation ID.
-
-        Returns:
-            List of ConversationTurn objects.
-        """
-        cached = self._core.get_cached_conversation(conversation_id)
-        return [
-            ConversationTurn(
-                query=turn["query"],
-                answer=turn["answer"],
-                turn_number=turn["turn_number"],
-            )
-            for turn in cached
-        ]
-
-    def clear_cache(self, conversation_id: str | None = None) -> bool:
-        """Clear conversation cache.
-
-        Args:
-            conversation_id: Clear specific conversation, or all if None.
-
-        Returns:
-            True if cache was cleared.
-        """
-        return self._core.clear_conversation_cache(conversation_id)
-
-    async def try_get_settings(self, notebook_id: str) -> ChatSettings | None:
-        """Best-effort read of chat settings.
-
-        Returns None when settings cannot be parsed from server payload.
-        """
-        try:
-            return await self.get_settings(notebook_id, strict=True)
-        except ChatSettingsParseError:
-            return None
-
-    async def get_settings(self, notebook_id: str, *, strict: bool = True) -> ChatSettings:
-        """Read current chat settings from the server.
-
-        Args:
-            notebook_id: The notebook ID.
-            strict: If True, parsing failures raise ChatSettingsParseError.
-                If False, returns a safe DEFAULT/DEFAULT fallback with source="unknown".
-        """
-        params = [notebook_id, None, [2], None, 0]
-        raw = await self._core.rpc_call(
-            RPCMethod.GET_NOTEBOOK,
-            params,
-            source_path=f"/notebook/{notebook_id}",
-        )
-
-        try:
-            return parse_chat_settings(raw, strict=strict)
-        except ChatSettingsParseError:
-            if strict:
-                raise
-
-            warnings.warn(
-                "Could not parse chat settings from server payload; "
-                "falling back to DEFAULT/DEFAULT with source='unknown'.",
-                RuntimeWarning,
-                stacklevel=2,
-            )
-            return ChatSettings(
-                goal=ChatGoal.DEFAULT,
-                response_length=ChatResponseLength.DEFAULT,
-                custom_prompt=None,
-                source="unknown",
-            )
-
-    async def set_settings(self, notebook_id: str, settings: ChatSettings) -> None:
-        """Set chat settings absolutely (writes both style and response length)."""
-        custom_prompt = settings.custom_prompt if settings.goal == ChatGoal.CUSTOM else None
-
-        try:
-            await self.configure(
-                notebook_id,
-                goal=settings.goal,
-                response_length=settings.response_length,
-                custom_prompt=custom_prompt,
-            )
-        except Exception as exc:
-            raise ChatSettingsUpdateError("Failed to set chat settings", cause=exc) from exc
-
-    async def update_settings(
-        self,
-        notebook_id: str,
-        *,
-        goal: ChatGoal | object = UNSET,
-        response_length: ChatResponseLength | object = UNSET,
-        custom_prompt: str | None | object = UNSET,
-        strict: bool = True,
-    ) -> ChatSettings:
-        """Safely patch chat settings via read-modify-write.
-
-        If strict parsing fails while reading current settings, the method raises
-        ChatSettingsUpdateError to avoid accidental clobbering.
-        """
-        try:
-            current = await self.get_settings(notebook_id, strict=strict)
-        except ChatSettingsParseError as exc:
-            raise ChatSettingsUpdateError(
-                "Cannot safely PATCH chat settings because current settings could not be "
-                "read from server. Use set_settings() with explicit goal and response_length.",
-                cause=exc,
-            ) from exc
-
-        merged_goal = current.goal if goal is UNSET else goal
-        merged_length = current.response_length if response_length is UNSET else response_length
-
-        merged_prompt = current.custom_prompt if custom_prompt is UNSET else custom_prompt
-
-        if merged_goal != ChatGoal.CUSTOM:
-            merged_prompt = None
-
-        if not isinstance(merged_goal, ChatGoal):
-            raise ChatSettingsUpdateError(
-                "goal must be a ChatGoal value when updating settings"
-            )
-        if not isinstance(merged_length, ChatResponseLength):
-            raise ChatSettingsUpdateError(
-                "response_length must be a ChatResponseLength value when updating settings"
-            )
-        if merged_prompt is not None and not isinstance(merged_prompt, str):
-            raise ChatSettingsUpdateError(
-                "custom_prompt must be a string, None, or UNSET when updating settings"
-            )
-
-        try:
-            merged = ChatSettings(
-                goal=merged_goal,
-                response_length=merged_length,
-                custom_prompt=merged_prompt,
-                source="server",
-            )
-        except Exception as exc:
-            raise ChatSettingsUpdateError("Invalid chat settings update payload", cause=exc) from exc
-
-        if (
-            merged.goal == current.goal
-            and merged.response_length == current.response_length
-            and merged.custom_prompt == current.custom_prompt
-        ):
-            return current
-
-        await self.set_settings(notebook_id, merged)
-        return ChatSettings(
-            goal=merged.goal,
-            response_length=merged.response_length,
-            custom_prompt=merged.custom_prompt,
-            source="server",
-        )
-
-    async def reset_settings(self, notebook_id: str) -> None:
-        """Reset chat settings to NotebookLM defaults (DEFAULT/DEFAULT)."""
-        await self.set_settings(
-            notebook_id,
-            ChatSettings(
-                goal=ChatGoal.DEFAULT,
-                response_length=ChatResponseLength.DEFAULT,
-                custom_prompt=None,
-                source="default",
-            ),
-        )
-
-    async def configure(
-        self,
-        notebook_id: str,
-        goal: Any | None = None,
-        response_length: Any | None = None,
-        custom_prompt: str | None = None,
-    ) -> None:
-        """Legacy absolute-set API for chat persona and response settings.
-
-        This method writes both style and response length in one request and
-        applies implicit defaults when values are omitted. For safe partial
-        updates, prefer update_settings().
-
-        Args:
-            notebook_id: The notebook ID.
-            goal: Chat persona/goal (ChatGoal enum: DEFAULT, CUSTOM, LEARNING_GUIDE).
-            response_length: Response verbosity (ChatResponseLength enum).
-            custom_prompt: Custom instructions (required if goal is CUSTOM).
-
-        Raises:
-            ValidationError: If goal is CUSTOM but custom_prompt is not provided.
-        """
-        logger.debug("Configuring chat for notebook %s", notebook_id)
-
-        if goal is None:
-            goal = ChatGoal.DEFAULT
-        if response_length is None:
-            response_length = ChatResponseLength.DEFAULT
-
-        if goal == ChatGoal.CUSTOM and not custom_prompt:
-            raise ValidationError("custom_prompt is required when goal is CUSTOM")
-
-        goal_array = [goal.value, custom_prompt] if goal == ChatGoal.CUSTOM else [goal.value]
-
-        chat_settings = [goal_array, [response_length.value]]
-        params = [
-            notebook_id,
-            [[None, None, None, None, None, None, None, chat_settings]],
-        ]
-
-        await self._core.rpc_call(
-            RPCMethod.RENAME_NOTEBOOK,
-            params,
-            source_path=f"/notebook/{notebook_id}",
-            allow_null=True,
-        )
-
-    async def set_mode(self, notebook_id: str, mode: Any) -> None:
-        """Legacy convenience wrapper around absolute-set configure().
-
-        Args:
-            notebook_id: The notebook ID.
-            mode: Predefined ChatMode (DEFAULT, LEARNING_GUIDE, CONCISE, DETAILED).
-        """
-        from .types import ChatMode
-
-        mode_configs = {
-            ChatMode.DEFAULT: (ChatGoal.DEFAULT, ChatResponseLength.DEFAULT, None),
-            ChatMode.LEARNING_GUIDE: (ChatGoal.LEARNING_GUIDE, ChatResponseLength.DEFAULT, None),
-            ChatMode.CONCISE: (ChatGoal.DEFAULT, ChatResponseLength.SHORTER, None),
-            ChatMode.DETAILED: (ChatGoal.DEFAULT, ChatResponseLength.LONGER, None),
-        }
-
-        goal, length, prompt = mode_configs[mode]
-        await self.configure(notebook_id, goal, length, prompt)
 
     # =========================================================================
     # Private Helpers

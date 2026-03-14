@@ -1,7 +1,7 @@
 # Contributing Guide
 
 **Status:** Active
-**Last Updated:** 2026-01-21
+**Last Updated:** 2026-03-14
 
 This guide covers everything you need to contribute to `notebooklm-py`: architecture overview, testing, and releasing.
 
@@ -23,9 +23,9 @@ src/notebooklm/
 ├── _artifacts.py        # ArtifactsAPI implementation
 ├── _chat.py             # ChatAPI implementation
 ├── _research.py         # ResearchAPI implementation
-├── _notes.py            # NotesAPI implementation
-├── _settings.py         # SettingsAPI implementation
-├── _sharing.py          # SharingAPI implementation
+├── _notes.py            # Deferred compatibility NotesAPI implementation
+├── _settings.py         # Deferred compatibility SettingsAPI implementation
+├── _sharing.py          # Deferred compatibility SharingAPI implementation
 ├── rpc/                 # RPC protocol layer
 │   ├── __init__.py
 │   ├── types.py         # RPCMethod enum and constants
@@ -34,15 +34,17 @@ src/notebooklm/
 └── cli/                 # CLI implementation
     ├── __init__.py      # CLI package exports
     ├── helpers.py       # Shared utilities
-    ├── session.py       # login, use, status, clear
-    ├── notebook.py      # list, create, delete, rename
-    ├── source.py        # source add, list, delete
-    ├── artifact.py      # artifact list, get, delete
-    ├── generate.py      # generate audio, video, etc.
-    ├── download.py      # download audio, video, etc.
-    ├── chat.py          # ask, configure, history
+    ├── session.py       # login, use, auth status, clear
+    ├── notebook.py      # list, create, summary
+    ├── source.py        # source add, list, wait, research entrypoints
+    ├── generate.py      # generate audio and report artifacts
+    ├── research.py      # research status and wait helpers
+    ├── language.py      # helper-only local language config for generation
+    ├── chat.py          # ask
     └── ...
 ```
+
+The `src/notebooklm_mcp/` tree remains in-repo as legacy/frozen reference code during MVP pruning. Do not treat it as default mainline acceptance scope unless a bead explicitly calls for MCP/BA work.
 
 ### Layered Architecture
 
@@ -54,7 +56,8 @@ src/notebooklm/
                             │
 ┌───────────────────────────▼─────────────────────────────────┐
 │                      Client Layer                           │
-│  NotebookLMClient → NotebooksAPI, SourcesAPI, ArtifactsAPI  │
+│ NotebookLMClient → NotebooksAPI, SourcesAPI, ArtifactsAPI,  │
+│                  ChatAPI, ResearchAPI (+ lazy compat APIs)  │
 └───────────────────────────┬─────────────────────────────────┘
                             │
 ┌───────────────────────────▼─────────────────────────────────┐
@@ -83,7 +86,7 @@ src/notebooklm/
 
 **Why namespaced APIs?** `client.notebooks.list()` instead of `client.list_notebooks()` - better organization, scales well, tab-completion friendly.
 
-**Why async?** Google's API can be slow. Async enables concurrent operations and non-blocking downloads.
+**Why async?** Google's API can be slow. Async enables concurrent operations and non-blocking polling/workflow steps.
 
 ### Adding New Features
 
@@ -118,7 +121,7 @@ src/notebooklm/
 3. **Create read-only test notebook** (required for E2E tests):
    - Create notebook at [NotebookLM](https://notebooklm.google.com)
    - Add multiple sources (text, URL, etc.)
-   - Generate artifacts (audio, quiz, etc.)
+   - Generate retained artifacts (audio and/or report)
    - Set env var: `export NOTEBOOKLM_READ_ONLY_NOTEBOOK_ID="your-id"`
 
 ### Quick Reference
@@ -174,7 +177,7 @@ Sensitive data (cookies, tokens, emails) is automatically scrubbed from cassette
 
 | Fixture | Use Case |
 |---------|----------|
-| `read_only_notebook_id` | List/download existing artifacts |
+| `read_only_notebook_id` | List existing content and poll retained artifacts |
 | `temp_notebook` | Add/delete sources (auto-cleanup) |
 | `generation_notebook_id` | Generate artifacts (CI-aware cleanup) |
 

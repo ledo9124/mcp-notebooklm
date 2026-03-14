@@ -1,10 +1,10 @@
-"""Example: Chat with a notebook and manage conversations.
+"""Example: Chat with a notebook and continue a conversation.
 
 This example demonstrates:
 1. Asking questions about notebook content
-2. Follow-up questions in a conversation
-3. Retrieving conversation history
-4. Configuring chat behavior (response length, custom personas)
+2. Reusing a conversation ID for follow-up questions
+3. Looking up the latest conversation ID from the server
+4. Limiting a question to specific sources
 
 Prerequisites:
     - Authentication configured via `notebooklm auth` CLI command
@@ -13,11 +13,11 @@ Prerequisites:
 
 import asyncio
 
-from notebooklm import ChatGoal, ChatMode, ChatResponseLength, NotebookLMClient
+from notebooklm import NotebookLMClient
 
 
 async def main():
-    """Demonstrate chat and conversation features."""
+    """Demonstrate the retained chat surface."""
 
     async with await NotebookLMClient.from_storage() as client:
         # Create a notebook with some content
@@ -82,76 +82,12 @@ async def main():
         print(f"Answer: {followup2.answer[:400]}...")
 
         # =====================================================================
-        # Conversation History
+        # Looking Up the Latest Conversation
         # =====================================================================
 
-        print("\n--- Conversation History ---")
-
-        # Get locally cached conversation turns
-        turns = client.chat.get_cached_turns(result.conversation_id)
-        print(f"Cached turns in this conversation: {len(turns)}")
-        for turn in turns:
-            print(f"  Turn {turn.turn_number}:")
-            print(f"    Q: {turn.query[:50]}...")
-            print(f"    A: {turn.answer[:50]}...")
-
-        # Get conversation history from the API (all conversations)
-        try:
-            history = await client.chat.get_history(notebook.id, limit=10)
-            print(f"\nAPI conversation history: {type(history)}")
-        except Exception as e:
-            print(f"Note: History retrieval returned: {e}")
-
-        # =====================================================================
-        # Configuring Chat Behavior
-        # =====================================================================
-
-        print("\n--- Chat Configuration ---")
-
-        # Method 1: Use predefined chat modes
-        # Available modes: DEFAULT, LEARNING_GUIDE, CONCISE, DETAILED
-        print("Setting chat mode to LEARNING_GUIDE...")
-        await client.chat.set_mode(notebook.id, ChatMode.LEARNING_GUIDE)
-
-        # Ask a question with the new mode
-        learning_result = await client.chat.ask(
-            notebook.id,
-            "Explain decorators in Python",
-        )
-        print(f"Learning mode answer: {learning_result.answer[:400]}...")
-
-        # Method 2: Fine-grained configuration
-        # ChatGoal: DEFAULT, CUSTOM, LEARNING_GUIDE
-        # ChatResponseLength: SHORTER, DEFAULT, LONGER
-        print("\nSetting custom chat configuration...")
-        await client.chat.configure(
-            notebook.id,
-            goal=ChatGoal.DEFAULT,
-            response_length=ChatResponseLength.SHORTER,
-        )
-
-        concise_result = await client.chat.ask(
-            notebook.id,
-            "What is Python used for?",
-        )
-        print(f"Concise answer: {concise_result.answer[:300]}...")
-
-        # Method 3: Custom persona with specific instructions
-        print("\nSetting custom persona...")
-        await client.chat.configure(
-            notebook.id,
-            goal=ChatGoal.CUSTOM,
-            response_length=ChatResponseLength.DEFAULT,
-            custom_prompt="You are an experienced Python developer. "
-            "Explain concepts with practical code examples. "
-            "Focus on best practices and real-world usage.",
-        )
-
-        custom_result = await client.chat.ask(
-            notebook.id,
-            "How should I handle errors in Python?",
-        )
-        print(f"Custom persona answer: {custom_result.answer[:500]}...")
+        print("\n--- Latest Conversation ID ---")
+        latest_conv_id = await client.chat.get_conversation_id(notebook.id)
+        print(f"Latest server conversation: {latest_conv_id}")
 
         # =====================================================================
         # Source-Specific Questions
@@ -171,15 +107,6 @@ async def main():
                 source_ids=source_ids,  # Only use these sources for context
             )
             print(f"Targeted answer: {targeted_result.answer[:400]}...")
-
-        # =====================================================================
-        # Cleanup
-        # =====================================================================
-
-        # Clear conversation cache (optional)
-        client.chat.clear_cache(result.conversation_id)
-        print("\nConversation cache cleared")
-
 
 if __name__ == "__main__":
     asyncio.run(main())

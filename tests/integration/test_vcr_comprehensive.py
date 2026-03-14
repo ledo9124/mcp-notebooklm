@@ -106,18 +106,6 @@ class TestNotebooksAPI:
             raw = await client.notebooks.get_raw(READONLY_NOTEBOOK_ID)
         assert raw is not None
 
-    @pytest.mark.vcr
-    @pytest.mark.asyncio
-    @notebooklm_vcr.use_cassette("notebooks_rename.yaml")
-    async def test_rename(self):
-        """Rename a notebook (then rename back)."""
-        async with vcr_client() as client:
-            notebook = await client.notebooks.get(MUTABLE_NOTEBOOK_ID)
-            original_name = notebook.title
-            await client.notebooks.rename(MUTABLE_NOTEBOOK_ID, "VCR Test Renamed")
-            await client.notebooks.rename(MUTABLE_NOTEBOOK_ID, original_name)
-
-
 # =============================================================================
 # Sources API
 # =============================================================================
@@ -776,30 +764,6 @@ class TestNotebooksAdditionalAPI:
         assert notebook.title == "VCR Test Notebook"
         # Note: We don't delete it here to keep the cassette simple
         # A separate delete test will clean up
-
-    @pytest.mark.vcr
-    @pytest.mark.asyncio
-    @notebooklm_vcr.use_cassette("notebooks_delete.yaml")
-    async def test_delete(self):
-        """Delete a notebook (creates one first)."""
-        async with vcr_client() as client:
-            # Create a notebook to delete
-            notebook = await client.notebooks.create("VCR Delete Test Notebook")
-            assert notebook is not None
-            # Delete it
-            result = await client.notebooks.delete(notebook.id)
-        assert result is True
-
-    @pytest.mark.vcr
-    @pytest.mark.asyncio
-    @notebooklm_vcr.use_cassette("notebooks_remove_from_recent.yaml")
-    async def test_remove_from_recent(self):
-        """Remove a notebook from recently viewed."""
-        async with vcr_client() as client:
-            # This just removes from the recent list, doesn't delete
-            await client.notebooks.remove_from_recent(MUTABLE_NOTEBOOK_ID)
-        # No return value to check - if it doesn't raise, it worked
-
 
 # =============================================================================
 # Notes API - Additional Operations

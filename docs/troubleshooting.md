@@ -110,26 +110,25 @@ If the IDs don't match, the method ID has changed. Report the new ID in a GitHub
 
 ### Generation Failures
 
-#### Audio/Video generation returns None
+#### Audio generation returns None
 
 **Cause:** Known issue with artifact generation under heavy load or rate limiting.
 
 **Workaround:**
 ```bash
-# Use --wait to see if it eventually succeeds
+# Prefer the retained wait flow if you need the final URL in one command
 notebooklm generate audio --wait
-
-# Or poll manually
-notebooklm artifact poll <task_id>
 ```
 
-#### Mind map or data table "generates" but doesn't appear
+The reduced CLI does not expose separate follow-up status or listing commands anymore. If you do not want to block on `--wait`, start generation without it and let the user check back later.
+
+#### Audio or report stays pending for a long time
 
 **Cause:** Generation may silently fail without error.
 
 **Solution:**
-- Wait 60 seconds and check `artifact list`
-- Try regenerating with different/fewer sources
+- Prefer `--wait` when you need the completed URL before continuing.
+- Retry later or with fewer sources / simpler instructions if Google is rate limiting or overloaded.
 
 ### File Upload Issues
 
@@ -206,11 +205,8 @@ notebooklm source list
 # Check that the title matches the actual article, not an error message
 ```
 
-If the title contains error-related text, remove the source and use the pre-fetch method:
+If the title contains error-related text, remove the source in the NotebookLM web UI and then use the pre-fetch method:
 ```bash
-# Remove incorrectly parsed source
-notebooklm source delete <source_id>
-
 # Then re-add using the bird CLI method above
 ```
 
@@ -237,7 +233,7 @@ Google enforces strict rate limits on the batchexecute endpoint.
 **CLI:** Use `--retry` for automatic exponential backoff:
 ```bash
 notebooklm generate audio --retry 3   # Retry up to 3 times on rate limit
-notebooklm generate video --retry 5   # Works with all generate commands
+notebooklm generate report --format study-guide --retry 5
 ```
 
 **Python:**
@@ -283,12 +279,12 @@ notebooklm login
 
 ### URL Expiry
 
-Download URLs for audio/video are temporary:
+Completed artifact URLs are temporary:
 - Expire within hours
-- Always fetch fresh URLs before downloading:
+- Always fetch a fresh URL before opening or sharing it:
 
 ```python
-# Get fresh artifact list before download
+# Get a fresh artifact list before using the returned URL
 artifacts = await client.artifacts.list(nb_id)
 audio = next(a for a in artifacts if a.kind == "audio")
 # Use audio.url immediately

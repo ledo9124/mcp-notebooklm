@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Runnable stdio MCP example for the BA runner surface.
 
+Legacy/frozen note:
+    This example is retained as historical reference while the mainline branch
+    is focused on the CLI/SDK MVP and does not actively ship notebooklm_mcp.
+
 This script demonstrates the intended BA MCP happy path:
 1. Start `notebooklm_mcp` over stdio
 2. Create or reuse a NotebookLM notebook

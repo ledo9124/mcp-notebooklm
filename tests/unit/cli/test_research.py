@@ -276,6 +276,8 @@ class TestResearchCommandsExist:
         result = runner.invoke(cli, ["research", "--help"])
         assert result.exit_code == 0
         assert "Research management commands" in result.output
+        assert "source add-research --no-wait" in result.output
+        assert "monitor or complete" in result.output
 
     def test_research_status_command_exists(self, runner):
         result = runner.invoke(cli, ["research", "status", "--help"])
@@ -286,3 +288,8 @@ class TestResearchCommandsExist:
         result = runner.invoke(cli, ["research", "wait", "--help"])
         assert result.exit_code == 0
         assert "Wait for research to complete" in result.output
+
+    def test_research_start_command_is_not_supported(self, runner):
+        result = runner.invoke(cli, ["research", "start"])
+        assert result.exit_code == 2
+        assert "No such command 'start'" in result.output

@@ -1,4 +1,6 @@
-"""Research management CLI commands.
+"""Research monitoring CLI commands.
+
+This group exists only to complete the retained ``source add-research`` flow.
 
 Commands:
     status      Check research status (single check)
@@ -30,8 +32,8 @@ def research():
       wait      Wait for research to complete (blocking)
 
     \b
-    Use 'source add-research' to start a research session.
-    These commands are for monitoring ongoing research.
+    Use 'source add-research --no-wait' to start a research session.
+    These commands only monitor or complete that acquisition flow.
 
     \b
     Example workflow:

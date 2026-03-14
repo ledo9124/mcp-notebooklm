@@ -1,9 +1,9 @@
 # Claude Desktop MCP Setup (NotebookLM)
 
-**Status:** Active  
+**Status:** Legacy/Frozen Reference  
 **Last Updated:** 2026-03-05
 
-This guide shows how to connect Claude Desktop to the `notebooklm_mcp` server using STDIO transport.
+This guide is retained as historical setup reference for the frozen `notebooklm_mcp` surface. The active MVP on this branch does not currently ship or support `notebooklm-mcp` as part of the mainline product contract. See [MCP/BA Boundary Inventory](mvp-pruning-mcp-ba-boundary.md) for the current branch policy.
 
 ## Prerequisites
 
@@ -114,6 +114,7 @@ Then restart Claude Desktop.
 
 ## Related Docs
 
+- [MCP/BA Boundary Inventory](mvp-pruning-mcp-ba-boundary.md)
 - [MCP Tool Reference](mcp-tools.md)
 - [Troubleshooting](troubleshooting.md)
 - [Configuration](configuration.md)

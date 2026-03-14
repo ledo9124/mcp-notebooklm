@@ -1,6 +1,13 @@
 """Example: Create and manage notes and mind maps.
 
-This example demonstrates:
+Status:
+    Deferred compatibility reference. The active MVP on this branch focuses on
+    notebooks, sources, chat, research, plus audio/report generation. Notes,
+    mind maps, and study-material side paths remain in-tree for compatibility,
+    but they are not part of the supported mainline workflow and some calls may
+    raise validation errors.
+
+This example demonstrates the compatibility flow:
 1. Creating and updating notes
 2. Listing and searching notes
 3. Generating mind maps from sources
@@ -10,7 +17,7 @@ Notes are user-created content, distinct from AI-generated artifacts.
 They persist in your notebook and can be exported.
 
 Prerequisites:
-    - Authentication configured via `notebooklm auth` CLI command
+    - Authentication configured via `notebooklm login`
     - Valid Google account with NotebookLM access
 """
 
@@ -22,6 +29,8 @@ from notebooklm import NotebookLMClient, ReportFormat
 
 async def main():
     """Demonstrate notes and mind map functionality."""
+
+    print("Status: deferred compatibility reference; some sections may be skipped on this branch.\n")
 
     async with await NotebookLMClient.from_storage() as client:
         # Create a notebook for our examples
@@ -201,21 +210,24 @@ async def main():
 
         from notebooklm import QuizDifficulty, QuizQuantity
 
-        quiz_gen = await client.artifacts.generate_quiz(
-            notebook.id,
-            quantity=QuizQuantity.STANDARD,
-            difficulty=QuizDifficulty.MEDIUM,
-        )
-        print(f"Quiz generation started: {quiz_gen.task_id}")
+        try:
+            quiz_gen = await client.artifacts.generate_quiz(
+                notebook.id,
+                quantity=QuizQuantity.STANDARD,
+                difficulty=QuizDifficulty.MEDIUM,
+            )
+            print(f"Quiz generation started: {quiz_gen.task_id}")
 
-        # Generate flashcards
-        print("Generating flashcards...")
-        flashcard_gen = await client.artifacts.generate_flashcards(
-            notebook.id,
-            quantity=QuizQuantity.FEWER,
-            difficulty=QuizDifficulty.EASY,
-        )
-        print(f"Flashcard generation started: {flashcard_gen.task_id}")
+            # Generate flashcards
+            print("Generating flashcards...")
+            flashcard_gen = await client.artifacts.generate_flashcards(
+                notebook.id,
+                quantity=QuizQuantity.FEWER,
+                difficulty=QuizDifficulty.EASY,
+            )
+            print(f"Flashcard generation started: {flashcard_gen.task_id}")
+        except Exception as e:
+            print(f"Quiz/flashcard generation skipped on this branch: {e}")
 
         # =====================================================================
         # Deleting Notes

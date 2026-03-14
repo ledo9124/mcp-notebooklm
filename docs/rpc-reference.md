@@ -1,12 +1,19 @@
 # RPC & UI Reference
 
-**Status:** Active
-**Last Updated:** 2026-03-02
+**Status:** Legacy/Full-Surface Implementation Reference
+**Last Updated:** 2026-03-14
 **Source of Truth:** `src/notebooklm/rpc/types.py`
-**Purpose:** Complete reference for RPC methods, UI selectors, and payload structures
+**Purpose:** Complete reference for RPC methods, UI selectors, and payload
+structures across active, deferred, and frozen surfaces.
 
-> **Note:** Payload structures extracted from actual implementation in `src/notebooklm/`.
-> Each payload includes a reference to its source file.
+> **Note:** This is a low-level implementation reference, not the active
+> mainline product support matrix.
+>
+> The active MVP on this branch is narrower than the full RPC inventory below
+> and centers on notebooks, sources, ask, research, plus audio/report
+> generation. Entries for sharing, notes, user settings, non-MVP artifact
+> variants, and other archival flows remain documented here because the code
+> still exists in-tree or as deferred compatibility.
 
 ---
 
@@ -143,7 +150,7 @@ params = [
 
 ### RPC: DELETE_NOTEBOOK (WWINqb)
 
-**Source:** `_notebooks.py::delete()`
+**Source:** `_notebooks.py::_delete_notebook_rpc()` (legacy/internal helper)
 
 ```python
 params = [
@@ -168,7 +175,7 @@ params = [
 
 ### RPC: REMOVE_RECENTLY_VIEWED (fejl7e)
 
-**Source:** `_notebooks.py::remove_from_recent()`
+**Historical Source:** `_notebooks.py::remove_from_recent()` (removed from the public `NotebooksAPI` surface)
 
 Remove a notebook from the recently viewed list (doesn't delete the notebook).
 
@@ -359,7 +366,7 @@ POST /_/LabsTailwindUi/data/google.internal.labs.tailwind.orchestration.v1.LabsT
 
 ### RPC: RENAME_NOTEBOOK (s0tc2d) - Rename Only
 
-**Source:** `_notebooks.py::rename()`
+**Source:** `_notebooks.py::_rename_notebook_rpc()` (legacy/internal helper)
 
 ```python
 # Just rename, no chat config
@@ -1421,7 +1428,7 @@ await rpc_call(
 
 ### RPC: SHARE_ARTIFACT (RGP97b)
 
-**Source:** `_notebooks.py::share()`
+**Historical Source:** `_notebooks.py::share()` (removed from the public `NotebooksAPI` surface)
 
 Toggle notebook sharing. **Sharing is a notebook-level setting** - when enabled, ALL artifacts in the notebook become accessible via their URLs.
 

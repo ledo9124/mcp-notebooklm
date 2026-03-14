@@ -1,6 +1,11 @@
 """Example: Generate a Video Overview from notebook sources.
 
-This example demonstrates:
+Status:
+    Deferred compatibility reference. Video generation and downloads are
+    outside the active MVP on this branch, so this example is retained as
+    historical SDK reference rather than a supported mainline workflow.
+
+This example demonstrates the historical flow:
 1. Setting up a notebook with sources
 2. Generating a video overview with style options
 3. Checking artifact status
@@ -10,7 +15,7 @@ Video Overviews are animated explainer videos that summarize your
 notebook content with AI-generated narration and visuals.
 
 Prerequisites:
-    - Authentication configured via `notebooklm auth` CLI command
+    - Authentication configured via `notebooklm login`
     - Valid Google account with NotebookLM access
 """
 
@@ -21,6 +26,8 @@ from notebooklm import NotebookLMClient, VideoFormat, VideoStyle
 
 async def main():
     """Generate a video overview from notebook sources."""
+
+    print("Status: deferred compatibility reference; video APIs are not part of the active MVP.\n")
 
     async with await NotebookLMClient.from_storage() as client:
         # Step 1: Create a notebook with content
@@ -60,13 +67,19 @@ async def main():
         print("\nStarting video generation...")
         print("Video generation typically takes 3-8 minutes")
 
-        generation = await client.artifacts.generate_video(
-            notebook.id,
-            video_format=VideoFormat.EXPLAINER,
-            video_style=VideoStyle.AUTO_SELECT,
-            language="en",
-            instructions="Create an engaging overview suitable for general audiences",
-        )
+        try:
+            generation = await client.artifacts.generate_video(
+                notebook.id,
+                video_format=VideoFormat.EXPLAINER,
+                video_style=VideoStyle.AUTO_SELECT,
+                language="en",
+                instructions="Create an engaging overview suitable for general audiences",
+            )
+        except Exception as exc:
+            print("Video generation is outside the active MVP on this branch.")
+            print(f"SDK response: {exc}")
+            print("Use docs/examples/quickstart.py for a supported end-to-end example.")
+            return
 
         print(f"Generation started: {generation.task_id}")
         print(f"Initial status: {generation.status}")

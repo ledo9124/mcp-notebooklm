@@ -17,8 +17,8 @@ import pytest
 from notebooklm._artifacts import ArtifactsAPI
 from notebooklm._chat import ChatAPI
 from notebooklm.auth import AuthTokens
-from notebooklm.rpc import ChatGoal, ChatResponseLength
-from notebooklm.types import ChatMode
+from notebooklm.exceptions import ValidationError
+from notebooklm.rpc import ReportFormat
 
 
 @pytest.fixture
@@ -178,26 +178,6 @@ class TestChatSourceSelection:
             # Verify the triple-nested format
             assert sources_array == [[["s1"]], [["s2"]], [["s3"]]]
 
-
-class TestChatModeMappings:
-    """Tests for predefined ChatMode mappings in ChatAPI.set_mode()."""
-
-    @pytest.mark.asyncio
-    async def test_set_mode_learning_guide_keeps_default_length(self, mock_core):
-        """LEARNING_GUIDE should only change style/goal, not force longer length."""
-        api = ChatAPI(mock_core)
-        api.configure = AsyncMock()
-
-        await api.set_mode("nb_123", ChatMode.LEARNING_GUIDE)
-
-        api.configure.assert_awaited_once_with(
-            "nb_123",
-            ChatGoal.LEARNING_GUIDE,
-            ChatResponseLength.DEFAULT,
-            None,
-        )
-
-
 class TestArtifactsSourceSelection:
     """Tests for source selection in ArtifactsAPI generation methods."""
 
@@ -273,35 +253,6 @@ class TestArtifactsSourceSelection:
         assert source_ids_triple == [[["src_001"]], [["src_002"]]]
 
     @pytest.mark.asyncio
-    async def test_generate_video_source_encoding(self, mock_core, mock_notes_api):
-        """Test generate_video has correct source encoding format."""
-        api = ArtifactsAPI(mock_core, mock_notes_api)
-
-        mock_core.rpc_call.return_value = [["artifact_456", "Video", 3, None, 1]]
-
-        await api.generate_video(
-            notebook_id="nb_123",
-            source_ids=["src_a", "src_b"],
-        )
-
-        call_args = mock_core.rpc_call.call_args
-        params = call_args.args[1]
-
-        # Video params structure:
-        # [
-        #   [2], notebook_id,
-        #   [None, None, 3, source_ids_triple, None, None, None, None,
-        #    [None, None, [source_ids_double, language, instructions, None, format_code, style_code]]]
-        # ]
-        inner_params = params[2]
-        source_ids_triple = inner_params[3]
-        video_config = inner_params[8][2]
-        source_ids_double = video_config[0]
-
-        assert source_ids_triple == [[["src_a"]], [["src_b"]]]
-        assert source_ids_double == [["src_a"], ["src_b"]]
-
-    @pytest.mark.asyncio
     async def test_generate_report_source_encoding(self, mock_core, mock_notes_api):
         """Test generate_report has correct source encoding format."""
         api = ArtifactsAPI(mock_core, mock_notes_api)
@@ -350,163 +301,65 @@ class TestArtifactsSourceSelection:
         assert "\n\nFocus on financial metrics" in prompt
 
     @pytest.mark.asyncio
-    async def test_generate_report_extra_instructions_ignored_for_custom(
-        self, mock_core, mock_notes_api
-    ):
-        """extra_instructions has no effect when report_format is CUSTOM."""
-        from notebooklm.rpc.types import ReportFormat
-
+    async def test_generate_report_study_guide_source_encoding(self, mock_core, mock_notes_api):
+        """Study-guide reports keep the same source encoding structure."""
         api = ArtifactsAPI(mock_core, mock_notes_api)
         mock_core.rpc_call.return_value = [["artifact_789", "Report", 2, None, 1]]
 
         await api.generate_report(
             notebook_id="nb_123",
             source_ids=["src_x"],
-            report_format=ReportFormat.CUSTOM,
-            custom_prompt="My custom prompt",
-            extra_instructions="Should be ignored",
+            report_format=ReportFormat.STUDY_GUIDE,
         )
 
         params = mock_core.rpc_call.call_args.args[1]
         report_config = params[2][7][1]
-        prompt = report_config[5]
+        source_ids_double = report_config[3]
 
-        assert "Should be ignored" not in prompt
-        assert prompt == "My custom prompt"
-
-    @pytest.mark.asyncio
-    async def test_generate_quiz_source_encoding(self, mock_core, mock_notes_api):
-        """Test generate_quiz has correct source encoding format."""
-        api = ArtifactsAPI(mock_core, mock_notes_api)
-
-        mock_core.rpc_call.return_value = [["artifact_quiz", "Quiz", 4, None, 1]]
-
-        await api.generate_quiz(
-            notebook_id="nb_123",
-            source_ids=["src_1", "src_2"],
-        )
-
-        call_args = mock_core.rpc_call.call_args
-        params = call_args.args[1]
-
-        # Quiz params structure:
-        # [
-        #   [2], notebook_id,
-        #   [None, None, 4, source_ids_triple, ...]
-        # ]
-        inner_params = params[2]
-        source_ids_triple = inner_params[3]
-
-        assert source_ids_triple == [[["src_1"]], [["src_2"]]]
+        assert report_config[0] == "Study Guide"
+        assert source_ids_double == [["src_x"]]
 
     @pytest.mark.asyncio
-    async def test_generate_flashcards_source_encoding(self, mock_core, mock_notes_api):
-        """Test generate_flashcards has correct source encoding format."""
+    @pytest.mark.parametrize(
+        ("method_name", "kwargs"),
+        [
+            ("generate_video", {"notebook_id": "nb_123", "source_ids": ["src_a", "src_b"]}),
+            ("generate_quiz", {"notebook_id": "nb_123", "source_ids": ["src_1", "src_2"]}),
+            ("generate_flashcards", {"notebook_id": "nb_123", "source_ids": ["src_flash"]}),
+            (
+                "generate_infographic",
+                {"notebook_id": "nb_123", "source_ids": ["src_info_1", "src_info_2"]},
+            ),
+            ("generate_slide_deck", {"notebook_id": "nb_123", "source_ids": ["src_slide"]}),
+            (
+                "generate_data_table",
+                {"notebook_id": "nb_123", "source_ids": ["src_table_1", "src_table_2"]},
+            ),
+            ("generate_mind_map", {"notebook_id": "nb_123", "source_ids": None}),
+        ],
+    )
+    async def test_removed_generation_methods_raise_validation_error(
+        self, mock_core, mock_notes_api, method_name, kwargs
+    ):
+        """Removed artifact families now fail explicitly at the backend boundary."""
         api = ArtifactsAPI(mock_core, mock_notes_api)
 
-        mock_core.rpc_call.return_value = [["artifact_fc", "Flashcards", 4, None, 1]]
-
-        await api.generate_flashcards(
-            notebook_id="nb_123",
-            source_ids=["src_flash"],
-        )
-
-        call_args = mock_core.rpc_call.call_args
-        params = call_args.args[1]
-
-        inner_params = params[2]
-        source_ids_triple = inner_params[3]
-
-        assert source_ids_triple == [[["src_flash"]]]
+        with pytest.raises(ValidationError, match="not supported on this branch"):
+            await getattr(api, method_name)(**kwargs)
 
     @pytest.mark.asyncio
-    async def test_generate_infographic_source_encoding(self, mock_core, mock_notes_api):
-        """Test generate_infographic has correct source encoding format."""
+    async def test_generate_report_rejects_removed_custom_format(self, mock_core, mock_notes_api):
+        """Custom reports are outside the reduced MVP backend contract."""
         api = ArtifactsAPI(mock_core, mock_notes_api)
 
-        mock_core.rpc_call.return_value = [["artifact_info", "Infographic", 7, None, 1]]
-
-        await api.generate_infographic(
-            notebook_id="nb_123",
-            source_ids=["src_info_1", "src_info_2"],
-        )
-
-        call_args = mock_core.rpc_call.call_args
-        params = call_args.args[1]
-
-        inner_params = params[2]
-        source_ids_triple = inner_params[3]
-
-        assert source_ids_triple == [[["src_info_1"]], [["src_info_2"]]]
-
-    @pytest.mark.asyncio
-    async def test_generate_slide_deck_source_encoding(self, mock_core, mock_notes_api):
-        """Test generate_slide_deck has correct source encoding format."""
-        api = ArtifactsAPI(mock_core, mock_notes_api)
-
-        mock_core.rpc_call.return_value = [["artifact_slide", "Slides", 8, None, 1]]
-
-        await api.generate_slide_deck(
-            notebook_id="nb_123",
-            source_ids=["src_slide"],
-        )
-
-        call_args = mock_core.rpc_call.call_args
-        params = call_args.args[1]
-
-        inner_params = params[2]
-        source_ids_triple = inner_params[3]
-
-        assert source_ids_triple == [[["src_slide"]]]
-
-    @pytest.mark.asyncio
-    async def test_generate_data_table_source_encoding(self, mock_core, mock_notes_api):
-        """Test generate_data_table has correct source encoding format."""
-        api = ArtifactsAPI(mock_core, mock_notes_api)
-
-        mock_core.rpc_call.return_value = [["artifact_table", "Table", 9, None, 1]]
-
-        await api.generate_data_table(
-            notebook_id="nb_123",
-            source_ids=["src_table_1", "src_table_2"],
-        )
-
-        call_args = mock_core.rpc_call.call_args
-        params = call_args.args[1]
-
-        inner_params = params[2]
-        source_ids_triple = inner_params[3]
-
-        assert source_ids_triple == [[["src_table_1"]], [["src_table_2"]]]
-
-    @pytest.mark.asyncio
-    async def test_generate_mind_map_source_encoding(self, mock_core, mock_notes_api):
-        """Test generate_mind_map has correct source encoding format."""
-        api = ArtifactsAPI(mock_core, mock_notes_api)
-
-        # Mock get_source_ids to return source IDs
-        mock_core.get_source_ids.return_value = ["src_mm_1", "src_mm_2"]
-
-        # Mock the mind map generation RPC call
-        mock_core.rpc_call.return_value = [['{"name": "Mind Map", "children": []}']]
-
-        await api.generate_mind_map(
-            notebook_id="nb_123",
-            source_ids=None,  # Will fetch sources
-        )
-
-        # Verify get_source_ids was called
-        mock_core.get_source_ids.assert_called_once_with("nb_123")
-
-        # Verify GENERATE_MIND_MAP RPC was called with correct source encoding
-        mock_core.rpc_call.assert_called_once()
-        call_args = mock_core.rpc_call.call_args
-        params = call_args.args[1]
-
-        # Mind map uses source_ids_nested = [[[sid]] for sid]
-        source_ids_nested = params[0]
-
-        assert source_ids_nested == [[["src_mm_1"]], [["src_mm_2"]]]
+        with pytest.raises(ValidationError, match="not supported on this branch"):
+            await api.generate_report(
+                notebook_id="nb_123",
+                source_ids=["src_x"],
+                report_format=ReportFormat.CUSTOM,
+                custom_prompt="My custom prompt",
+                extra_instructions="Should be ignored",
+            )
 
     @pytest.mark.asyncio
     async def test_suggest_reports_uses_get_suggested_reports(self, mock_core, mock_notes_api):

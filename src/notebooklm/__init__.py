@@ -40,6 +40,10 @@ except PackageNotFoundError:
         __version__,
     )
 
+# Package-root exports are a public compatibility boundary. Keep pruning-driven
+# API contractions on a dedicated release lane instead of piggybacking them onto
+# internal module cleanup.
+
 # Public API: Authentication
 from .auth import DEFAULT_STORAGE_PATH, AuthTokens
 

@@ -38,7 +38,7 @@ The CLI is a separate presentation layer over the SDK:
 - `src/notebooklm/notebooklm_cli.py`
   - creates the main Click group,
   - registers top-level session/notebook/chat commands,
-  - mounts subcommand groups such as `source`, `artifact`, `generate`, `download`, `note`, `share`, `research`, `skill`, and `language`.
+  - mounts subcommand groups such as `source`, `artifact`, `generate`, `download`, `note`, `share`, `research`, and `language`.
 - `src/notebooklm/cli/__init__.py`
   - is the aggregation point for command groups and shared helpers.
 - `src/notebooklm/cli/grouped.py`
@@ -77,8 +77,8 @@ The important Phase 0 question is not "does the repo do X somewhere?" It is "whe
 | Capability area | SDK | CLI | MCP | Notes |
 | --- | --- | --- | --- | --- |
 | Notebook lifecycle | Yes | Yes | Yes | `NotebooksAPI` is already mirrored cleanly by `tools/notebooks.py`. |
-| Core source ingest/list/wait/fulltext | Yes | Yes | Partial | MCP covers list/add URL/add text/add file/wait/fulltext, but not the full source-management surface. |
-| Source guide/freshness/refresh/Drive ingest | Yes | Present in source subsystem | No direct MCP surface | `SourcesAPI` includes `add_drive`, `refresh`, `check_freshness`, `get_guide`, and `get_fulltext`; current MCP surface stops earlier. |
+| Core source ingest/list/wait | Yes | Yes | Partial | MCP covers list/add URL/add text/add file/wait, which still matches the active mainline CLI ingest loop. |
+| Source fulltext/guide/freshness/refresh/Drive ingest | Yes | No longer part of the active mainline CLI | No direct MCP surface | `SourcesAPI` still includes `add_drive`, `refresh`, `check_freshness`, `get_guide`, and `get_fulltext`; the branch's pruning contract removes those from the front-door CLI while MCP still stops earlier. |
 | Chat ask/history/citations | Yes | Yes | Yes | Current MCP chat tools are thin wrappers over `client.chat`. |
 | Notebook chat settings | Yes | Yes | Yes | Exposed through `tools/chat_settings.py` as notebook-level settings helpers. |
 | Global output language | Yes | Yes | No | `SettingsAPI` manages global output language; CLI has a dedicated `language` group; MCP does not expose this surface today. |

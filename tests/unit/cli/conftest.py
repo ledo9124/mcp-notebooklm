@@ -240,13 +240,11 @@ class MultiPatcher:
         notebook_mod = importlib.import_module("notebooklm.cli.notebook")
         chat_mod = importlib.import_module("notebooklm.cli.chat")
         session_mod = importlib.import_module("notebooklm.cli.session")
-        share_mod = importlib.import_module("notebooklm.cli.share")
 
         self.patches = [
             patch.object(notebook_mod, "NotebookLMClient"),
             patch.object(chat_mod, "NotebookLMClient"),
             patch.object(session_mod, "NotebookLMClient"),
-            patch.object(share_mod, "NotebookLMClient"),
         ]
         self.mocks = []
 
@@ -265,10 +263,9 @@ def patch_main_cli_client():
     """Create a context manager that patches NotebookLMClient in CLI command modules.
 
     After refactoring, top-level commands are in separate modules:
-    - notebook.py: list, create, delete, rename, summary
-    - chat.py: ask, configure, history
+    - notebook.py: list, create, summary
+    - chat.py: ask
     - session.py: use
-    - share.py: status, public, view-level, add, update, remove
 
     Returns:
         A context manager that patches NotebookLMClient in all relevant modules

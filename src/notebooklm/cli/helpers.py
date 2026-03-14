@@ -15,7 +15,6 @@ import logging
 import os
 import time
 from functools import wraps
-from typing import TYPE_CHECKING
 
 import click
 from rich.console import Console
@@ -27,10 +26,6 @@ from ..auth import (
     load_auth_from_storage,
 )
 from ..paths import get_browser_profile_dir, get_context_path
-from ..types import ArtifactType
-
-if TYPE_CHECKING:
-    from ..types import Artifact
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -40,35 +35,6 @@ logger = logging.getLogger(__name__)
 # These are evaluated once at import time, so NOTEBOOKLM_HOME changes after import won't affect them
 CONTEXT_FILE = get_context_path()
 BROWSER_PROFILE_DIR = get_browser_profile_dir()
-
-# CLI artifact type name aliases
-_CLI_ARTIFACT_ALIASES = {
-    "flashcard": "flashcards",  # CLI uses singular, enum uses plural
-}
-
-
-def cli_name_to_artifact_type(name: str) -> ArtifactType | None:
-    """Convert CLI artifact type name to ArtifactType enum.
-
-    Args:
-        name: CLI artifact type name (e.g., "video", "slide-deck", "flashcard").
-            Use "all" to get None (no filter).
-
-    Returns:
-        ArtifactType enum member, or None if name is "all".
-
-    Raises:
-        KeyError: If name is not a valid artifact type.
-    """
-    if name == "all":
-        return None
-
-    # Handle aliases
-    name = _CLI_ARTIFACT_ALIASES.get(name, name)
-
-    # Convert kebab-case to snake_case and uppercase for enum lookup
-    enum_name = name.upper().replace("-", "_")
-    return ArtifactType[enum_name]
 
 
 # =============================================================================
@@ -327,26 +293,6 @@ async def resolve_source_id(client, notebook_id: str, partial_id: str) -> str:
     )
 
 
-async def resolve_artifact_id(client, notebook_id: str, partial_id: str) -> str:
-    """Resolve partial artifact ID to full ID."""
-    return await _resolve_partial_id(
-        partial_id,
-        list_fn=lambda: client.artifacts.list(notebook_id),
-        entity_name="artifact",
-        list_command="artifact list",
-    )
-
-
-async def resolve_note_id(client, notebook_id: str, partial_id: str) -> str:
-    """Resolve partial note ID to full ID."""
-    return await _resolve_partial_id(
-        partial_id,
-        list_fn=lambda: client.notes.list(notebook_id),
-        entity_name="note",
-        list_command="note list",
-    )
-
-
 async def resolve_source_ids(
     client, notebook_id: str, source_ids: tuple[str, ...]
 ) -> list[str] | None:
@@ -533,51 +479,6 @@ def display_research_sources(sources: list[dict], max_display: int = 10) -> None
         if len(sources) > max_display:
             table.add_row(f"... and {len(sources) - max_display} more", "")
         console.print(table)
-
-
-# =============================================================================
-# TYPE DISPLAY HELPERS
-# =============================================================================
-
-
-def get_artifact_type_display(artifact: "Artifact") -> str:
-    """Get display string for artifact type.
-
-    Args:
-        artifact: Artifact object
-
-    Returns:
-        Display string with emoji
-    """
-    from notebooklm import ArtifactType
-
-    kind = artifact.kind
-
-    # Map ArtifactType enum to display strings
-    display_map = {
-        ArtifactType.AUDIO: "🎧 Audio",
-        ArtifactType.VIDEO: "🎬 Video",
-        ArtifactType.QUIZ: "📝 Quiz",
-        ArtifactType.FLASHCARDS: "🃏 Flashcards",
-        ArtifactType.MIND_MAP: "🧠 Mind Map",
-        ArtifactType.INFOGRAPHIC: "🖼️ Infographic",
-        ArtifactType.SLIDE_DECK: "📊 Slide Deck",
-        ArtifactType.DATA_TABLE: "📈 Data Table",
-    }
-
-    # Handle report subtypes specially
-    if kind == ArtifactType.REPORT:
-        report_displays = {
-            "briefing_doc": "📋 Briefing Doc",
-            "study_guide": "📚 Study Guide",
-            "blog_post": "✍️ Blog Post",
-            "report": "📄 Report",
-        }
-        return report_displays.get(artifact.report_subtype or "report", "📄 Report")
-
-    return display_map.get(kind, f"Unknown ({kind})")
-
-
 def get_source_type_display(source_type: str) -> str:
     """Get display string for source type.
 

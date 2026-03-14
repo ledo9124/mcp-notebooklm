@@ -32,14 +32,20 @@ logger = logging.getLogger(__name__)
 class SourcesAPI:
     """Operations on NotebookLM sources.
 
-    Provides methods for adding, listing, getting, deleting, renaming,
-    and refreshing sources in notebooks.
+    The active mainline MVP centers on source ingestion and readiness:
+    listing sources, adding URL/text/file inputs, and waiting for them
+    to finish processing.
+
+    Additional source intelligence and mutation helpers remain on this
+    subclient during the pruning transition because other compatibility
+    surfaces still depend on them, even though they are no longer part
+    of the primary CLI contract on this branch.
 
     Usage:
         async with NotebookLMClient.from_storage() as client:
             sources = await client.sources.list(notebook_id)
             new_src = await client.sources.add_url(notebook_id, "https://example.com")
-            await client.sources.rename(notebook_id, new_src.id, "Better Title")
+            await client.sources.wait_until_ready(notebook_id, new_src.id)
     """
 
     def __init__(self, core: ClientCore):

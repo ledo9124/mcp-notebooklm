@@ -53,21 +53,6 @@ def source_option(f):
         help="Source ID. Supports partial IDs.",
     )(f)
 
-
-def artifact_option(f):
-    """Add --artifact/-a option for artifact ID.
-
-    Supports partial ID matching (e.g., 'abc' matches 'abc123...').
-    """
-    return click.option(
-        "-a",
-        "--artifact",
-        "artifact_id",
-        required=True,
-        help="Artifact ID. Supports partial IDs.",
-    )(f)
-
-
 def output_option(f):
     """Add --output/-o option for output file path."""
     return click.option(

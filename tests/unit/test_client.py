@@ -40,7 +40,9 @@ class TestNotebookLMClientInit:
         assert client.artifacts is not None
         assert client.chat is not None
         assert client.research is not None
-        assert client.notes is not None
+        assert client._notes is None
+        assert client._settings is None
+        assert client._sharing is None
 
     def test_client_is_connected_before_open(self, mock_auth):
         """Test is_connected returns False before opening."""
@@ -302,11 +304,38 @@ class TestSubClientAPIs:
         assert hasattr(client, "research")
         assert client.research is not None
 
-    def test_notes_api_accessible(self, mock_auth):
-        """Test notes sub-client is accessible."""
+    def test_notes_api_lazily_initialized(self, mock_auth):
+        """Test notes sub-client is created only when accessed."""
         client = NotebookLMClient(mock_auth)
-        assert hasattr(client, "notes")
-        assert client.notes is not None
+        assert client._notes is None
+
+        notes_api = client.notes
+
+        assert notes_api is not None
+        assert client._notes is notes_api
+        assert client.notes is notes_api
+
+    def test_settings_api_lazily_initialized(self, mock_auth):
+        """Test settings sub-client is created only when accessed."""
+        client = NotebookLMClient(mock_auth)
+        assert client._settings is None
+
+        settings_api = client.settings
+
+        assert settings_api is not None
+        assert client._settings is settings_api
+        assert client.settings is settings_api
+
+    def test_sharing_api_lazily_initialized(self, mock_auth):
+        """Test sharing sub-client is created only when accessed."""
+        client = NotebookLMClient(mock_auth)
+        assert client._sharing is None
+
+        sharing_api = client.sharing
+
+        assert sharing_api is not None
+        assert client._sharing is sharing_api
+        assert client.sharing is sharing_api
 
 
 # =============================================================================

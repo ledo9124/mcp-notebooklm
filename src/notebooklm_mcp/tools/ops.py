@@ -15,6 +15,7 @@ except Exception:  # pragma: no cover - optional dependency
     MCPContext = Any
 
 
+from notebooklm._notebooks import _delete_notebook_rpc
 from notebooklm.exceptions import ValidationError
 
 from .._config import MCPConfig, load_config
@@ -388,7 +389,7 @@ async def notebooklm_notebooks_delete_commit(
     )
 
     async with app_context.acquire_slot():
-        await app_context.client.notebooks.delete(notebook_id)
+        await _delete_notebook_rpc(app_context.client._core, notebook_id)
 
     return make_tool_result({"success": True})
 

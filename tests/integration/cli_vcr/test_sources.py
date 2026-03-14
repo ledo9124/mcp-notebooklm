@@ -61,20 +61,3 @@ class TestSourceAddCommand:
         with notebooklm_vcr.use_cassette(cassette):
             result = runner.invoke(cli, args)
             assert_command_success(result)
-
-
-class TestSourceContentCommands:
-    """Test source content retrieval commands (guide, fulltext)."""
-
-    @pytest.mark.parametrize(
-        ("command", "cassette"),
-        [
-            ("guide", "sources_get_guide.yaml"),
-            ("fulltext", "sources_get_fulltext.yaml"),
-        ],
-    )
-    def test_source_content(self, runner, mock_auth_for_vcr, mock_context, command, cassette):
-        """Get source content works with real client."""
-        with notebooklm_vcr.use_cassette(cassette):
-            result = runner.invoke(cli, ["source", command, "test_source_id"])
-            assert_command_success(result)
