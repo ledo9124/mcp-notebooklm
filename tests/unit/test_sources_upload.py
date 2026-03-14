@@ -2,9 +2,20 @@
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
 from notebooklm._sources import SourcesAPI
+
+
+def _build_test_request(method: str, url: str, **kwargs) -> httpx.Request:
+    """Mirror AsyncClient.build_request() with a real sync request object for tests."""
+    return httpx.Request(
+        method,
+        url,
+        headers=kwargs.get("headers"),
+        stream=kwargs.get("stream"),
+    )
 
 
 @pytest.fixture
@@ -285,6 +296,7 @@ class TestUploadFileStreaming:
             mock_client = AsyncMock()
             mock_client.__aenter__.return_value = mock_client
             mock_client.__aexit__.return_value = None
+            mock_client.build_request = MagicMock(side_effect=_build_test_request)
             mock_client.send.return_value = mock_response
             mock_client_cls.return_value = mock_client
 
@@ -308,6 +320,7 @@ class TestUploadFileStreaming:
             mock_client = AsyncMock()
             mock_client.__aenter__.return_value = mock_client
             mock_client.__aexit__.return_value = None
+            mock_client.build_request = MagicMock(side_effect=_build_test_request)
             mock_client.send.return_value = mock_response
             mock_client_cls.return_value = mock_client
 
@@ -334,6 +347,7 @@ class TestUploadFileStreaming:
             mock_client = AsyncMock()
             mock_client.__aenter__.return_value = mock_client
             mock_client.__aexit__.return_value = None
+            mock_client.build_request = MagicMock(side_effect=_build_test_request)
             mock_client.send.return_value = mock_response
             mock_client_cls.return_value = mock_client
 
@@ -360,6 +374,7 @@ class TestUploadFileStreaming:
             mock_client = AsyncMock()
             mock_client.__aenter__.return_value = mock_client
             mock_client.__aexit__.return_value = None
+            mock_client.build_request = MagicMock(side_effect=_build_test_request)
             mock_client.send.side_effect = httpx.HTTPStatusError(
                 "Upload Failed", request=MagicMock(), response=MagicMock()
             )

@@ -1,2 +1,0 @@
-row_id,screen_id,fact_id,source_domain,fact_status,interface_name,interaction_type,method,target,request_summary,response_summary,evidence_count,evidence_refs
-endpoint-create-customer-api,customer-form,endpoint-create-customer,BE,PROVISIONAL,Create Customer,ENDPOINT,POST,/customers,"legalName, email, loyaltyTier, salesOwnerId","customerId, approvalState",1,requirements@requirements-missing-001:4-6

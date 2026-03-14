@@ -11,7 +11,6 @@ This document summarizes what the project does today and the main technologies u
 
 - Async Python SDK
 - Focused CLI for the retained MVP workflow
-- Legacy/frozen MCP and BA reference code still kept in-tree
 
 ## Core Technology Stack
 
@@ -30,7 +29,6 @@ This document summarizes what the project does today and the main technologies u
 ### Optional Features
 
 - `playwright`: browser-based login/session capture
-- `mcp` + `pydantic`: legacy/frozen MCP server and typed tool schemas retained in-tree
 
 ### Development and Quality Tooling
 
@@ -46,18 +44,14 @@ This document summarizes what the project does today and the main technologies u
   - `_notes.py`, `_settings.py`, `_sharing.py`: deferred compatibility APIs kept behind a reduced client facade
   - `rpc/`: RPC types, encoding, decoding
   - `cli/`: command groups for `auth/session`, `notebook`, `source`, `research`, `chat ask`, and reduced `generate`
-- `src/notebooklm_mcp/`: legacy/frozen MCP server and BA runner reference code
-  - tools/resources/prompts retained for archival and future re-entry work
-  - excluded from the packaged mainline product surface on this branch
 
-## Active Pruning Workstream
+## Current Product Boundary
 
-The repository is currently defining a smaller MVP boundary for the mainline CLI/SDK surface.
+The repository now treats the `notebooklm` CLI and the SDK under `src/notebooklm/**` as the supported product surface.
 
-- [PRUNING_PLAN.md](../PRUNING_PLAN.md) is the file-by-file keep/delete/defer map.
-- [MVP Pruning Contract](mvp-pruning-contract.md) records the retained user journeys, coupling constraints, removal order, and validation gates for that work.
-- [MVP Pruning Verification](mvp-pruning-verification.md) records the latest prune-focused quality-gate results and residual risks.
-- This overview tracks the actively supported mainline surface as pruning lands; some deferred SDK compatibility helpers may still exist in-tree without being part of the current CLI promise.
+- The actively supported user journeys are notebook bootstrap, source ingestion, research, chat, and the retained `generate` flows.
+- Deferred SDK compatibility helpers may still exist in-tree without being part of the active CLI promise.
+- This overview focuses on the surviving CLI/SDK contract after the MCP/BA cleanup work.
 
 ## Current Functional Coverage
 
@@ -124,12 +118,6 @@ Direct Google Drive ingest plus the broader source metadata/intelligence shell (
 - The retained generate commands still use the local language helper/config path.
 - The standalone root `language` command group is removed from the active CLI shell.
 
-### 11) Legacy/Frozen MCP and BA Surface
-
-- MCP tools/resources/prompts and BA runner code remain in-tree as reference material
-- Those surfaces are not part of the packaged mainline product contract for this branch
-- Boundary status and re-entry criteria are tracked in [MCP/BA Boundary Inventory](mvp-pruning-mcp-ba-boundary.md)
-
 ## Testing Coverage Areas
 
 The repository includes unit, integration, CLI VCR, and E2E tests across:
@@ -137,7 +125,6 @@ The repository includes unit, integration, CLI VCR, and E2E tests across:
 - auth/session paths
 - notebooks, sources, chat, research, and reduced artifact generation flows
 - deferred compatibility surfaces (`notes`, `settings`, `sharing`) where they remain intentionally in-tree
-- legacy/frozen MCP tools/resources and server behavior
 - platform-specific behavior (including Windows compatibility)
 
 ## Key Constraints and Risk Profile

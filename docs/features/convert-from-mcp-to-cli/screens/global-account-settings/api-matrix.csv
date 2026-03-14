@@ -1,2 +1,0 @@
-row_id,screen_id,fact_id,source_domain,fact_status,interface_name,interaction_type,method,target,request_summary,response_summary,evidence_count,evidence_refs
-global-account-settings-be-sdk-endpoint-590492-api,global-account-settings,global-account-settings-be-sdk-endpoint-590492,BE,PROVISIONAL,`src/notebooklm/_settings.py` exposes `get_output_language()` and `set_output_language()` [1].,ENDPOINT,,,,,0,

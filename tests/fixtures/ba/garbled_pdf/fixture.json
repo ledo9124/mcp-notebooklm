@@ -1,7 +1,0 @@
-{
-  "scenario": "garbled_pdf",
-  "description": "Scanned or low-quality BA source intended to trigger degradation.",
-  "sources_dir": "sources",
-  "notes_dir": "notes",
-  "expected_dir": "expected"
-}

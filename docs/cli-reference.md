@@ -1,9 +1,9 @@
 # CLI Reference
 
 **Status:** Active
-**Last Updated:** 2026-03-04
+**Last Updated:** 2026-03-14
 
-Complete command reference for the `notebooklm` CLI—providing full programmatic access to all NotebookLM features, including capabilities not exposed in the web UI.
+Complete command reference for the retained `notebooklm` CLI surface.
 
 ## Command Structure
 
@@ -27,7 +27,7 @@ See [Configuration](configuration.md) for details on environment variables and C
 - **Session commands** - Authentication and context management
 - **Notebook commands** - CRUD operations on notebooks
 - **Chat commands** - Querying with follow-up continuity
-- **Grouped commands** - `source`, `generate`, `research`, `language`
+- **Grouped commands** - `source`, `generate`, `research`
 
 ---
 
@@ -244,8 +244,6 @@ notebooklm ask -s src_001 -s src_002 "Compare these sources"
 # Return structured output for automation
 notebooklm ask "Summarize the disagreement" --json
 ```
-[`docs/chat-settings-manual-checklist.md`](chat-settings-manual-checklist.md)
-
 ### Source: `add-research`
 
 Perform AI-powered research and add discovered sources to the notebook.

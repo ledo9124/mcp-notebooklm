@@ -1,6 +1,7 @@
-"""Comprehensive VCR tests for all NotebookLM API operations.
+"""Comprehensive VCR tests for retained NotebookLM API operations.
 
-This file records cassettes for ALL API operations.
+This file records cassettes for the active API surface that still belongs to the
+CLI/SDK product contract on this branch.
 Run with NOTEBOOKLM_VCR_RECORD=1 to record new cassettes.
 
 Recording requires the same env vars as e2e tests:
@@ -13,8 +14,6 @@ recorded responses regardless of notebook ID.
 Note: These tests are automatically skipped if cassettes are not available.
 """
 
-import csv
-import json
 import os
 import sys
 from contextlib import asynccontextmanager
@@ -276,13 +275,7 @@ class TestNotesAPI:
 ARTIFACT_LIST_METHODS = [
     ("list", "artifacts_list.yaml"),
     ("list_audio", "artifacts_list_audio.yaml"),
-    ("list_video", "artifacts_list_video.yaml"),
     ("list_reports", "artifacts_list_reports.yaml"),
-    ("list_quizzes", "artifacts_list_quizzes.yaml"),
-    ("list_flashcards", "artifacts_list_flashcards.yaml"),
-    ("list_infographics", "artifacts_list_infographics.yaml"),
-    ("list_slide_decks", "artifacts_list_slide_decks.yaml"),
-    ("list_data_tables", "artifacts_list_data_tables.yaml"),
 ]
 
 
@@ -311,150 +304,6 @@ class TestArtifactsListAPI:
         async with vcr_client() as client:
             suggestions = await client.artifacts.suggest_reports(READONLY_NOTEBOOK_ID)
         assert isinstance(suggestions, list)
-
-
-class TestArtifactsDownloadAPI:
-    """Artifacts API download operations."""
-
-    @pytest.mark.vcr
-    @pytest.mark.asyncio
-    @notebooklm_vcr.use_cassette("artifacts_download_report.yaml")
-    async def test_download_report(self, tmp_path):
-        """Download a report as markdown."""
-        async with vcr_client() as client:
-            output_path = tmp_path / "report.md"
-            try:
-                path = await client.artifacts.download_report(
-                    READONLY_NOTEBOOK_ID, str(output_path)
-                )
-                assert os.path.exists(path)
-                content = output_path.read_text(encoding="utf-8")
-                assert len(content) > 0 and "#" in content
-            except ValueError as e:
-                if "No completed report" in str(e):
-                    pytest.skip("No completed report artifact available")
-                raise
-
-    @pytest.mark.vcr
-    @pytest.mark.asyncio
-    @notebooklm_vcr.use_cassette("artifacts_download_mind_map.yaml")
-    async def test_download_mind_map(self, tmp_path):
-        """Download a mind map as JSON."""
-        async with vcr_client() as client:
-            output_path = tmp_path / "mindmap.json"
-            try:
-                path = await client.artifacts.download_mind_map(
-                    READONLY_NOTEBOOK_ID, str(output_path)
-                )
-                assert os.path.exists(path)
-                data = json.loads(output_path.read_text(encoding="utf-8"))
-                assert "name" in data
-            except ValueError as e:
-                if "No mind maps found" in str(e):
-                    pytest.skip("No mind map artifact available")
-                raise
-
-    @pytest.mark.vcr
-    @pytest.mark.asyncio
-    @notebooklm_vcr.use_cassette("artifacts_download_data_table.yaml")
-    async def test_download_data_table(self, tmp_path):
-        """Download a data table as CSV."""
-        async with vcr_client() as client:
-            output_path = tmp_path / "data.csv"
-            try:
-                path = await client.artifacts.download_data_table(
-                    READONLY_NOTEBOOK_ID, str(output_path)
-                )
-                assert os.path.exists(path)
-                with open(output_path, encoding="utf-8-sig") as f:
-                    rows = list(csv.reader(f))
-                assert len(rows) >= 1
-            except ValueError as e:
-                if "No completed data table" in str(e):
-                    pytest.skip("No completed data table artifact available")
-                raise
-
-    @pytest.mark.vcr
-    @pytest.mark.asyncio
-    @notebooklm_vcr.use_cassette("artifacts_download_quiz.yaml")
-    async def test_download_quiz(self, tmp_path):
-        """Download a quiz as JSON."""
-        async with vcr_client() as client:
-            output_path = tmp_path / "quiz.json"
-            try:
-                path = await client.artifacts.download_quiz(READONLY_NOTEBOOK_ID, str(output_path))
-                assert os.path.exists(path)
-                data = json.loads(output_path.read_text(encoding="utf-8"))
-                assert "title" in data
-                assert "questions" in data
-            except ValueError as e:
-                if "No completed quiz" in str(e):
-                    pytest.skip("No completed quiz artifact available")
-                raise
-
-    @pytest.mark.vcr
-    @pytest.mark.asyncio
-    @notebooklm_vcr.use_cassette("artifacts_download_quiz_markdown.yaml")
-    async def test_download_quiz_markdown(self, tmp_path):
-        """Download a quiz as markdown."""
-        async with vcr_client() as client:
-            output_path = tmp_path / "quiz.md"
-            try:
-                path = await client.artifacts.download_quiz(
-                    READONLY_NOTEBOOK_ID, str(output_path), output_format="markdown"
-                )
-                assert os.path.exists(path)
-                content = output_path.read_text(encoding="utf-8")
-                assert "# " in content  # Should have a heading
-                assert "Question" in content or "##" in content
-            except ValueError as e:
-                if "No completed quiz" in str(e):
-                    pytest.skip("No completed quiz artifact available")
-                raise
-
-    @pytest.mark.vcr
-    @pytest.mark.asyncio
-    @notebooklm_vcr.use_cassette("artifacts_download_flashcards.yaml")
-    async def test_download_flashcards(self, tmp_path):
-        """Download flashcards as JSON."""
-        async with vcr_client() as client:
-            output_path = tmp_path / "flashcards.json"
-            try:
-                path = await client.artifacts.download_flashcards(
-                    READONLY_NOTEBOOK_ID, str(output_path)
-                )
-                assert os.path.exists(path)
-                data = json.loads(output_path.read_text(encoding="utf-8"))
-                assert "title" in data
-                assert "cards" in data
-                # Verify normalized format (front/back, not f/b)
-                if data["cards"]:
-                    assert "front" in data["cards"][0]
-                    assert "back" in data["cards"][0]
-            except ValueError as e:
-                if "No completed flashcard" in str(e):
-                    pytest.skip("No completed flashcard artifact available")
-                raise
-
-    @pytest.mark.vcr
-    @pytest.mark.asyncio
-    @notebooklm_vcr.use_cassette("artifacts_download_flashcards_markdown.yaml")
-    async def test_download_flashcards_markdown(self, tmp_path):
-        """Download flashcards as markdown."""
-        async with vcr_client() as client:
-            output_path = tmp_path / "flashcards.md"
-            try:
-                path = await client.artifacts.download_flashcards(
-                    READONLY_NOTEBOOK_ID, str(output_path), output_format="markdown"
-                )
-                assert os.path.exists(path)
-                content = output_path.read_text(encoding="utf-8")
-                assert "# " in content  # Should have a heading
-                assert "**Q:**" in content or "Card" in content
-            except ValueError as e:
-                if "No completed flashcard" in str(e):
-                    pytest.skip("No completed flashcard artifact available")
-                raise
 
 
 # =============================================================================
@@ -489,25 +338,6 @@ class TestArtifactsGenerateAPI:
         async with vcr_client() as client:
             result = await client.artifacts.generate_study_guide(MUTABLE_NOTEBOOK_ID)
         assert result is not None
-
-    @pytest.mark.vcr
-    @pytest.mark.asyncio
-    @notebooklm_vcr.use_cassette("artifacts_generate_quiz.yaml")
-    async def test_generate_quiz(self):
-        """Generate a quiz."""
-        async with vcr_client() as client:
-            result = await client.artifacts.generate_quiz(MUTABLE_NOTEBOOK_ID)
-        assert result is not None
-
-    @pytest.mark.vcr
-    @pytest.mark.asyncio
-    @notebooklm_vcr.use_cassette("artifacts_generate_flashcards.yaml")
-    async def test_generate_flashcards(self):
-        """Generate flashcards."""
-        async with vcr_client() as client:
-            result = await client.artifacts.generate_flashcards(MUTABLE_NOTEBOOK_ID)
-        assert result is not None
-
 
 # =============================================================================
 # Chat API
@@ -830,25 +660,6 @@ class TestArtifactsAdditionalAPI:
             artifact_id = artifacts[0].id
             deleted = await client.artifacts.delete(MUTABLE_NOTEBOOK_ID, artifact_id)
         assert deleted is True
-
-    @pytest.mark.vcr
-    @pytest.mark.asyncio
-    @notebooklm_vcr.use_cassette("artifacts_export_report.yaml")
-    async def test_export_report(self):
-        """Export a report to Google Docs."""
-        async with vcr_client() as client:
-            # Find a completed report artifact
-            reports = await client.artifacts.list_reports(MUTABLE_NOTEBOOK_ID)
-            completed_reports = [r for r in reports if r.is_completed]
-            if not completed_reports:
-                pytest.skip("No completed report artifact available")
-            report = completed_reports[0]
-            # Export it to Google Docs
-            result = await client.artifacts.export_report(
-                MUTABLE_NOTEBOOK_ID, report.id, title="VCR Export Test"
-            )
-        assert result is not None
-
 
 # =============================================================================
 # Research API

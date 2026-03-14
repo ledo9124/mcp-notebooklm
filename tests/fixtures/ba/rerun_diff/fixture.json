@@ -1,9 +1,0 @@
-{
-  "scenario": "rerun_diff",
-  "description": "Before/after source materials for impacted-screen rerun testing.",
-  "sources_dir": "sources",
-  "notes_dir": "notes",
-  "expected_dir": "expected",
-  "before_dir": "before",
-  "after_dir": "after"
-}

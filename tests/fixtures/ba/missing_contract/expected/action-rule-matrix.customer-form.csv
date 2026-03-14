@@ -1,2 +1,0 @@
-row_id,screen_id,fact_id,source_domain,fact_status,action_name,trigger,rule_summary,outcome,evidence_count,evidence_refs
-approval-banner-rule-action,customer-form,approval-banner-rule,SHARED,CONFIRMED,Save customer,Requested loyalty tier is VIP,Show a manager-approval banner before submission.,FE preserves captured values while approval state stays provisional.,1,requirements@requirements-missing-001:4-6

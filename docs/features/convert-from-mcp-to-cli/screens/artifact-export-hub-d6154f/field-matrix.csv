@@ -1,2 +1,0 @@
-row_id,screen_id,fact_id,source_domain,fact_status,field_name,field_label,field_type,required,description,evidence_count,evidence_refs
-artifact-export-hub-d6154f-fe-field-1d2995-field,artifact-export-hub-d6154f,artifact-export-hub-d6154f-fe-field-1d2995,FE,PROVISIONAL,The 'wait' command supports '--timeout' and '--interval' parameters for managing async polling [2].,,,,The 'wait' command supports '--timeout' and '--interval' parameters for managing async polling [2].,0,

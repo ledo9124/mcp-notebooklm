@@ -117,18 +117,6 @@ class TestArtifactsWithVCR:
 
     @pytest.mark.vcr
     @pytest.mark.asyncio
-    @notebooklm_vcr.use_cassette("real_api_list_quizzes.yaml")
-    async def test_list_quizzes(self):
-        """Record listing quiz artifacts."""
-        auth = await get_vcr_auth()
-
-        async with NotebookLMClient(auth) as client:
-            quizzes = await client.artifacts.list_quizzes(TEST_NOTEBOOK_ID)
-
-        assert isinstance(quizzes, list)
-
-    @pytest.mark.vcr
-    @pytest.mark.asyncio
     @notebooklm_vcr.use_cassette("real_api_list_mind_maps.yaml")
     async def test_list_mind_maps(self):
         """Record listing mind map artifacts (via notes API)."""

@@ -7,24 +7,6 @@ import pytest
 
 from notebooklm.rpc import RPCMethod
 
-LEGACY_MCP_TEST_PATTERNS = (
-    "tests/unit/test_mcp*.py",
-    "tests/unit/test_ba*.py",
-    "tests/integration/test_mcp_integration.py",
-    "unit/test_mcp*.py",
-    "unit/test_ba*.py",
-    "integration/test_mcp_integration.py",
-)
-
-
-def _legacy_mcp_tests_enabled() -> bool:
-    """Return True when the frozen MCP/BA test surface is explicitly enabled."""
-    return os.getenv("NOTEBOOKLM_ENABLE_LEGACY_MCP_TESTS") == "1"
-
-
-collect_ignore_glob = [] if _legacy_mcp_tests_enabled() else list(LEGACY_MCP_TEST_PATTERNS)
-
-
 def pytest_configure(config):
     """Register custom markers and configure test environment."""
     config.addinivalue_line(

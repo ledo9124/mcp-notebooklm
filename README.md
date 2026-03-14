@@ -118,25 +118,6 @@ async def main():
 asyncio.run(main())
 ```
 
-## Legacy/Frozen MCP Surface
-
-`src/notebooklm_mcp/**` and `src/notebooklm_mcp/ba/**` remain in the repository as legacy/frozen reference code while the mainline branch is being pruned down to a supportable CLI/SDK MVP.
-
-Current branch policy:
-- the active product contract is the `notebooklm` CLI plus the Python SDK under `src/notebooklm/**`
-- the historical MCP server and BA runner are not part of the active MVP promise on this branch
-- packaging, default test expectations, and README positioning now treat MCP/BA as archived reference material rather than current product surface
-
-For the repo-local boundary definition and re-entry criteria, see [MCP/BA Boundary Inventory](docs/mvp-pruning-mcp-ba-boundary.md).
-
-Legacy reference docs retained in-tree:
-- [MCP Tool Reference](docs/mcp-tools.md)
-- [Claude Desktop MCP Setup](docs/mcp-claude-desktop.md)
-- [BA Runner MCP Flow](docs/examples/ba-runner-mcp-flow.py)
-- [OpenAI Agents SDK MCP Example](docs/examples/openai-agents-example.py)
-
-For multi-agent contributor coordination in this repo (session sync, inbox checks, progress updates, and file reservations), see [AGENTS.md](AGENTS.md).
-
 ## Useful CLI Commands
 
 - `notebooklm --help`
@@ -165,10 +146,3 @@ See [Configuration](docs/configuration.md) for details and precedence rules.
 - [Development Guide](docs/development.md)
 - [RPC Development](docs/rpc-development.md)
 - [RPC Reference](docs/rpc-reference.md)
-
-Legacy/frozen MCP references:
-- [MCP/BA Boundary Inventory](docs/mvp-pruning-mcp-ba-boundary.md)
-- [MCP Tool Reference](docs/mcp-tools.md)
-- [Claude Desktop MCP Setup](docs/mcp-claude-desktop.md)
-- [BA Runner MCP Flow](docs/examples/ba-runner-mcp-flow.py)
-- [OpenAI Agents SDK MCP Example](docs/examples/openai-agents-example.py)

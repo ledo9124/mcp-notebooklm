@@ -1,3 +1,0 @@
-row_id,screen_id,fact_id,source_domain,fact_status,action_name,trigger,rule_summary,outcome,evidence_count,evidence_refs
-chat-interaction-configuration-shared-business-rule-00ffe2-action,chat-interaction-configuration,chat-interaction-configuration-shared-business-rule-00ffe2,SHARED,PROVISIONAL,Business Rule,,"Chat interaction settings are notebook-scoped, whereas output language is an account-global setting [1, 2].",,0,
-chat-interaction-configuration-shared-business-rule-054766-action,chat-interaction-configuration,chat-interaction-configuration-shared-business-rule-054766,SHARED,PROVISIONAL,Business Rule,,"Notebook chat settings consist of three core parameters: goal, response length, and custom prompt [1].",,0,

@@ -1,2 +1,0 @@
-row_id,screen_id,fact_id,source_domain,fact_status,interface_name,interaction_type,method,target,request_summary,response_summary,evidence_count,evidence_refs
-artifact-export-hub-d6154f-be-endpoint-c8fe41-api,artifact-export-hub-d6154f,artifact-export-hub-d6154f-be-endpoint-c8fe41,BE,PROVISIONAL,"The core logic is implemented in the SDK via 'src/notebooklm/_artifacts.py', exposing methods for generation, download, and export [1].",ENDPOINT,,,,,0,

@@ -1,5 +1,0 @@
-row_id,screen_id,fact_id,source_domain,fact_status,field_name,field_label,field_type,required,description,evidence_count,evidence_refs
-field-email-field,customer-form,field-email,FE,CONFIRMED,email,Email,email,true,,1,requirements@requirements-clean-001:7-7
-field-legal-name-field,customer-form,field-legal-name,FE,CONFIRMED,legal_name,Legal Name,text,true,,1,requirements@requirements-clean-001:7-7
-field-loyalty-tier-field,customer-form,field-loyalty-tier,FE,CONFIRMED,loyalty_tier,Loyalty Tier,select,true,,1,requirements@requirements-clean-001:7-8
-field-sales-owner-field,customer-form,field-sales-owner,FE,CONFIRMED,sales_owner_id,Sales Owner,text,true,,1,requirements@requirements-clean-001:7-7

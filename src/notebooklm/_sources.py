@@ -1018,7 +1018,7 @@ class SourcesAPI:
                     yield chunk
 
         async with httpx.AsyncClient(timeout=300.0) as client:
-            request = client.build_request(
+            request = httpx.Request(
                 "POST",
                 upload_url,
                 headers=headers,

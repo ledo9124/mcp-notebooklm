@@ -44,7 +44,7 @@ src/notebooklm/
     └── ...
 ```
 
-The `src/notebooklm_mcp/` tree remains in-repo as legacy/frozen reference code during MVP pruning. Do not treat it as default mainline acceptance scope unless a bead explicitly calls for MCP/BA work.
+Treat `src/notebooklm/` as the supported architecture on this branch. Deferred compatibility cleanup may still touch `_notes.py`, `_settings.py`, or `_sharing.py`, but deleted MCP/BA code is no longer part of the in-tree product surface.
 
 ### Layered Architecture
 

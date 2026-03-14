@@ -1,7 +1,0 @@
-{
-  "scenario": "contradictory_sources",
-  "description": "Primary and supporting sources disagree in material ways.",
-  "sources_dir": "sources",
-  "notes_dir": "notes",
-  "expected_dir": "expected"
-}

@@ -1,7 +1,0 @@
-{
-  "scenario": "missing_contract",
-  "description": "BA requirements are present but backend contract detail is absent.",
-  "sources_dir": "sources",
-  "notes_dir": "notes",
-  "expected_dir": "expected"
-}

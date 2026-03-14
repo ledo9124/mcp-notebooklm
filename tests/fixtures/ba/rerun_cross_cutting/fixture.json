@@ -1,9 +1,0 @@
-{
-  "scenario": "rerun_cross_cutting",
-  "description": "Single-source change that fans out across every known screen and should force a full rerun.",
-  "sources_dir": "sources",
-  "notes_dir": "notes",
-  "expected_dir": "expected",
-  "before_dir": "before",
-  "after_dir": "after"
-}

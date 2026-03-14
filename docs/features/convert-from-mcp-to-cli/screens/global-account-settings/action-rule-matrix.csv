@@ -1,4 +1,0 @@
-row_id,screen_id,fact_id,source_domain,fact_status,action_name,trigger,rule_summary,outcome,evidence_count,evidence_refs
-global-account-settings-shared-business-rule-f1c4c6-action,global-account-settings,global-account-settings-shared-business-rule-f1c4c6,SHARED,PROVISIONAL,Business Rule,,Changes to the global output language only affect **newly generated outputs**; existing artifacts are not retroactively rewritten [3].,,0,
-global-account-settings-shared-business-rule-5a7a3f-action,global-account-settings,global-account-settings-shared-business-rule-5a7a3f,SHARED,PROVISIONAL,Business Rule,,"If the language is unset, the system defaults to **'en'** for generation [2].",,0,
-global-account-settings-shared-business-rule-4bc9b7-action,global-account-settings,global-account-settings-shared-business-rule-4bc9b7,SHARED,PROVISIONAL,Business Rule,,"The **global output language** is an account-level configuration that persists across all notebooks [1, 2].",,0,
