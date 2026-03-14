@@ -1,0 +1,174 @@
+{
+  "schema_version": "ba.canonical_screen.v1.0",
+  "feature_key": "convert-from-mcp-to-cli",
+  "screen_id": "artifact-export-hub-d6154f",
+  "mode": "AUTO",
+  "run_id": "run-20260312T141020Z-a5fc8e53",
+  "shared_facts": [
+    {
+      "fact_id": "artifact-export-hub-d6154f-shared-business-rule-8fc068",
+      "domain": "SHARED",
+      "category": "business rule",
+      "value": "The artifact types supported for generation and distribution include reports, data tables, and mind maps [1].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "artifact-export-hub-d6154f-shared-business-rule-c5efab",
+      "domain": "SHARED",
+      "category": "business rule",
+        "value": "Export destinations are strictly limited to Google Docs or Google Sheets, exposed as `notebooklm artifact export <artifact_id> --title <title> --type docs|sheets>` with no folder-id or naming-template flags in the current CLI [2].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+        "note": "Repo-backed clarification from src/notebooklm/cli/artifact.py: artifact export varies by --title and --type only.",
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "artifact-export-hub-d6154f-shared-business-rule-6a0a88",
+      "domain": "SHARED",
+      "category": "business rule",
+      "value": "The canonical reusable async control path for artifact tracking is through the poll and wait operations [2, 3].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "artifact-export-hub-d6154f-shared-business-rule-b76e25",
+      "domain": "SHARED",
+      "category": "business rule",
+      "value": "While mind maps utilize note-backed internal storage, this implementation detail must be hidden from the user-facing CLI contract [1, 3].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    }
+  ],
+  "fe_facts": [
+    {
+      "fact_id": "artifact-export-hub-d6154f-fe-ui-behavior-58abb9",
+      "domain": "FE",
+      "category": "UI behavior",
+      "value": "The CLI provides 'notebooklm artifact poll <task_id>' and 'notebooklm artifact wait <artifact_id>' for unified lifecycle tracking [2].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "artifact-export-hub-d6154f-fe-field-1d2995",
+      "domain": "FE",
+      "category": "field",
+      "value": "The 'wait' command supports '--timeout' and '--interval' parameters for managing async polling [2].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "artifact-export-hub-d6154f-fe-ui-behavior-aedd12",
+      "domain": "FE",
+      "category": "UI behavior",
+      "value": "Local filesystem output is restricted to 'download' commands; 'export' commands are reserved for cloud-backed API destinations [2].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "artifact-export-hub-d6154f-fe-ui-behavior-b6721e",
+      "domain": "FE",
+      "category": "UI behavior",
+      "value": "Type-specific 'generate --wait' options are treated as convenience helpers rather than the core interface of the artifact hub [3].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    }
+  ],
+  "be_facts": [
+    {
+      "fact_id": "artifact-export-hub-d6154f-be-endpoint-c8fe41",
+      "domain": "BE",
+      "category": "endpoint",
+      "value": "The core logic is implemented in the SDK via 'src/notebooklm/_artifacts.py', exposing methods for generation, download, and export [1].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "artifact-export-hub-d6154f-be-logic-ab632b",
+      "domain": "BE",
+      "category": "logic",
+      "value": "The SDK artifact wait function implements exponential backoff starting at 2.0s, capping at 10.0s, with a 300.0s default timeout [2].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "artifact-export-hub-d6154f-be-logic-f937cf",
+      "domain": "BE",
+      "category": "logic",
+      "value": "CLI implementation for artifact management is housed in 'src/notebooklm/cli/generate.py', 'src/notebooklm/cli/download.py', and 'src/notebooklm/cli/artifact.py' [1].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "artifact-export-hub-d6154f-be-logic-cbc0d8",
+      "domain": "BE",
+      "category": "logic",
+      "value": "Mind map listing relies on internal storage queries located in 'src/notebooklm/_notes.py' [1].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    }
+  ],
+  "dependencies": [
+    "CLI generate, download, and artifact modules [3, 9]",
+    "global-account-settings (for language-sensitive artifact generation)",
+    "notebook-note-manager (for mind-map storage integration)",
+    "src/notebooklm/_artifacts.py (SDK)"
+  ],
+  "contradictions": [],
+  "missing_info": [],
+  "open_questions": [],
+  "quality_summary": {
+    "parse_quality": "HIGH",
+    "notes": [
+      "The facts are clearly delineated between SDK implementation and CLI contract. Parity gaps with MCP are explicitly noted in the sources and reflected in the fact set.",
+      "The export parameter gap is resolved by the current CLI contract: `artifact export` only accepts `--title` and `--type docs|sheets`, while folder placement and naming templates remain outside scope."
+    ],
+    "degraded": false
+  }
+}

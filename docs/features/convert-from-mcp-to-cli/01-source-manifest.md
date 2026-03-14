@@ -3,9 +3,9 @@
 - Feature key: `convert-from-mcp-to-cli`
 - Run id: `run-20260312T141020Z-a5fc8e53`
 - Schema version: `ba.source_manifest.v1.0`
-- Source count: 4
-- Status counts: `READY`=4
-- Parse quality counts: `HIGH`=4
+- Source count: 6
+- Status counts: `READY`=6
+- Parse quality counts: `HIGH`=5, `MEDIUM`=1
 
 ## Sources
 
@@ -15,6 +15,12 @@
 | `cli-quickstart-inline` | CLI quickstart excerpt | `SUPPORTING_TECH` | `HIGH` | `READY` | `HIGH` | `fresh` | `cli-quickstart-inline-ff2d11f7d81c` |
 | `phase0-parity-matrix-inline` | Phase 0 capability parity matrix | `SUPPORTING_TECH` | `HIGH` | `READY` | `HIGH` | `fresh` | `phase0-parity-matrix-inline-0e41b635cf12` |
 | `ba-runner-parity-audit-inline` | BA runner parity audit | `SUPPORTING_TECH` | `HIGH` | `READY` | `HIGH` | `fresh` | `ba-runner-parity-audit-inline-8ad4ab75796b` |
+| `resolved-repo-backed-clarifications-20260312` | Resolved repo-backed clarifications for convert-from-mcp-to-cli | `SUPPORTING_CLARIFICATION` | `HIGH` | `READY` | `HIGH` | `fresh` | `resolved-repo-backed-clarifications-20260312-3e848131ba61` |
+| `resolved-ba-decisions-20260312` | Resolved BA decisions for convert-from-mcp-to-cli | `SUPPORTING_DECISION` | `HIGH` | `READY` | `MEDIUM` | `fresh` | `resolved-ba-decisions-20260312-e270f0021cfa` |
+
+## Warnings
+
+- Added curated clarification/decision sources after readiness halt.
 
 ## Details
 
@@ -174,7 +180,7 @@ The SDK and CLI already support report, data-table, and mind-map flows. The curr
 - Snapshot id: `phase0-parity-matrix-inline-0e41b635cf12`
 - Notebook source id: `be5989ed-a219-45c2-b914-649073192cb2`
 - Notes: Verified from docs/ba-phase0-capability-parity-matrix.md.
-- Used in screens: _none yet_
+- Used in screens: `artifact-export-hub-d6154f`, `chat-interaction-configuration-414d21`, `cli-source-management-console`, `global-account-settings`, `notebook-note-manager`, `research-pipeline-controller`
 
 ### `ba-runner-parity-audit-inline`
 
@@ -227,4 +233,108 @@ Bottom line: the SDK/CLI already contain most of the raw functionality the BA ru
 - Snapshot id: `ba-runner-parity-audit-inline-8ad4ab75796b`
 - Notebook source id: `20e2dc5b-0e5d-4903-970f-062c4e61f971`
 - Notes: Verified from docs/ba-runner-parity-audit.md.
+- Used in screens: _none yet_
+
+### `resolved-repo-backed-clarifications-20260312`
+
+- Title: Resolved repo-backed clarifications for convert-from-mcp-to-cli
+- Source ref: `# Resolved repo-backed clarifications for convert-from-mcp-to-cli
+
+This source resolves readiness gaps using current repository code.
+
+## artifact-export-hub
+- Export destinations are limited to Google Docs or Google Sheets.
+- Local filesystem output is handled by download commands, not by the export API.
+- The generic reusable async controls are `notebooklm artifact poll <task_id>` and `notebooklm artifact wait <artifact_id> --timeout --interval`.
+- SDK artifact wait defaults are initial_interval=2.0 seconds, max_interval=10.0 seconds, timeout=300.0 seconds, with exponential backoff.
+
+## chat-interaction-configuration
+- Valid style or goal values are `default`, `learning-guide`, and `custom`.
+- Valid response length values are `default`, `longer`, and `shorter`.
+- `notebooklm configure` performs partial patch updates when only one axis changes; when both goal/style and length are specified it performs an absolute set.
+- `notebooklm history --save` creates a real notebook note via notes.create, not a source file and not a local file.
+
+## cli-source-management-console
+- The authoritative metadata audit shape is structural and freshness-oriented: `source_id`, `title`, `source_type`, `status`, `is_ready`, `url`, `content`, `char_count`, `guide_summary`, `guide_keywords`, and `is_fresh`.
+- There is no access-log style source audit surface.
+- Current MCP preview truncation is capped at 50000 characters.
+- BA should rely on SDK fulltext and snapshot data rather than MCP preview content.
+- Existing CLI source intelligence commands are `fulltext`, `guide`, `stale`, `refresh`, and `wait`.
+
+## global-account-settings
+- Output language is an account-global setting, not a notebook-scoped setting.
+- Existing CLI commands are `language list`, `language get`, and `language set`.
+- Supported language codes are the `SUPPORTED_LANGUAGES` set in `src/notebooklm/cli/language.py`.
+- When unset, `language get` reports `not set` and CLI generation falls back to `en`.
+- There is no dedicated reset or unset command for global language.
+
+## notebook-note-manager
+- The CLI note surface is CRUD only: `list`, `create`, `get`, `save`, `rename`, and `delete`.
+- Note export is unsupported.
+- Note-to-source conversion is not a first-class CLI note action. The current bridge is synthesized text-source creation via `sources.add_text()` or curated-source capture.
+
+## research-pipeline-controller
+- Research start currently lives at `source add-research <query> --from web|drive --mode fast|deep --import-all --no-wait`.
+- Research monitoring uses `research status`.
+- Research completion and optional import use `research wait --timeout <sec> --interval <sec> --import-all`.
+- The underlying SDK primitives remain `start`, `poll`, and `import_sources`.
+- The current CLI keeps initiation in `source.py` and monitoring/import in `research.py`.`
+- Content kind: `INLINE_TEXT`
+- Source type: `SUPPORTING_CLARIFICATION`
+- Priority: `HIGH`
+- Status: `READY`
+- Parse quality: `HIGH`
+- Freshness: `fresh`
+- Snapshot id: `resolved-repo-backed-clarifications-20260312-3e848131ba61`
+- Notebook source id: `99010e33-d746-483f-a0b0-fef7d44c8356`
+- Notes: Added after readiness halt to resolve requirement gaps from repository-backed clarification capture., This is a note-derived synthesized text source.
+- Used in screens: _none yet_
+
+### `resolved-ba-decisions-20260312`
+
+- Title: Resolved BA decisions for convert-from-mcp-to-cli
+- Source ref: `# Resolved BA decisions for convert-from-mcp-to-cli
+
+These decisions close the remaining requirement questions for the current BA run.
+
+## artifact-export-hub
+- The user-facing CLI contract should hide the fact that mind maps are stored through note-backed internals.
+- The canonical reusable async control path for artifacts is `artifact poll` and `artifact wait`.
+- Type-specific generate `--wait` options remain convenience helpers, not the main hub contract.
+
+## chat-interaction-configuration
+- This screen covers notebook chat settings and note-saving behavior only.
+- Note export and note-to-source conversion stay out of scope for this screen and should not be promised here.
+
+## cli-source-management-console
+- The BA adapter should model source audit using the structural snapshot fields from the SDK-backed adapter, not access-log semantics and not MCP preview payloads.
+
+## global-account-settings
+- Changing the global output language should be treated as affecting newly generated outputs only.
+- Existing artifacts remain as generated unless they are regenerated.
+- This is an inference from current code paths: generation reads the current language, and no retroactive artifact rewrite flow exists.
+
+## notebook-note-manager
+- Preserve a strict distinction between real notebook notes and synthesized text sources.
+- Workflow helpers that call `sources.add_text()` should be documented as source creation, not as note creation.
+- Any note-to-source bridge must remain explicit rather than implicit.
+- Note export remains unsupported and should not be assigned to the note-manager screen.
+
+## research-pipeline-controller
+- The implementation pack should expose the research lifecycle as start -> status or poll -> wait and optional import, backed by SDK primitives.
+- Do not collapse this screen into the existing MCP macro.
+- Do not promise a new unified CLI module beyond the current repo structure where `source.py` starts research and `research.py` monitors or imports it.
+
+## overall feature framing
+- Wherever the repository already has CLI-native entrypoints, those CLI entrypoints are the authoritative user-facing contract.
+- MCP gaps remain explicit warnings; they should not be hidden behind invented parity claims.`
+- Content kind: `INLINE_TEXT`
+- Source type: `SUPPORTING_DECISION`
+- Priority: `HIGH`
+- Status: `READY`
+- Parse quality: `MEDIUM`
+- Freshness: `fresh`
+- Snapshot id: `resolved-ba-decisions-20260312-e270f0021cfa`
+- Notebook source id: `01e388c7-b179-43bb-bd4f-78ab476bdaf3`
+- Notes: Added after readiness halt to resolve cross-screen normalization and scope decisions., This is a note-derived synthesized text source.
 - Used in screens: _none yet_

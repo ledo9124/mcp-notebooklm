@@ -1,3 +1,1 @@
 row_id,screen_id,fact_id,source_domain,fact_status,field_name,field_label,field_type,required,description,evidence_count,evidence_refs
-notebook-note-manager-fe-field-33889a-field,notebook-note-manager,notebook-note-manager-fe-field-33889a,FE,PROVISIONAL,The CLI 'ask' command provides a --save-as-note flag to create notes from chat responses [3].,,,,The CLI 'ask' command provides a --save-as-note flag to create notes from chat responses [3].,0,
-notebook-note-manager-fe-field-774155-field,notebook-note-manager,notebook-note-manager-fe-field-774155,FE,PROVISIONAL,The CLI 'history' command supports a --save flag for persisting history as notes [3].,,,,The CLI 'history' command supports a --save flag for persisting history as notes [3].,0,

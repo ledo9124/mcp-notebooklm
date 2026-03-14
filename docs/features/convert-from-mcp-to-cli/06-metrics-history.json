@@ -110,6 +110,103 @@
         "research-pipeline-controller: question `research-pipeline-controller-q-will-the-cli-implementat-f1136a` has no owner",
         "research-pipeline-controller: resolved mode CLARIFICATION_FIRST instead of AUTO because contradictions remain unresolved; shared blockers remain"
       ]
+    },
+    {
+      "schema_version": "ba.metrics_report.v1.0",
+      "feature_key": "convert-from-mcp-to-cli",
+      "run_id": "run-20260312T141020Z-a5fc8e53",
+      "generated_at": "2026-03-12T14:49:23.684764+00:00",
+      "source": "RUN_PIPELINE",
+      "run_status": "HALTED",
+      "current_step": null,
+      "blocking_stage": "EVALUATE_READINESS",
+      "screen_count": 6,
+      "registered_source_count": 6,
+      "source_snapshot_fingerprint": "73f049ea4f3dc19812404c09c75c474b92e5d9220a2072f781f6c3fde958e22f",
+      "validation_status": null,
+      "qa_finding_count": 0,
+      "qa_warning_count": 0,
+      "qa_findings_by_code": {},
+      "qa_findings_by_severity": {},
+      "latest_rerun_decision": null,
+      "latest_rerun_impacted_screen_count": null,
+      "latest_rerun_changed_source_count": null,
+      "average_manual_edits_per_screen": {
+        "value": 0.0,
+        "unit": "validation-reruns/screen",
+        "basis": "PROXY",
+        "numerator": 0,
+        "denominator": 6,
+        "summary": "Uses standalone `ba.validate_bundle` refreshes as the local-first proxy for manual touch cycles per screen.",
+        "details": {}
+      },
+      "false_blocker_rate": {
+        "value": 0.0,
+        "unit": "percent",
+        "basis": "PROXY",
+        "numerator": 0,
+        "denominator": 2,
+        "summary": "Treats degraded or halted checkpoints later cleared by a completed run with the same source snapshot fingerprint as false-blocker candidates.",
+        "details": {}
+      },
+      "rerun_scope_reduction_percentage": {
+        "value": null,
+        "unit": "percent",
+        "basis": "NOT_APPLICABLE",
+        "numerator": null,
+        "denominator": null,
+        "summary": "No incremental rerun decision has been recorded yet.",
+        "details": {}
+      },
+      "time_to_first_fe_spec_seconds": {
+        "value": null,
+        "unit": "seconds",
+        "basis": "NOT_AVAILABLE",
+        "numerator": null,
+        "denominator": null,
+        "summary": "The bundle has not reached `RENDER_BUNDLE`, so no FE spec has been emitted yet.",
+        "details": {}
+      },
+      "ungrounded_facts_caught_by_qa": {
+        "value": null,
+        "unit": "findings",
+        "basis": "NOT_AVAILABLE",
+        "numerator": null,
+        "denominator": null,
+        "summary": "Validation findings are required before grounding catches can be counted.",
+        "details": {}
+      },
+      "fe_first_without_later_contract_breakage_percentage": {
+        "value": null,
+        "unit": "percent",
+        "basis": "NOT_APPLICABLE",
+        "numerator": null,
+        "denominator": null,
+        "summary": "No screens are currently being delivered in FE-first provisional mode.",
+        "details": {}
+      },
+      "notes": [
+        "screen[1] 'CLI Source Management Console' has no normalized evidence; catalog entry remains provisional",
+        "screen[2] 'Chat Interaction Configuration' has no normalized evidence; catalog entry remains provisional",
+        "screen[3] 'Notebook Note Manager' has no normalized evidence; catalog entry remains provisional",
+        "screen[4] 'Global Account Settings' has no normalized evidence; catalog entry remains provisional",
+        "screen[5] 'Research Pipeline Controller' has no normalized evidence; catalog entry remains provisional",
+        "screen[6] 'Artifact Export Hub' has no normalized evidence; catalog entry remains provisional",
+        "SHARED fact[1] downgraded to PROVISIONAL because no normalized evidence was available",
+        "SHARED fact[2] downgraded to PROVISIONAL because no normalized evidence was available",
+        "SHARED fact[3] downgraded to PROVISIONAL because no normalized evidence was available",
+        "SHARED fact[4] downgraded to PROVISIONAL because no normalized evidence was available",
+        "FE fact[1] downgraded to PROVISIONAL because no normalized evidence was available",
+        "FE fact[2] downgraded to PROVISIONAL because no normalized evidence was available",
+        "FE fact[3] downgraded to PROVISIONAL because no normalized evidence was available",
+        "FE fact[4] downgraded to PROVISIONAL because no normalized evidence was available",
+        "BE fact[1] downgraded to PROVISIONAL because no normalized evidence was available",
+        "BE fact[2] downgraded to PROVISIONAL because no normalized evidence was available",
+        "BE fact[3] downgraded to PROVISIONAL because no normalized evidence was available",
+        "BE fact[4] downgraded to PROVISIONAL because no normalized evidence was available",
+        "SHARED fact[5] downgraded to PROVISIONAL because no normalized evidence was available",
+        "FE fact[5] downgraded to PROVISIONAL because no normalized evidence was available"
+      ]
     }
   ]
 }

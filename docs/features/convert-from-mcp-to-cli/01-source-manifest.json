@@ -50,7 +50,14 @@
       "notes": [
         "Verified from docs/ba-phase0-capability-parity-matrix.md."
       ],
-      "used_in_screens": []
+      "used_in_screens": [
+        "artifact-export-hub-d6154f",
+        "chat-interaction-configuration-414d21",
+        "cli-source-management-console",
+        "global-account-settings",
+        "notebook-note-manager",
+        "research-pipeline-controller"
+      ]
     },
     {
       "source_key": "ba-runner-parity-audit-inline",
@@ -68,7 +75,45 @@
         "Verified from docs/ba-runner-parity-audit.md."
       ],
       "used_in_screens": []
+    },
+    {
+      "source_key": "resolved-repo-backed-clarifications-20260312",
+      "source_type": "SUPPORTING_CLARIFICATION",
+      "priority": "HIGH",
+      "content_kind": "INLINE_TEXT",
+      "source_ref": "# Resolved repo-backed clarifications for convert-from-mcp-to-cli\n\nThis source resolves readiness gaps using current repository code.\n\n## artifact-export-hub\n- Export destinations are limited to Google Docs or Google Sheets.\n- Local filesystem output is handled by download commands, not by the export API.\n- The generic reusable async controls are `notebooklm artifact poll <task_id>` and `notebooklm artifact wait <artifact_id> --timeout --interval`.\n- SDK artifact wait defaults are initial_interval=2.0 seconds, max_interval=10.0 seconds, timeout=300.0 seconds, with exponential backoff.\n\n## chat-interaction-configuration\n- Valid style or goal values are `default`, `learning-guide`, and `custom`.\n- Valid response length values are `default`, `longer`, and `shorter`.\n- `notebooklm configure` performs partial patch updates when only one axis changes; when both goal/style and length are specified it performs an absolute set.\n- `notebooklm history --save` creates a real notebook note via notes.create, not a source file and not a local file.\n\n## cli-source-management-console\n- The authoritative metadata audit shape is structural and freshness-oriented: `source_id`, `title`, `source_type`, `status`, `is_ready`, `url`, `content`, `char_count`, `guide_summary`, `guide_keywords`, and `is_fresh`.\n- There is no access-log style source audit surface.\n- Current MCP preview truncation is capped at 50000 characters.\n- BA should rely on SDK fulltext and snapshot data rather than MCP preview content.\n- Existing CLI source intelligence commands are `fulltext`, `guide`, `stale`, `refresh`, and `wait`.\n\n## global-account-settings\n- Output language is an account-global setting, not a notebook-scoped setting.\n- Existing CLI commands are `language list`, `language get`, and `language set`.\n- Supported language codes are the `SUPPORTED_LANGUAGES` set in `src/notebooklm/cli/language.py`.\n- When unset, `language get` reports `not set` and CLI generation falls back to `en`.\n- There is no dedicated reset or unset command for global language.\n\n## notebook-note-manager\n- The CLI note surface is CRUD only: `list`, `create`, `get`, `save`, `rename`, and `delete`.\n- Note export is unsupported.\n- Note-to-source conversion is not a first-class CLI note action. The current bridge is synthesized text-source creation via `sources.add_text()` or curated-source capture.\n\n## research-pipeline-controller\n- Research start currently lives at `source add-research <query> --from web|drive --mode fast|deep --import-all --no-wait`.\n- Research monitoring uses `research status`.\n- Research completion and optional import use `research wait --timeout <sec> --interval <sec> --import-all`.\n- The underlying SDK primitives remain `start`, `poll`, and `import_sources`.\n- The current CLI keeps initiation in `source.py` and monitoring/import in `research.py`.",
+      "title": "Resolved repo-backed clarifications for convert-from-mcp-to-cli",
+      "notebook_source_id": "99010e33-d746-483f-a0b0-fef7d44c8356",
+      "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+      "parse_quality": "HIGH",
+      "freshness": "fresh",
+      "status": "READY",
+      "notes": [
+        "Added after readiness halt to resolve requirement gaps from repository-backed clarification capture.",
+        "This is a note-derived synthesized text source."
+      ],
+      "used_in_screens": []
+    },
+    {
+      "source_key": "resolved-ba-decisions-20260312",
+      "source_type": "SUPPORTING_DECISION",
+      "priority": "HIGH",
+      "content_kind": "INLINE_TEXT",
+      "source_ref": "# Resolved BA decisions for convert-from-mcp-to-cli\n\nThese decisions close the remaining requirement questions for the current BA run.\n\n## artifact-export-hub\n- The user-facing CLI contract should hide the fact that mind maps are stored through note-backed internals.\n- The canonical reusable async control path for artifacts is `artifact poll` and `artifact wait`.\n- Type-specific generate `--wait` options remain convenience helpers, not the main hub contract.\n\n## chat-interaction-configuration\n- This screen covers notebook chat settings and note-saving behavior only.\n- Note export and note-to-source conversion stay out of scope for this screen and should not be promised here.\n\n## cli-source-management-console\n- The BA adapter should model source audit using the structural snapshot fields from the SDK-backed adapter, not access-log semantics and not MCP preview payloads.\n\n## global-account-settings\n- Changing the global output language should be treated as affecting newly generated outputs only.\n- Existing artifacts remain as generated unless they are regenerated.\n- This is an inference from current code paths: generation reads the current language, and no retroactive artifact rewrite flow exists.\n\n## notebook-note-manager\n- Preserve a strict distinction between real notebook notes and synthesized text sources.\n- Workflow helpers that call `sources.add_text()` should be documented as source creation, not as note creation.\n- Any note-to-source bridge must remain explicit rather than implicit.\n- Note export remains unsupported and should not be assigned to the note-manager screen.\n\n## research-pipeline-controller\n- The implementation pack should expose the research lifecycle as start -> status or poll -> wait and optional import, backed by SDK primitives.\n- Do not collapse this screen into the existing MCP macro.\n- Do not promise a new unified CLI module beyond the current repo structure where `source.py` starts research and `research.py` monitors or imports it.\n\n## overall feature framing\n- Wherever the repository already has CLI-native entrypoints, those CLI entrypoints are the authoritative user-facing contract.\n- MCP gaps remain explicit warnings; they should not be hidden behind invented parity claims.",
+      "title": "Resolved BA decisions for convert-from-mcp-to-cli",
+      "notebook_source_id": "01e388c7-b179-43bb-bd4f-78ab476bdaf3",
+      "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+      "parse_quality": "MEDIUM",
+      "freshness": "fresh",
+      "status": "READY",
+      "notes": [
+        "Added after readiness halt to resolve cross-screen normalization and scope decisions.",
+        "This is a note-derived synthesized text source."
+      ],
+      "used_in_screens": []
     }
   ],
-  "warnings": []
+  "warnings": [
+    "Added curated clarification/decision sources after readiness halt."
+  ]
 }

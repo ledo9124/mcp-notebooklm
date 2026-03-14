@@ -1,2 +1,1 @@
 row_id,screen_id,fact_id,source_domain,fact_status,field_name,field_label,field_type,required,description,evidence_count,evidence_refs
-global-account-settings-fe-field-047ec0-field,global-account-settings,global-account-settings-fe-field-047ec0,FE,PROVISIONAL,The CLI provides functionality to list available language options [1].,,,,The CLI provides functionality to list available language options [1].,0,

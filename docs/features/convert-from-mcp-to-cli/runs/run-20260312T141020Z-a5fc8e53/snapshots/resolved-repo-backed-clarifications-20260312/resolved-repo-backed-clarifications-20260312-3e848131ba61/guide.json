@@ -1,0 +1,10 @@
+{
+  "summary": "Ce document technique clarifie les **spécifications opérationnelles** nécessaires pour porter les fonctionnalités de l'interface MCP vers un environnement de ligne de commande (CLI). Il détaille les **protocoles de gestion** des sources, des notes et des recherches, tout en précisant les limites d'exportation vers Google Docs ou Sheets. L'accent est mis sur la **synchronisation asynchrone** des tâches et la structure précise des métadonnées pour assurer la cohérence des données. Enfin, le texte définit les **paramètres globaux** du compte, tels que la langue, et les commandes spécifiques permettant de manipuler l'intelligence des sources de manière automatisée.",
+  "keywords": [
+    "Exportation d'artefacts",
+    "Configuration du chat",
+    "Gestion des sources",
+    "Paramètres linguistiques globaux",
+    "Gestion des notes"
+  ]
+}

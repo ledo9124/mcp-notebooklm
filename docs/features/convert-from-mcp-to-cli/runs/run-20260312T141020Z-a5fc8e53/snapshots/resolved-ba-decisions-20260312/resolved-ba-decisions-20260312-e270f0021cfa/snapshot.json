@@ -1,0 +1,12 @@
+{
+  "source_key": "resolved-ba-decisions-20260312",
+  "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+  "content_hash": "e270f0021cfa5f19d078dc2613a524c7e8d25982b8997ca071fc31ba7a7d9b67",
+  "fulltext_path": "docs/features/convert-from-mcp-to-cli/runs/run-20260312T141020Z-a5fc8e53/snapshots/resolved-ba-decisions-20260312/resolved-ba-decisions-20260312-e270f0021cfa/fulltext.txt",
+  "guide_path": "docs/features/convert-from-mcp-to-cli/runs/run-20260312T141020Z-a5fc8e53/snapshots/resolved-ba-decisions-20260312/resolved-ba-decisions-20260312-e270f0021cfa/guide.json",
+  "freshness": "fresh",
+  "notebook_source_id": "01e388c7-b179-43bb-bd4f-78ab476bdaf3",
+  "title": "Resolved BA decisions for convert-from-mcp-to-cli",
+  "source_type": "markdown",
+  "char_count": 2211
+}

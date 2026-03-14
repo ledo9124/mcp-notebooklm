@@ -1,0 +1,12 @@
+{
+  "source_key": "resolved-repo-backed-clarifications-20260312",
+  "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+  "content_hash": "3e848131ba61a602d87f30a8707aa70d4e740e091b77107da16c7a484e1a4766",
+  "fulltext_path": "docs/features/convert-from-mcp-to-cli/runs/run-20260312T141020Z-a5fc8e53/snapshots/resolved-repo-backed-clarifications-20260312/resolved-repo-backed-clarifications-20260312-3e848131ba61/fulltext.txt",
+  "guide_path": "docs/features/convert-from-mcp-to-cli/runs/run-20260312T141020Z-a5fc8e53/snapshots/resolved-repo-backed-clarifications-20260312/resolved-repo-backed-clarifications-20260312-3e848131ba61/guide.json",
+  "freshness": "fresh",
+  "notebook_source_id": "99010e33-d746-483f-a0b0-fef7d44c8356",
+  "title": "Resolved repo-backed clarifications for convert-from-mcp-to-cli",
+  "source_type": "markdown",
+  "char_count": 2820
+}

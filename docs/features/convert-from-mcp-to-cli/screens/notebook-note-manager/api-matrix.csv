@@ -1,1 +1,2 @@
 row_id,screen_id,fact_id,source_domain,fact_status,interface_name,interaction_type,method,target,request_summary,response_summary,evidence_count,evidence_refs
+notebook-note-manager-be-api-57f6e8-api,notebook-note-manager,notebook-note-manager-be-api-57f6e8,BE,PROVISIONAL,src/notebooklm/client.py exposes 'notes' as a first-class namespaced API [6].,ENDPOINT,,,,,0,

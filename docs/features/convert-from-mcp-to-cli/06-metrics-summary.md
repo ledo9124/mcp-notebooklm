@@ -2,14 +2,14 @@
 
 - Feature key: `convert-from-mcp-to-cli`
 - Run id: `run-20260312T141020Z-a5fc8e53`
-- Generated at: `2026-03-12T14:13:32.028789+00:00`
+- Generated at: `2026-03-12T14:49:23.684764+00:00`
 - Captured from: `RUN_PIPELINE`
 - Run status: `HALTED`
 - Current step: `none`
 - Screen count: 6
-- Registered source count: 4
+- Registered source count: 6
 - Validation status: `n/a`
-- Metrics history entries: 1
+- Metrics history entries: 2
 
 ## Metrics
 
@@ -34,39 +34,28 @@
 
 ## Notes
 
-- artifact-export-hub: gap `artifact-export-hub-missing_requirement_detail-polling-and-wait-tim-ef3034` has no owner
-- artifact-export-hub: gap `artifact-export-hub-missing_requirement_detail-specific-external-ex-e8aa0b` has no owner
-- artifact-export-hub: question `artifact-export-hub-q-should-the-cli-artifact--5548dc` has no owner
-- artifact-export-hub: question `artifact-export-hub-q-whether-the-cli-should-e-a96970` has no owner
-- artifact-export-hub: question `artifact-export-hub-q-will-the-cli-hub-include-f0c9aa` has no owner
-- artifact-export-hub: resolved mode CLARIFICATION_FIRST instead of AUTO because shared blockers remain
-- chat-interaction-configuration: gap `chat-interaction-configuration-missing_requirement_detail-definition-of-valid--cb1660` has no owner
-- chat-interaction-configuration: gap `chat-interaction-configuration-missing_requirement_detail-whether-the-history--b22301` has no owner
-- chat-interaction-configuration: question `chat-interaction-configuration-q-does-the-cli-configure-c-a37a42` has no owner
-- chat-interaction-configuration: question `chat-interaction-configuration-q-is-note-export-or-note-t-45ebef` has no owner
-- chat-interaction-configuration: resolved mode CLARIFICATION_FIRST instead of AUTO because contradictions remain unresolved; shared blockers remain
-- cli-source-management-console: gap `cli-source-management-console-missing_requirement_detail-specific-output-form-7dcf09` has no owner
-- cli-source-management-console: question `cli-source-management-console-q-does-the-metadata-audit--391d69` has no owner
-- cli-source-management-console: question `cli-source-management-console-q-how-to-resolve-the-gap-b-f16f01` has no owner
-- cli-source-management-console: question `cli-source-management-console-q-what-is-the-specific-val-4d165d` has no owner
-- cli-source-management-console: resolved mode CLARIFICATION_FIRST instead of AUTO because contradictions remain unresolved; shared blockers remain
-- global-account-settings: gap `global-account-settings-missing_requirement_detail-information-on-wheth-6c3b62` has no owner
-- global-account-settings: gap `global-account-settings-missing_requirement_detail-list-of-specific-lan-1be34e` has no owner
-- global-account-settings: question `global-account-settings-q-does-changing-the-global-01942a` has no owner
-- global-account-settings: question `global-account-settings-q-what-is-the-default-syst-b3bc35` has no owner
-- global-account-settings: resolved mode CLARIFICATION_FIRST instead of AUTO because shared blockers remain
-- notebook-note-manager: gap `notebook-note-manager-missing_requirement_detail-current-cli-support--7edaff` has no owner
-- notebook-note-manager: gap `notebook-note-manager-missing_requirement_detail-the-full-set-of-crud-1ac2ff` has no owner
-- notebook-note-manager: question `notebook-note-manager-q-implementation-status-of-9042d5` has no owner
-- notebook-note-manager: question `notebook-note-manager-q-is-note-export-functiona-fd08db` has no owner
-- notebook-note-manager: question `notebook-note-manager-q-normalization-of-inconsi-ed09a7` has no owner
-- notebook-note-manager: question `notebook-note-manager-q-will-the-ba-adapter-prio-e11e53` has no owner
-- notebook-note-manager: resolved mode CLARIFICATION_FIRST instead of AUTO because contradictions remain unresolved; shared blockers remain
-- research-pipeline-controller: gap `research-pipeline-controller-missing_requirement_detail-specific-cli-flags-a-201a87` has no owner
-- research-pipeline-controller: question `research-pipeline-controller-q-how-to-bridge-the-gap-be-bade94` has no owner
-- research-pipeline-controller: question `research-pipeline-controller-q-will-the-cli-implementat-f1136a` has no owner
-- research-pipeline-controller: resolved mode CLARIFICATION_FIRST instead of AUTO because contradictions remain unresolved; shared blockers remain
+- screen[1] 'CLI Source Management Console' has no normalized evidence; catalog entry remains provisional
+- screen[2] 'Chat Interaction Configuration' has no normalized evidence; catalog entry remains provisional
+- screen[3] 'Notebook Note Manager' has no normalized evidence; catalog entry remains provisional
+- screen[4] 'Global Account Settings' has no normalized evidence; catalog entry remains provisional
+- screen[5] 'Research Pipeline Controller' has no normalized evidence; catalog entry remains provisional
+- screen[6] 'Artifact Export Hub' has no normalized evidence; catalog entry remains provisional
+- SHARED fact[1] downgraded to PROVISIONAL because no normalized evidence was available
+- SHARED fact[2] downgraded to PROVISIONAL because no normalized evidence was available
+- SHARED fact[3] downgraded to PROVISIONAL because no normalized evidence was available
+- SHARED fact[4] downgraded to PROVISIONAL because no normalized evidence was available
+- FE fact[1] downgraded to PROVISIONAL because no normalized evidence was available
+- FE fact[2] downgraded to PROVISIONAL because no normalized evidence was available
+- FE fact[3] downgraded to PROVISIONAL because no normalized evidence was available
+- FE fact[4] downgraded to PROVISIONAL because no normalized evidence was available
+- BE fact[1] downgraded to PROVISIONAL because no normalized evidence was available
+- BE fact[2] downgraded to PROVISIONAL because no normalized evidence was available
+- BE fact[3] downgraded to PROVISIONAL because no normalized evidence was available
+- BE fact[4] downgraded to PROVISIONAL because no normalized evidence was available
+- SHARED fact[5] downgraded to PROVISIONAL because no normalized evidence was available
+- FE fact[5] downgraded to PROVISIONAL because no normalized evidence was available
 
 ## Recent History
 
 - `2026-03-12T14:13:32.028789+00:00` source=`RUN_PIPELINE` status=`HALTED` validation=`n/a`
+- `2026-03-12T14:49:23.684764+00:00` source=`RUN_PIPELINE` status=`HALTED` validation=`n/a`

@@ -4,143 +4,1455 @@
   "feature_key": "convert-from-mcp-to-cli",
   "entries": [
     {
-      "standard_term": "Artifact",
-      "aliases": [],
-      "semantic_notes": [
-        "Generated outputs such as reports, data tables, and mind maps derived from notebook data [6], [7], [11]."
+      "standard_term": "artifact async controls",
+      "aliases": [
+        "canonical reusable async control path"
       ],
-      "evidence": [],
+      "semantic_notes": [
+        "The standardized CLI contract for managing long-running artifact tasks via 'artifact poll' and 'artifact wait' [13, 14]."
+      ],
+      "evidence": [
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "1515-1782",
+          "quote": "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "2633-2659",
+          "quote": "Recommended Priority Order"
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "580-600",
+          "quote": "Architecture Summary"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "0-32",
+          "quote": "Phase 0 Capability Parity Matrix"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "1593-6289",
+          "quote": null
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6289-6309",
+          "quote": "High-Signal Findings"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6844-6956",
+          "quote": "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "0-49",
+          "quote": "Resolved BA decisions for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "1157-1178",
+          "quote": "notebook-note-manager"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "648-677",
+          "quote": "cli-source-management-console"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "0-63",
+          "quote": "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "1496-1519",
+          "quote": "global-account-settings"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "2195-2223",
+          "quote": "research-pipeline-controller"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "566-596",
+          "quote": "chat-interaction-configuration"
+        }
+      ],
+      "ambiguity_flags": []
+    },
+    {
+      "standard_term": "artifact download",
+      "aliases": [
+        "local filesystem output"
+      ],
+      "semantic_notes": [
+        "The process of saving artifact content directly to the user's local machine [13]."
+      ],
+      "evidence": [
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "1515-1782",
+          "quote": "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "2633-2659",
+          "quote": "Recommended Priority Order"
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "580-600",
+          "quote": "Architecture Summary"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "0-32",
+          "quote": "Phase 0 Capability Parity Matrix"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "1593-6289",
+          "quote": null
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6289-6309",
+          "quote": "High-Signal Findings"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6844-6956",
+          "quote": "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "0-49",
+          "quote": "Resolved BA decisions for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "1157-1178",
+          "quote": "notebook-note-manager"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "648-677",
+          "quote": "cli-source-management-console"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "0-63",
+          "quote": "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "1496-1519",
+          "quote": "global-account-settings"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "2195-2223",
+          "quote": "research-pipeline-controller"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "566-596",
+          "quote": "chat-interaction-configuration"
+        }
+      ],
+      "ambiguity_flags": []
+    },
+    {
+      "standard_term": "artifact export",
+      "aliases": [
+        "export API"
+      ],
+      "semantic_notes": [
+        "The process of sending generated artifacts (reports, data tables) to external cloud destinations, specifically Google Docs or Google Sheets [7, 13]."
+      ],
+      "evidence": [
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "1515-1782",
+          "quote": "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "2633-2659",
+          "quote": "Recommended Priority Order"
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "580-600",
+          "quote": "Architecture Summary"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "0-32",
+          "quote": "Phase 0 Capability Parity Matrix"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "1593-6289",
+          "quote": null
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6289-6309",
+          "quote": "High-Signal Findings"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6844-6956",
+          "quote": "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "0-49",
+          "quote": "Resolved BA decisions for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "1157-1178",
+          "quote": "notebook-note-manager"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "648-677",
+          "quote": "cli-source-management-console"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "0-63",
+          "quote": "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "1496-1519",
+          "quote": "global-account-settings"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "2195-2223",
+          "quote": "research-pipeline-controller"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "566-596",
+          "quote": "chat-interaction-configuration"
+        }
+      ],
+      "ambiguity_flags": []
+    },
+    {
+      "standard_term": "BA capability adapter",
+      "aliases": [
+        "BA adapter",
+        "capability adapter"
+      ],
+      "semantic_notes": [
+        "A dedicated subsystem located in src/notebooklm_mcp/ba/ designed to wrap the SDK directly [2, 3]. It bypasses the narrow MCP tool surface to provide full-fidelity access for the BA runner [3, 4]."
+      ],
+      "evidence": [
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "1515-1782",
+          "quote": "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "2633-2659",
+          "quote": "Recommended Priority Order"
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "580-600",
+          "quote": "Architecture Summary"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "0-32",
+          "quote": "Phase 0 Capability Parity Matrix"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "1593-6289",
+          "quote": null
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6289-6309",
+          "quote": "High-Signal Findings"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6844-6956",
+          "quote": "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "0-49",
+          "quote": "Resolved BA decisions for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "1157-1178",
+          "quote": "notebook-note-manager"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "648-677",
+          "quote": "cli-source-management-console"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "0-63",
+          "quote": "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "1496-1519",
+          "quote": "global-account-settings"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "2195-2223",
+          "quote": "research-pipeline-controller"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "566-596",
+          "quote": "chat-interaction-configuration"
+        }
+      ],
+      "ambiguity_flags": []
+    },
+    {
+      "standard_term": "full source text",
+      "aliases": [
+        "fulltext"
+      ],
+      "semantic_notes": [
+        "The complete, untruncated content of a source retrieved via the SDK [7, 8]. Required for deterministic BA snapshotting to avoid the truncation found in MCP [6, 8]."
+      ],
+      "evidence": [
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "1515-1782",
+          "quote": "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "2633-2659",
+          "quote": "Recommended Priority Order"
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "580-600",
+          "quote": "Architecture Summary"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "0-32",
+          "quote": "Phase 0 Capability Parity Matrix"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "1593-6289",
+          "quote": null
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6289-6309",
+          "quote": "High-Signal Findings"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6844-6956",
+          "quote": "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "0-49",
+          "quote": "Resolved BA decisions for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "1157-1178",
+          "quote": "notebook-note-manager"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "648-677",
+          "quote": "cli-source-management-console"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "0-63",
+          "quote": "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "1496-1519",
+          "quote": "global-account-settings"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "2195-2223",
+          "quote": "research-pipeline-controller"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "566-596",
+          "quote": "chat-interaction-configuration"
+        }
+      ],
+      "ambiguity_flags": []
+    },
+    {
+      "standard_term": "global output language",
+      "aliases": [
+        "account-global settings"
+      ],
+      "semantic_notes": [
+        "An account-wide setting (not notebook-scoped) that determines the language for newly generated artifacts [5, 7, 10]."
+      ],
+      "evidence": [
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "1515-1782",
+          "quote": "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "2633-2659",
+          "quote": "Recommended Priority Order"
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "580-600",
+          "quote": "Architecture Summary"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "0-32",
+          "quote": "Phase 0 Capability Parity Matrix"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "1593-6289",
+          "quote": null
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6289-6309",
+          "quote": "High-Signal Findings"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6844-6956",
+          "quote": "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "0-49",
+          "quote": "Resolved BA decisions for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "1157-1178",
+          "quote": "notebook-note-manager"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "648-677",
+          "quote": "cli-source-management-console"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "0-63",
+          "quote": "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "1496-1519",
+          "quote": "global-account-settings"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "2195-2223",
+          "quote": "research-pipeline-controller"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "566-596",
+          "quote": "chat-interaction-configuration"
+        }
+      ],
+      "ambiguity_flags": []
+    },
+    {
+      "standard_term": "note export",
+      "aliases": [
+        "export_note"
+      ],
+      "semantic_notes": [
+        "The capability to export notes to external formats or destinations [4, 11]."
+      ],
+      "evidence": [
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "1515-1782",
+          "quote": "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "2633-2659",
+          "quote": "Recommended Priority Order"
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "580-600",
+          "quote": "Architecture Summary"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "0-32",
+          "quote": "Phase 0 Capability Parity Matrix"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "1593-6289",
+          "quote": null
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6289-6309",
+          "quote": "High-Signal Findings"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6844-6956",
+          "quote": "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "0-49",
+          "quote": "Resolved BA decisions for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "1157-1178",
+          "quote": "notebook-note-manager"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "648-677",
+          "quote": "cli-source-management-console"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "0-63",
+          "quote": "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "1496-1519",
+          "quote": "global-account-settings"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "2195-2223",
+          "quote": "research-pipeline-controller"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "566-596",
+          "quote": "chat-interaction-configuration"
+        }
+      ],
       "ambiguity_flags": [
-        "alias_requires_evidence:Data-table",
-        "alias_requires_evidence:Mind-map",
-        "alias_requires_evidence:Report",
-        "The entire artifact lifecycle is present in the SDK and CLI but is currently unregistered in the MCP server [7], [11]."
+        "Explicitly unsupported in the current CLI and excluded from the note-manager scope [10, 11, 14]."
       ]
     },
     {
-      "standard_term": "BA runner",
-      "aliases": [],
-      "semantic_notes": [
-        "A planned subsystem (src/notebooklm_mcp/ba/) designed to automate analyst workflows by leveraging the NotebookLM SDK substrate [1], [2]."
+      "standard_term": "note-to-source conversion",
+      "aliases": [
+        "note-to-source bridge"
       ],
-      "evidence": [],
+      "semantic_notes": [
+        "An explicit bridge where a notebook note's content is used to create a new text source [7, 10, 11]."
+      ],
+      "evidence": [
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "1515-1782",
+          "quote": "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "2633-2659",
+          "quote": "Recommended Priority Order"
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "580-600",
+          "quote": "Architecture Summary"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "0-32",
+          "quote": "Phase 0 Capability Parity Matrix"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "1593-6289",
+          "quote": null
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6289-6309",
+          "quote": "High-Signal Findings"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6844-6956",
+          "quote": "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "0-49",
+          "quote": "Resolved BA decisions for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "1157-1178",
+          "quote": "notebook-note-manager"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "648-677",
+          "quote": "cli-source-management-console"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "0-63",
+          "quote": "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "1496-1519",
+          "quote": "global-account-settings"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "2195-2223",
+          "quote": "research-pipeline-controller"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "566-596",
+          "quote": "chat-interaction-configuration"
+        }
+      ],
       "ambiguity_flags": [
-        "alias_requires_evidence:BA",
-        "alias_requires_evidence:BA-runner"
+        "Not currently implemented as a first-class public code surface or CLI action [4, 10]."
       ]
     },
     {
-      "standard_term": "Capability adapter",
-      "aliases": [],
-      "semantic_notes": [
-        "A proposed architectural layer that wraps the NotebookLMClient directly to provide capabilities missing from the generic MCP tool set [1], [3], [2]."
+      "standard_term": "notebook chat settings",
+      "aliases": [
+        "chat interaction configuration"
       ],
-      "evidence": [],
+      "semantic_notes": [
+        "Configurable parameters for the notebook chat, including 'goal' (style), 'response length', and 'custom prompt' [6, 7, 14]."
+      ],
+      "evidence": [
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "1515-1782",
+          "quote": "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "2633-2659",
+          "quote": "Recommended Priority Order"
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "580-600",
+          "quote": "Architecture Summary"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "0-32",
+          "quote": "Phase 0 Capability Parity Matrix"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "1593-6289",
+          "quote": null
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6289-6309",
+          "quote": "High-Signal Findings"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6844-6956",
+          "quote": "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "0-49",
+          "quote": "Resolved BA decisions for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "1157-1178",
+          "quote": "notebook-note-manager"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "648-677",
+          "quote": "cli-source-management-console"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "0-63",
+          "quote": "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "1496-1519",
+          "quote": "global-account-settings"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "2195-2223",
+          "quote": "research-pipeline-controller"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "566-596",
+          "quote": "chat-interaction-configuration"
+        }
+      ],
+      "ambiguity_flags": []
+    },
+    {
+      "standard_term": "notebook note",
+      "aliases": [
+        "real note"
+      ],
+      "semantic_notes": [
+        "A first-class object created within a notebook using the notes.create() SDK method [6, 7, 9]."
+      ],
+      "evidence": [
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "1515-1782",
+          "quote": "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "2633-2659",
+          "quote": "Recommended Priority Order"
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "580-600",
+          "quote": "Architecture Summary"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "0-32",
+          "quote": "Phase 0 Capability Parity Matrix"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "1593-6289",
+          "quote": null
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6289-6309",
+          "quote": "High-Signal Findings"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6844-6956",
+          "quote": "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "0-49",
+          "quote": "Resolved BA decisions for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "1157-1178",
+          "quote": "notebook-note-manager"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "648-677",
+          "quote": "cli-source-management-console"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "0-63",
+          "quote": "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "1496-1519",
+          "quote": "global-account-settings"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "2195-2223",
+          "quote": "research-pipeline-controller"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "566-596",
+          "quote": "chat-interaction-configuration"
+        }
+      ],
+      "ambiguity_flags": []
+    },
+    {
+      "standard_term": "NotebookLMClient",
+      "aliases": [
+        "main facade",
+        "SDK substrate"
+      ],
+      "semantic_notes": [
+        "The central programmatic interface in src/notebooklm/client.py that exposes namespaced APIs like notebooks, sources, and chat [1]. It serves as the real substrate for both the SDK and CLI [1]."
+      ],
+      "evidence": [
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "1515-1782",
+          "quote": "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "2633-2659",
+          "quote": "Recommended Priority Order"
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "580-600",
+          "quote": "Architecture Summary"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "0-32",
+          "quote": "Phase 0 Capability Parity Matrix"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "1593-6289",
+          "quote": null
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6289-6309",
+          "quote": "High-Signal Findings"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6844-6956",
+          "quote": "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "0-49",
+          "quote": "Resolved BA decisions for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "1157-1178",
+          "quote": "notebook-note-manager"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "648-677",
+          "quote": "cli-source-management-console"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "0-63",
+          "quote": "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "1496-1519",
+          "quote": "global-account-settings"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "2195-2223",
+          "quote": "research-pipeline-controller"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "566-596",
+          "quote": "chat-interaction-configuration"
+        }
+      ],
+      "ambiguity_flags": []
+    },
+    {
+      "standard_term": "research primitives",
+      "aliases": [
+        "research lifecycle"
+      ],
+      "semantic_notes": [
+        "The low-level SDK/CLI controls for research: start, poll (or status), and import_sources [7, 11, 12]."
+      ],
+      "evidence": [
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "1515-1782",
+          "quote": "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "2633-2659",
+          "quote": "Recommended Priority Order"
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "580-600",
+          "quote": "Architecture Summary"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "0-32",
+          "quote": "Phase 0 Capability Parity Matrix"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "1593-6289",
+          "quote": null
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6289-6309",
+          "quote": "High-Signal Findings"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6844-6956",
+          "quote": "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "0-49",
+          "quote": "Resolved BA decisions for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "1157-1178",
+          "quote": "notebook-note-manager"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "648-677",
+          "quote": "cli-source-management-console"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "0-63",
+          "quote": "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "1496-1519",
+          "quote": "global-account-settings"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "2195-2223",
+          "quote": "research-pipeline-controller"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "566-596",
+          "quote": "chat-interaction-configuration"
+        }
+      ],
+      "ambiguity_flags": []
+    },
+    {
+      "standard_term": "source audit",
+      "aliases": [
+        "metadata audit",
+        "structural snapshot"
+      ],
+      "semantic_notes": [
+        "A structural record of source metadata and readiness, including fields such as source_id, status, is_ready, and is_fresh [5, 6]."
+      ],
+      "evidence": [
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "1515-1782",
+          "quote": "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "2633-2659",
+          "quote": "Recommended Priority Order"
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "580-600",
+          "quote": "Architecture Summary"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "0-32",
+          "quote": "Phase 0 Capability Parity Matrix"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "1593-6289",
+          "quote": null
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6289-6309",
+          "quote": "High-Signal Findings"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6844-6956",
+          "quote": "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "0-49",
+          "quote": "Resolved BA decisions for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "1157-1178",
+          "quote": "notebook-note-manager"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "648-677",
+          "quote": "cli-source-management-console"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "0-63",
+          "quote": "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "1496-1519",
+          "quote": "global-account-settings"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "2195-2223",
+          "quote": "research-pipeline-controller"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "566-596",
+          "quote": "chat-interaction-configuration"
+        }
+      ],
       "ambiguity_flags": [
-        "alias_requires_evidence:BA adapter",
-        "alias_requires_evidence:BA capability adapter"
+        "The term 'audit' refers to structural snapshots; 'access-log' style semantics are explicitly not supported [5, 6]."
       ]
     },
     {
-      "standard_term": "CLI",
-      "aliases": [],
-      "semantic_notes": [
-        "A Click-based wrapper over the SDK that currently exposes significantly more functionality than the MCP layer [4], [5]."
+      "standard_term": "source content preview",
+      "aliases": [
+        "capped preview"
       ],
-      "evidence": [],
-      "ambiguity_flags": [
-        "alias_requires_evidence:CLI-native entry points",
-        "alias_requires_evidence:src/notebooklm/cli/"
-      ]
+      "semantic_notes": [
+        "The truncated version of source content provided by existing MCP tools and resources, typically capped at 50,000 characters [6-8]."
+      ],
+      "evidence": [
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "1515-1782",
+          "quote": "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "2633-2659",
+          "quote": "Recommended Priority Order"
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "580-600",
+          "quote": "Architecture Summary"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "0-32",
+          "quote": "Phase 0 Capability Parity Matrix"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "1593-6289",
+          "quote": null
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6289-6309",
+          "quote": "High-Signal Findings"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6844-6956",
+          "quote": "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "0-49",
+          "quote": "Resolved BA decisions for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "1157-1178",
+          "quote": "notebook-note-manager"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "648-677",
+          "quote": "cli-source-management-console"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "0-63",
+          "quote": "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "1496-1519",
+          "quote": "global-account-settings"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "2195-2223",
+          "quote": "research-pipeline-controller"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "566-596",
+          "quote": "chat-interaction-configuration"
+        }
+      ],
+      "ambiguity_flags": []
     },
     {
-      "standard_term": "MCP",
-      "aliases": [],
-      "semantic_notes": [
-        "The FastMCP server implementation that exposes a narrow subset of SDK functionality via tools, resources, and prompts [4], [5], [2]."
+      "standard_term": "text source",
+      "aliases": [
+        "research note",
+        "synthesized source"
       ],
-      "evidence": [],
-      "ambiguity_flags": [
-        "alias_requires_evidence:MCP layer",
-        "alias_requires_evidence:MCP-oriented surfaces",
-        "alias_requires_evidence:src/notebooklm_mcp/"
-      ]
-    },
-    {
-      "standard_term": "Note",
-      "aliases": [],
       "semantic_notes": [
-        "First-class CRUD objects within a notebook, distinct from source content [6], [7]."
+        "A source created from raw text using sources.add_text() [7, 9, 10]."
       ],
-      "evidence": [],
-      "ambiguity_flags": [
-        "alias_requires_evidence:Notebook note",
-        "alias_requires_evidence:Real notebook note",
-        "Current MCP implementation is inconsistent; the workflow macro creates 'text sources' while labeling them as notes [6], [7], [9]."
-      ]
-    },
-    {
-      "standard_term": "Output language",
-      "aliases": [],
-      "semantic_notes": [
-        "A global user setting that determines the language used for generated content [6], [7], [10]."
+      "evidence": [
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "1515-1782",
+          "quote": "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "2633-2659",
+          "quote": "Recommended Priority Order"
+        },
+        {
+          "source_key": "ba-runner-parity-audit-inline",
+          "snapshot_id": "ba-runner-parity-audit-inline-8ad4ab75796b",
+          "locator": "580-600",
+          "quote": "Architecture Summary"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "0-32",
+          "quote": "Phase 0 Capability Parity Matrix"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "1593-6289",
+          "quote": null
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6289-6309",
+          "quote": "High-Signal Findings"
+        },
+        {
+          "source_key": "phase0-parity-matrix-inline",
+          "snapshot_id": "phase0-parity-matrix-inline-0e41b635cf12",
+          "locator": "6844-6956",
+          "quote": "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "0-49",
+          "quote": "Resolved BA decisions for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "1157-1178",
+          "quote": "notebook-note-manager"
+        },
+        {
+          "source_key": "resolved-ba-decisions-20260312",
+          "snapshot_id": "resolved-ba-decisions-20260312-e270f0021cfa",
+          "locator": "648-677",
+          "quote": "cli-source-management-console"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "0-63",
+          "quote": "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "1496-1519",
+          "quote": "global-account-settings"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "2195-2223",
+          "quote": "research-pipeline-controller"
+        },
+        {
+          "source_key": "resolved-repo-backed-clarifications-20260312",
+          "snapshot_id": "resolved-repo-backed-clarifications-20260312-3e848131ba61",
+          "locator": "566-596",
+          "quote": "chat-interaction-configuration"
+        }
       ],
-      "evidence": [],
       "ambiguity_flags": [
-        "alias_requires_evidence:Account-global setting",
-        "alias_requires_evidence:Global output language",
-        "This capability is fully supported in the SDK and CLI but is entirely absent from the MCP surface [6], [7]."
-      ]
-    },
-    {
-      "standard_term": "Research",
-      "aliases": [],
-      "semantic_notes": [
-        "Granular controls for starting discovery, polling status, and importing results [7], [10]."
-      ],
-      "evidence": [],
-      "ambiguity_flags": [
-        "alias_requires_evidence:Direct research controls",
-        "alias_requires_evidence:Research primitives",
-        "MCP only exposes a high-level 'macro' workflow, whereas the CLI provides raw access to underlying primitives [7], [10]."
-      ]
-    },
-    {
-      "standard_term": "SDK",
-      "aliases": [],
-      "semantic_notes": [
-        "The core implementation layer (src/notebooklm/) that provides the real substrate for both the CLI and MCP interfaces [4], [2]."
-      ],
-      "evidence": [],
-      "ambiguity_flags": [
-        "alias_requires_evidence:notebooklm-py",
-        "alias_requires_evidence:NotebookLMClient",
-        "alias_requires_evidence:SDK substrate"
-      ]
-    },
-    {
-      "standard_term": "Source",
-      "aliases": [],
-      "semantic_notes": [
-        "Grounding data entities, including operations for Drive ingestion, refreshing, and freshness checking [6], [7]."
-      ],
-      "evidence": [],
-      "ambiguity_flags": [
-        "alias_requires_evidence:notebooklm_sources",
-        "alias_requires_evidence:Source intelligence",
-        "MCP content access is 'preview-capped' (truncated), whereas the CLI and SDK provide 'fulltext' access required for high-fidelity snapshotting [7], [8]."
-      ]
-    },
-    {
-      "standard_term": "Text source",
-      "aliases": [],
-      "semantic_notes": [
-        "A source created from synthesized text via the add_text() method [7], [9]."
-      ],
-      "evidence": [],
-      "ambiguity_flags": [
-        "alias_requires_evidence:Research note",
-        "The term 'research note' is used in MCP workflow tools to describe what is technically a text source, colliding with the 'note' entity semantics [6], [9]."
+        "The MCP workflow helper 'notebooklm_workflow_research' calls this a 'note', creating a collision with real notebook notes [4, 9, 11]."
       ]
     }
   ]

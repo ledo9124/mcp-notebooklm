@@ -1,2 +1,1 @@
 row_id,screen_id,fact_id,source_domain,fact_status,field_name,field_label,field_type,required,description,evidence_count,evidence_refs
-cli-source-management-console-fe-status-field-5b4c73-field,cli-source-management-console,cli-source-management-console-fe-status-field-5b4c73,FE,PROVISIONAL,The CLI exposes source freshness status via the 'stale' command [2].,,,,The CLI exposes source freshness status via the 'stale' command [2].,0,

@@ -6,10 +6,10 @@
   "run_id": "run-20260312T141020Z-a5fc8e53",
   "shared_facts": [
     {
-      "fact_id": "research-pipeline-controller-shared-business-rule-f6414e",
+      "fact_id": "research-pipeline-controller-shared-business-rule-d50204",
       "domain": "SHARED",
       "category": "business rule",
-      "value": "Granular research control requires three distinct primitives: starting research jobs, polling for status, and importing discovered sources [1].",
+      "value": "The research lifecycle must be exposed as a sequence of discrete stages—start, status/poll, and wait/import—rather than being collapsed into a single macro workflow [1-3].",
       "status": "PROVISIONAL",
       "confidence": null,
       "evidence": [],
@@ -18,10 +18,22 @@
       "origin": "structured_extraction"
     },
     {
-      "fact_id": "research-pipeline-controller-shared-business-rule-cc2af1",
+      "fact_id": "research-pipeline-controller-shared-business-rule-d290de",
       "domain": "SHARED",
       "category": "business rule",
-      "value": "The existing MCP research implementation is restricted to a high-level macro (notebooklm_workflow_research) which does not support staged or selective research behavior [1], [2].",
+      "value": "The implementation must utilize raw research primitives (start, poll, import_sources) from the SDK to allow for staged or selective research behavior [2, 4].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "research-pipeline-controller-shared-business-rule-292e71",
+      "domain": "SHARED",
+      "category": "business rule",
+      "value": "Research initiation is logically coupled with source management in the existing CLI structure, while monitoring and importing are handled by dedicated research commands [3, 4].",
       "status": "PROVISIONAL",
       "confidence": null,
       "evidence": [],
@@ -32,10 +44,10 @@
   ],
   "fe_facts": [
     {
-      "fact_id": "research-pipeline-controller-fe-command-cbc320",
+      "fact_id": "research-pipeline-controller-fe-command-1387eb",
       "domain": "FE",
       "category": "command",
-      "value": "The CLI initiates research via the 'add-research' command located in src/notebooklm/cli/source.py [1].",
+      "value": "Research initiation: 'notebooklm source add-research <query> --from web|drive --mode fast|deep --import-all --no-wait' [4].",
       "status": "PROVISIONAL",
       "confidence": null,
       "evidence": [],
@@ -44,10 +56,22 @@
       "origin": "structured_extraction"
     },
     {
-      "fact_id": "research-pipeline-controller-fe-ui-behavior-ed2d93",
+      "fact_id": "research-pipeline-controller-fe-command-e04229",
       "domain": "FE",
-      "category": "UI behavior",
-      "value": "CLI provides status, wait, and import flows through src/notebooklm/cli/research.py [1].",
+      "category": "command",
+      "value": "Research status monitoring: 'notebooklm research status' [4].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "research-pipeline-controller-fe-command-009900",
+      "domain": "FE",
+      "category": "command",
+      "value": "Research completion and import: 'notebooklm research wait --timeout <sec> --interval <sec> --import-all' [4].",
       "status": "PROVISIONAL",
       "confidence": null,
       "evidence": [],
@@ -58,10 +82,10 @@
   ],
   "be_facts": [
     {
-      "fact_id": "research-pipeline-controller-be-sdk-substrate-6cda57",
+      "fact_id": "research-pipeline-controller-be-sdk-method-c2f48e",
       "domain": "BE",
-      "category": "SDK substrate",
-      "value": "The underlying SDK (src/notebooklm/_research.py) exposes start(), poll(), and import_sources() methods [1].",
+      "category": "SDK method",
+      "value": "start(): Initiates the research process; located in src/notebooklm/_research.py [2, 4].",
       "status": "PROVISIONAL",
       "confidence": null,
       "evidence": [],
@@ -70,10 +94,34 @@
       "origin": "structured_extraction"
     },
     {
-      "fact_id": "research-pipeline-controller-be-tooling-gap-90e1d1",
+      "fact_id": "research-pipeline-controller-be-sdk-method-4832a1",
       "domain": "BE",
-      "category": "tooling gap",
-      "value": "No dedicated research tool module is registered in the current MCP server boundary; research is only reachable via the workflows module [3], [1].",
+      "category": "SDK method",
+      "value": "poll(): Checks the current status of a research task; located in src/notebooklm/_research.py [2, 4].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "research-pipeline-controller-be-sdk-method-bf521d",
+      "domain": "BE",
+      "category": "SDK method",
+      "value": "import_sources(): Imports the results discovered during research; located in src/notebooklm/_research.py [2, 4].",
+      "status": "PROVISIONAL",
+      "confidence": null,
+      "evidence": [],
+      "note": null,
+      "rationale": "missing normalized evidence for confirmation",
+      "origin": "structured_extraction"
+    },
+    {
+      "fact_id": "research-pipeline-controller-be-architecture-1f222e",
+      "domain": "BE",
+      "category": "architecture",
+      "value": "The BA capability adapter must wrap the SDK research primitives directly because the current MCP tool layer only exposes a high-level macro (notebooklm_workflow_research) [2, 5-7].",
       "status": "PROVISIONAL",
       "confidence": null,
       "evidence": [],
@@ -83,35 +131,20 @@
     }
   ],
   "dependencies": [
-    "src/notebooklm/_research.py",
-    "src/notebooklm/_research.py [1]",
+    "cli-source-management-console",
+    "NotebookLMClient SDK",
+    "src/notebooklm/_research.py (SDK)",
     "src/notebooklm/cli/research.py",
+    "src/notebooklm/cli/research.py (monitoring/import) [3, 5]",
     "src/notebooklm/cli/source.py",
-    "src/notebooklm_mcp/tools/workflows.py"
+    "src/notebooklm/cli/source.py (initiation)"
   ],
-  "contradictions": [
-    {
-      "contradiction_id": "research-pipeline-controller-contradiction-research-parity-stat-764151",
-      "summary": "Research parity status conflict",
-      "severity": "MEDIUM",
-      "claims": [
-        {
-          "claim": "Direct research controls are described as 'absent from MCP' [4].",
-          "evidence": []
-        },
-        {
-          "claim": "Research has 'Partial MCP parity' because of the high-level macro [1].",
-          "evidence": []
-        }
-      ],
-      "open_question": "Does the conversion requirement mandate wrapping the existing macro or exposing the raw SDK primitives as new CLI-native entry points?"
-    }
-  ],
+  "contradictions": [],
   "missing_info": [
     {
-      "gap_id": "research-pipeline-controller-missing_requirement_detail-specific-cli-flags-a-201a87",
+      "gap_id": "research-pipeline-controller-missing_requirement_detail-specific-ux-requirem-cc65b9",
       "kind": "MISSING_REQUIREMENT_DETAIL",
-      "summary": "Specific CLI flags and argument structures for 'status', 'wait', and 'import' flows in src/notebooklm/cli/research.py are not detailed in the excerpts [1].",
+      "summary": "Specific UX requirements for 'selective research behavior' (e.g., partial imports or filtering results before import) beyond the standard SDK 'import_all' capability.",
       "severity": "MEDIUM",
       "screen_id": "research-pipeline-controller",
       "owner": null,
@@ -121,8 +154,8 @@
   ],
   "open_questions": [
     {
-      "question_id": "research-pipeline-controller-q-how-to-bridge-the-gap-be-bade94",
-      "summary": "How to bridge the gap between high-level MCP workflow macros and raw SDK research primitives [5].",
+      "question_id": "research-pipeline-controller-q-should-the-research-pipe-23657a",
+      "summary": "Should the research-pipeline-controller UI unify the split CLI entry points (source.py vs research.py) despite the decision to not promise a new unified CLI module structure? [3]",
       "owner": null,
       "severity": "MEDIUM",
       "screen_id": "research-pipeline-controller",
@@ -130,8 +163,8 @@
       "evidence": []
     },
     {
-      "question_id": "research-pipeline-controller-q-will-the-cli-implementat-f1136a",
-      "summary": "Will the CLI implementation for the research-pipeline-controller continue to use the source.py entry point for initiation, or will all research-related controls be unified under a single research CLI module [1]?",
+      "question_id": "research-pipeline-controller-q-the-cli-currently-splits-f23cb8",
+      "summary": "The CLI currently splits initiation and monitoring across two different modules (source.py and research.py) [5].",
       "owner": null,
       "severity": "MEDIUM",
       "screen_id": "research-pipeline-controller",
@@ -142,9 +175,8 @@
   "quality_summary": {
     "parse_quality": "HIGH",
     "notes": [
-      "Extracted specific file paths for SDK, CLI, and MCP implementations.",
-      "Identified clear distinction between macro-level workflows and granular primitives.",
-      "The CLI quickstart excerpt [5] provided a header but no content, limiting specific syntax facts for that source."
+      "Direct command patterns and SDK file paths were successfully extracted from sources [2] and [4].",
+      "The business rules regarding macro-avoidance are explicitly confirmed by multiple sources [2, 3, 7]."
     ],
     "degraded": false
   }

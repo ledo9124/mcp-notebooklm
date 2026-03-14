@@ -3,101 +3,343 @@
 - Feature key: `convert-from-mcp-to-cli`
 - Run id: `run-20260312T141020Z-a5fc8e53`
 - Schema version: `ba.terminology.v1.0`
-- Term count: 11
-- Alias count: 0
-- Ambiguous terms: 11
+- Term count: 15
+- Alias count: 19
+- Ambiguous terms: 4
 
 ## Terms
 
 | Standard Term | Aliases | Ambiguity Flags | Evidence |
 | --- | --- | --- | --- |
-| `Artifact` | _none_ | alias_requires_evidence:Data-table, alias_requires_evidence:Mind-map, alias_requires_evidence:Report, The entire artifact lifecycle is present in the SDK and CLI but is currently unregistered in the MCP server [7], [11]. | `0` |
-| `BA runner` | _none_ | alias_requires_evidence:BA, alias_requires_evidence:BA-runner | `0` |
-| `Capability adapter` | _none_ | alias_requires_evidence:BA adapter, alias_requires_evidence:BA capability adapter | `0` |
-| `CLI` | _none_ | alias_requires_evidence:CLI-native entry points, alias_requires_evidence:src/notebooklm/cli/ | `0` |
-| `MCP` | _none_ | alias_requires_evidence:MCP layer, alias_requires_evidence:MCP-oriented surfaces, alias_requires_evidence:src/notebooklm_mcp/ | `0` |
-| `Note` | _none_ | alias_requires_evidence:Notebook note, alias_requires_evidence:Real notebook note, Current MCP implementation is inconsistent; the workflow macro creates 'text sources' while labeling them as notes [6], [7], [9]. | `0` |
-| `Output language` | _none_ | alias_requires_evidence:Account-global setting, alias_requires_evidence:Global output language, This capability is fully supported in the SDK and CLI but is entirely absent from the MCP surface [6], [7]. | `0` |
-| `Research` | _none_ | alias_requires_evidence:Direct research controls, alias_requires_evidence:Research primitives, MCP only exposes a high-level 'macro' workflow, whereas the CLI provides raw access to underlying primitives [7], [10]. | `0` |
-| `SDK` | _none_ | alias_requires_evidence:notebooklm-py, alias_requires_evidence:NotebookLMClient, alias_requires_evidence:SDK substrate | `0` |
-| `Source` | _none_ | alias_requires_evidence:notebooklm_sources, alias_requires_evidence:Source intelligence, MCP content access is 'preview-capped' (truncated), whereas the CLI and SDK provide 'fulltext' access required for high-fidelity snapshotting [7], [8]. | `0` |
-| `Text source` | _none_ | alias_requires_evidence:Research note, The term 'research note' is used in MCP workflow tools to describe what is technically a text source, colliding with the 'note' entity semantics [6], [9]. | `0` |
+| `artifact async controls` | canonical reusable async control path | _none_ | `14` |
+| `artifact download` | local filesystem output | _none_ | `14` |
+| `artifact export` | export API | _none_ | `14` |
+| `BA capability adapter` | BA adapter, capability adapter | _none_ | `14` |
+| `full source text` | fulltext | _none_ | `14` |
+| `global output language` | account-global settings | _none_ | `14` |
+| `note export` | export_note | Explicitly unsupported in the current CLI and excluded from the note-manager scope [10, 11, 14]. | `14` |
+| `note-to-source conversion` | note-to-source bridge | Not currently implemented as a first-class public code surface or CLI action [4, 10]. | `14` |
+| `notebook chat settings` | chat interaction configuration | _none_ | `14` |
+| `notebook note` | real note | _none_ | `14` |
+| `NotebookLMClient` | main facade, SDK substrate | _none_ | `14` |
+| `research primitives` | research lifecycle | _none_ | `14` |
+| `source audit` | metadata audit, structural snapshot | The term 'audit' refers to structural snapshots; 'access-log' style semantics are explicitly not supported [5, 6]. | `14` |
+| `source content preview` | capped preview | _none_ | `14` |
+| `text source` | research note, synthesized source | The MCP workflow helper 'notebooklm_workflow_research' calls this a 'note', creating a collision with real notebook notes [4, 9, 11]. | `14` |
 
 ## Details
 
-### `Artifact`
+### `artifact async controls`
 
-- Aliases: _none_
-- Semantic notes: Generated outputs such as reports, data tables, and mind maps derived from notebook data [6], [7], [11].
-- Ambiguity flags: alias_requires_evidence:Data-table, alias_requires_evidence:Mind-map, alias_requires_evidence:Report, The entire artifact lifecycle is present in the SDK and CLI but is currently unregistered in the MCP server [7], [11].
-- Evidence: _none_
+- Aliases: canonical reusable async control path
+- Semantic notes: The standardized CLI contract for managing long-running artifact tasks via 'artifact poll' and 'artifact wait' [13, 14].
+- Ambiguity flags: _none_
+- Evidence:
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `1515-1782` / "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `2633-2659` / "Recommended Priority Order"
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `580-600` / "Architecture Summary"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `0-32` / "Phase 0 Capability Parity Matrix"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `1593-6289`
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6289-6309` / "High-Signal Findings"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6844-6956` / "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `0-49` / "Resolved BA decisions for convert-from-mcp-to-cli"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `1157-1178` / "notebook-note-manager"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `648-677` / "cli-source-management-console"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `0-63` / "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `1496-1519` / "global-account-settings"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `2195-2223` / "research-pipeline-controller"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `566-596` / "chat-interaction-configuration"
 
-### `BA runner`
+### `artifact download`
 
-- Aliases: _none_
-- Semantic notes: A planned subsystem (src/notebooklm_mcp/ba/) designed to automate analyst workflows by leveraging the NotebookLM SDK substrate [1], [2].
-- Ambiguity flags: alias_requires_evidence:BA, alias_requires_evidence:BA-runner
-- Evidence: _none_
+- Aliases: local filesystem output
+- Semantic notes: The process of saving artifact content directly to the user's local machine [13].
+- Ambiguity flags: _none_
+- Evidence:
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `1515-1782` / "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `2633-2659` / "Recommended Priority Order"
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `580-600` / "Architecture Summary"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `0-32` / "Phase 0 Capability Parity Matrix"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `1593-6289`
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6289-6309` / "High-Signal Findings"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6844-6956` / "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `0-49` / "Resolved BA decisions for convert-from-mcp-to-cli"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `1157-1178` / "notebook-note-manager"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `648-677` / "cli-source-management-console"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `0-63` / "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `1496-1519` / "global-account-settings"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `2195-2223` / "research-pipeline-controller"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `566-596` / "chat-interaction-configuration"
 
-### `Capability adapter`
+### `artifact export`
 
-- Aliases: _none_
-- Semantic notes: A proposed architectural layer that wraps the NotebookLMClient directly to provide capabilities missing from the generic MCP tool set [1], [3], [2].
-- Ambiguity flags: alias_requires_evidence:BA adapter, alias_requires_evidence:BA capability adapter
-- Evidence: _none_
+- Aliases: export API
+- Semantic notes: The process of sending generated artifacts (reports, data tables) to external cloud destinations, specifically Google Docs or Google Sheets [7, 13].
+- Ambiguity flags: _none_
+- Evidence:
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `1515-1782` / "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `2633-2659` / "Recommended Priority Order"
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `580-600` / "Architecture Summary"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `0-32` / "Phase 0 Capability Parity Matrix"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `1593-6289`
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6289-6309` / "High-Signal Findings"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6844-6956` / "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `0-49` / "Resolved BA decisions for convert-from-mcp-to-cli"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `1157-1178` / "notebook-note-manager"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `648-677` / "cli-source-management-console"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `0-63` / "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `1496-1519` / "global-account-settings"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `2195-2223` / "research-pipeline-controller"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `566-596` / "chat-interaction-configuration"
 
-### `CLI`
+### `BA capability adapter`
 
-- Aliases: _none_
-- Semantic notes: A Click-based wrapper over the SDK that currently exposes significantly more functionality than the MCP layer [4], [5].
-- Ambiguity flags: alias_requires_evidence:CLI-native entry points, alias_requires_evidence:src/notebooklm/cli/
-- Evidence: _none_
+- Aliases: BA adapter, capability adapter
+- Semantic notes: A dedicated subsystem located in src/notebooklm_mcp/ba/ designed to wrap the SDK directly [2, 3]. It bypasses the narrow MCP tool surface to provide full-fidelity access for the BA runner [3, 4].
+- Ambiguity flags: _none_
+- Evidence:
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `1515-1782` / "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `2633-2659` / "Recommended Priority Order"
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `580-600` / "Architecture Summary"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `0-32` / "Phase 0 Capability Parity Matrix"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `1593-6289`
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6289-6309` / "High-Signal Findings"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6844-6956` / "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `0-49` / "Resolved BA decisions for convert-from-mcp-to-cli"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `1157-1178` / "notebook-note-manager"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `648-677` / "cli-source-management-console"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `0-63` / "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `1496-1519` / "global-account-settings"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `2195-2223` / "research-pipeline-controller"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `566-596` / "chat-interaction-configuration"
 
-### `MCP`
+### `full source text`
 
-- Aliases: _none_
-- Semantic notes: The FastMCP server implementation that exposes a narrow subset of SDK functionality via tools, resources, and prompts [4], [5], [2].
-- Ambiguity flags: alias_requires_evidence:MCP layer, alias_requires_evidence:MCP-oriented surfaces, alias_requires_evidence:src/notebooklm_mcp/
-- Evidence: _none_
+- Aliases: fulltext
+- Semantic notes: The complete, untruncated content of a source retrieved via the SDK [7, 8]. Required for deterministic BA snapshotting to avoid the truncation found in MCP [6, 8].
+- Ambiguity flags: _none_
+- Evidence:
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `1515-1782` / "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `2633-2659` / "Recommended Priority Order"
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `580-600` / "Architecture Summary"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `0-32` / "Phase 0 Capability Parity Matrix"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `1593-6289`
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6289-6309` / "High-Signal Findings"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6844-6956` / "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `0-49` / "Resolved BA decisions for convert-from-mcp-to-cli"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `1157-1178` / "notebook-note-manager"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `648-677` / "cli-source-management-console"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `0-63` / "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `1496-1519` / "global-account-settings"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `2195-2223` / "research-pipeline-controller"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `566-596` / "chat-interaction-configuration"
 
-### `Note`
+### `global output language`
 
-- Aliases: _none_
-- Semantic notes: First-class CRUD objects within a notebook, distinct from source content [6], [7].
-- Ambiguity flags: alias_requires_evidence:Notebook note, alias_requires_evidence:Real notebook note, Current MCP implementation is inconsistent; the workflow macro creates 'text sources' while labeling them as notes [6], [7], [9].
-- Evidence: _none_
+- Aliases: account-global settings
+- Semantic notes: An account-wide setting (not notebook-scoped) that determines the language for newly generated artifacts [5, 7, 10].
+- Ambiguity flags: _none_
+- Evidence:
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `1515-1782` / "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `2633-2659` / "Recommended Priority Order"
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `580-600` / "Architecture Summary"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `0-32` / "Phase 0 Capability Parity Matrix"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `1593-6289`
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6289-6309` / "High-Signal Findings"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6844-6956` / "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `0-49` / "Resolved BA decisions for convert-from-mcp-to-cli"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `1157-1178` / "notebook-note-manager"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `648-677` / "cli-source-management-console"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `0-63` / "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `1496-1519` / "global-account-settings"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `2195-2223` / "research-pipeline-controller"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `566-596` / "chat-interaction-configuration"
 
-### `Output language`
+### `note export`
 
-- Aliases: _none_
-- Semantic notes: A global user setting that determines the language used for generated content [6], [7], [10].
-- Ambiguity flags: alias_requires_evidence:Account-global setting, alias_requires_evidence:Global output language, This capability is fully supported in the SDK and CLI but is entirely absent from the MCP surface [6], [7].
-- Evidence: _none_
+- Aliases: export_note
+- Semantic notes: The capability to export notes to external formats or destinations [4, 11].
+- Ambiguity flags: Explicitly unsupported in the current CLI and excluded from the note-manager scope [10, 11, 14].
+- Evidence:
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `1515-1782` / "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `2633-2659` / "Recommended Priority Order"
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `580-600` / "Architecture Summary"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `0-32` / "Phase 0 Capability Parity Matrix"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `1593-6289`
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6289-6309` / "High-Signal Findings"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6844-6956` / "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `0-49` / "Resolved BA decisions for convert-from-mcp-to-cli"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `1157-1178` / "notebook-note-manager"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `648-677` / "cli-source-management-console"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `0-63` / "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `1496-1519` / "global-account-settings"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `2195-2223` / "research-pipeline-controller"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `566-596` / "chat-interaction-configuration"
 
-### `Research`
+### `note-to-source conversion`
 
-- Aliases: _none_
-- Semantic notes: Granular controls for starting discovery, polling status, and importing results [7], [10].
-- Ambiguity flags: alias_requires_evidence:Direct research controls, alias_requires_evidence:Research primitives, MCP only exposes a high-level 'macro' workflow, whereas the CLI provides raw access to underlying primitives [7], [10].
-- Evidence: _none_
+- Aliases: note-to-source bridge
+- Semantic notes: An explicit bridge where a notebook note's content is used to create a new text source [7, 10, 11].
+- Ambiguity flags: Not currently implemented as a first-class public code surface or CLI action [4, 10].
+- Evidence:
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `1515-1782` / "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `2633-2659` / "Recommended Priority Order"
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `580-600` / "Architecture Summary"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `0-32` / "Phase 0 Capability Parity Matrix"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `1593-6289`
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6289-6309` / "High-Signal Findings"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6844-6956` / "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `0-49` / "Resolved BA decisions for convert-from-mcp-to-cli"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `1157-1178` / "notebook-note-manager"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `648-677` / "cli-source-management-console"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `0-63` / "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `1496-1519` / "global-account-settings"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `2195-2223` / "research-pipeline-controller"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `566-596` / "chat-interaction-configuration"
 
-### `SDK`
+### `notebook chat settings`
 
-- Aliases: _none_
-- Semantic notes: The core implementation layer (src/notebooklm/) that provides the real substrate for both the CLI and MCP interfaces [4], [2].
-- Ambiguity flags: alias_requires_evidence:notebooklm-py, alias_requires_evidence:NotebookLMClient, alias_requires_evidence:SDK substrate
-- Evidence: _none_
+- Aliases: chat interaction configuration
+- Semantic notes: Configurable parameters for the notebook chat, including 'goal' (style), 'response length', and 'custom prompt' [6, 7, 14].
+- Ambiguity flags: _none_
+- Evidence:
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `1515-1782` / "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `2633-2659` / "Recommended Priority Order"
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `580-600` / "Architecture Summary"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `0-32` / "Phase 0 Capability Parity Matrix"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `1593-6289`
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6289-6309` / "High-Signal Findings"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6844-6956` / "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `0-49` / "Resolved BA decisions for convert-from-mcp-to-cli"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `1157-1178` / "notebook-note-manager"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `648-677` / "cli-source-management-console"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `0-63` / "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `1496-1519` / "global-account-settings"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `2195-2223` / "research-pipeline-controller"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `566-596` / "chat-interaction-configuration"
 
-### `Source`
+### `notebook note`
 
-- Aliases: _none_
-- Semantic notes: Grounding data entities, including operations for Drive ingestion, refreshing, and freshness checking [6], [7].
-- Ambiguity flags: alias_requires_evidence:notebooklm_sources, alias_requires_evidence:Source intelligence, MCP content access is 'preview-capped' (truncated), whereas the CLI and SDK provide 'fulltext' access required for high-fidelity snapshotting [7], [8].
-- Evidence: _none_
+- Aliases: real note
+- Semantic notes: A first-class object created within a notebook using the notes.create() SDK method [6, 7, 9].
+- Ambiguity flags: _none_
+- Evidence:
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `1515-1782` / "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `2633-2659` / "Recommended Priority Order"
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `580-600` / "Architecture Summary"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `0-32` / "Phase 0 Capability Parity Matrix"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `1593-6289`
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6289-6309` / "High-Signal Findings"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6844-6956` / "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `0-49` / "Resolved BA decisions for convert-from-mcp-to-cli"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `1157-1178` / "notebook-note-manager"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `648-677` / "cli-source-management-console"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `0-63` / "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `1496-1519` / "global-account-settings"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `2195-2223` / "research-pipeline-controller"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `566-596` / "chat-interaction-configuration"
 
-### `Text source`
+### `NotebookLMClient`
 
-- Aliases: _none_
-- Semantic notes: A source created from synthesized text via the add_text() method [7], [9].
-- Ambiguity flags: alias_requires_evidence:Research note, The term 'research note' is used in MCP workflow tools to describe what is technically a text source, colliding with the 'note' entity semantics [6], [9].
-- Evidence: _none_
+- Aliases: main facade, SDK substrate
+- Semantic notes: The central programmatic interface in src/notebooklm/client.py that exposes namespaced APIs like notebooks, sources, and chat [1]. It serves as the real substrate for both the SDK and CLI [1].
+- Ambiguity flags: _none_
+- Evidence:
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `1515-1782` / "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `2633-2659` / "Recommended Priority Order"
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `580-600` / "Architecture Summary"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `0-32` / "Phase 0 Capability Parity Matrix"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `1593-6289`
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6289-6309` / "High-Signal Findings"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6844-6956` / "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `0-49` / "Resolved BA decisions for convert-from-mcp-to-cli"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `1157-1178` / "notebook-note-manager"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `648-677` / "cli-source-management-console"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `0-63` / "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `1496-1519` / "global-account-settings"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `2195-2223` / "research-pipeline-controller"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `566-596` / "chat-interaction-configuration"
+
+### `research primitives`
+
+- Aliases: research lifecycle
+- Semantic notes: The low-level SDK/CLI controls for research: start, poll (or status), and import_sources [7, 11, 12].
+- Ambiguity flags: _none_
+- Evidence:
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `1515-1782` / "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `2633-2659` / "Recommended Priority Order"
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `580-600` / "Architecture Summary"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `0-32` / "Phase 0 Capability Parity Matrix"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `1593-6289`
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6289-6309` / "High-Signal Findings"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6844-6956` / "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `0-49` / "Resolved BA decisions for convert-from-mcp-to-cli"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `1157-1178` / "notebook-note-manager"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `648-677` / "cli-source-management-console"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `0-63` / "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `1496-1519` / "global-account-settings"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `2195-2223` / "research-pipeline-controller"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `566-596` / "chat-interaction-configuration"
+
+### `source audit`
+
+- Aliases: metadata audit, structural snapshot
+- Semantic notes: A structural record of source metadata and readiness, including fields such as source_id, status, is_ready, and is_fresh [5, 6].
+- Ambiguity flags: The term 'audit' refers to structural snapshots; 'access-log' style semantics are explicitly not supported [5, 6].
+- Evidence:
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `1515-1782` / "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `2633-2659` / "Recommended Priority Order"
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `580-600` / "Architecture Summary"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `0-32` / "Phase 0 Capability Parity Matrix"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `1593-6289`
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6289-6309` / "High-Signal Findings"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6844-6956` / "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `0-49` / "Resolved BA decisions for convert-from-mcp-to-cli"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `1157-1178` / "notebook-note-manager"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `648-677` / "cli-source-management-console"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `0-63` / "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `1496-1519` / "global-account-settings"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `2195-2223` / "research-pipeline-controller"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `566-596` / "chat-interaction-configuration"
+
+### `source content preview`
+
+- Aliases: capped preview
+- Semantic notes: The truncated version of source content provided by existing MCP tools and resources, typically capped at 50,000 characters [6-8].
+- Ambiguity flags: _none_
+- Evidence:
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `1515-1782` / "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `2633-2659` / "Recommended Priority Order"
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `580-600` / "Architecture Summary"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `0-32` / "Phase 0 Capability Parity Matrix"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `1593-6289`
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6289-6309` / "High-Signal Findings"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6844-6956` / "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `0-49` / "Resolved BA decisions for convert-from-mcp-to-cli"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `1157-1178` / "notebook-note-manager"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `648-677` / "cli-source-management-console"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `0-63` / "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `1496-1519` / "global-account-settings"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `2195-2223` / "research-pipeline-controller"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `566-596` / "chat-interaction-configuration"
+
+### `text source`
+
+- Aliases: research note, synthesized source
+- Semantic notes: A source created from raw text using sources.add_text() [7, 9, 10].
+- Ambiguity flags: The MCP workflow helper 'notebooklm_workflow_research' calls this a 'note', creating a collision with real notebook notes [4, 9, 11].
+- Evidence:
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `1515-1782` / "Bottom line: the SDK/CLI already contain most of the raw functionality the BA runner wants, but the MCP layer only exposes a narrow subset. The BA runner should be built around a capability adapter over NotebookLMClient , not around the current MCP tool surface as-is."
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `2633-2659` / "Recommended Priority Order"
+  - `ba-runner-parity-audit-inline` / `ba-runner-parity-audit-inline-8ad4ab75796b` / `580-600` / "Architecture Summary"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `0-32` / "Phase 0 Capability Parity Matrix"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `1593-6289`
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6289-6309` / "High-Signal Findings"
+  - `phase0-parity-matrix-inline` / `phase0-parity-matrix-inline-0e41b635cf12` / `6844-6956` / "src/notebooklm_mcp/tools/chat.py::notebooklm_chat_ask() can save a real notebook note via client.notes.create() ."
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `0-49` / "Resolved BA decisions for convert-from-mcp-to-cli"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `1157-1178` / "notebook-note-manager"
+  - `resolved-ba-decisions-20260312` / `resolved-ba-decisions-20260312-e270f0021cfa` / `648-677` / "cli-source-management-console"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `0-63` / "Resolved repo-backed clarifications for convert-from-mcp-to-cli"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `1496-1519` / "global-account-settings"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `2195-2223` / "research-pipeline-controller"
+  - `resolved-repo-backed-clarifications-20260312` / `resolved-repo-backed-clarifications-20260312-3e848131ba61` / `566-596` / "chat-interaction-configuration"
