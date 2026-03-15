@@ -1,9 +1,11 @@
 # CLI Reference
 
 **Status:** Active
-**Last Updated:** 2026-03-14
+**Last Updated:** 2026-03-15
 
-Complete command reference for the retained `notebooklm` CLI surface.
+Complete reference for the retained `notebooklm` CLI surface, with the Phase 0
+grammar freeze called out separately from the currently shipped transitional
+commands.
 
 ## Command Structure
 
@@ -23,15 +25,111 @@ notebooklm [--storage PATH] [--version] <command> [OPTIONS] [ARGS]
 
 See [Configuration](configuration.md) for details on environment variables and CI/CD setup.
 
-**Command Organization:**
-- **Session commands** - Authentication and context management
-- **Notebook commands** - CRUD operations on notebooks
-- **Chat commands** - Querying with follow-up continuity
-- **Grouped commands** - `source`, `generate`, `research`
+## Canonical Grammar Freeze (Phase 0)
+
+The command-family contract is frozen now even though several canonical
+families are still implemented through transitional roots. Later beads may add
+or normalize commands inside these families, but they should not rename the
+families themselves.
+
+| Family | Canonical form | Current shipped surface | Status |
+|---|---|---|---|
+| `auth` | `notebooklm auth <subcommand>` | `login`, `auth check` | Partially implemented; grouped auth roots are canonical |
+| `notebook` | `notebooklm notebook <subcommand>` | `list`, `create`, `use` | Transitional top-level commands still ship today |
+| `source` | `notebooklm source <subcommand>` | `source add`, `source add-research`, `source list`, `source wait` | Active canonical group |
+| `sync` | `notebooklm sync <subcommand>` | Not implemented yet | Reserved canonical family |
+| Workflow roots | `ask`, `overview`, `summarize`, `study-guide`, `audio`, `research <subcommand>` | `ask`, `summary`, `generate audio/report`, `research status/wait` | Mixed transitional surface |
+| Maintenance roots | `doctor`, `cache`, `support-bundle` | `status`, `clear` remain as current utilities | Canonical family reserved; implementation lands later |
+
+**Command Organization Today:**
+- **Canonical families** - `auth`, `notebook`, `source`, `sync`, workflow roots, maintenance roots
+- **Current retained compatibility roots** - `login`, `use`, `status`, `clear`, `list`, `create`, `summary`, `ask`, `generate`, `research`
+- **Active grouped commands** - `source`, `generate`, `research`
+
+## Context, Output, and Exit Contract
+
+This section freezes the behavior rules that later grammar-normalization and
+alias work must preserve unless a future bead changes them explicitly.
+
+### Notebook and Conversation Resolution
+
+- An explicit notebook argument or `-n/--notebook` option always wins over stored CLI context.
+- If a command does not receive an explicit notebook, it falls back to the notebook saved by `notebooklm use`.
+- If neither an explicit notebook nor stored context is available, notebook-scoped commands exit with status `1`.
+- Notebook and source IDs support case-insensitive prefix matching; unique short prefixes are accepted, ambiguous prefixes fail, and 20+ character IDs are treated as already-complete.
+- `ask` resolves conversation state in this order:
+  1. Explicit `--conversation-id`
+  2. Cached local conversation for the active notebook
+  3. The most recent server conversation for that notebook
+  4. A new conversation if no prior thread is available
+- Switching notebooks with an explicit `--notebook` starts a fresh local conversation unless `--conversation-id` is also supplied explicitly.
+
+### Interactive vs Non-Interactive Behavior
+
+- `notebooklm login` is intentionally interactive: it opens a real browser, waits for manual Google login, and then waits for Enter in the terminal before saving auth state.
+- `notebooklm login` is unavailable when `NOTEBOOKLM_AUTH_JSON` is set, because inline auth and browser-saved auth are mutually exclusive sources.
+- `research wait` is the canonical blocking research command; it polls until completion or timeout and exits non-zero on timeout or when no research run exists.
+- Retained generation commands are asynchronous by default; `generate audio` and `generate report` return immediately unless `--wait` is supplied.
+- `source add-research --no-wait` is the non-blocking research-start path; `research wait --import-all` is the follow-up blocking path for agent workflows.
+- Most read or mutation commands are single-shot and return immediately once the network request or local file operation completes.
+
+### Human Output vs JSON Output
+
+- Human mode is optimized for terminal use: Rich tables, color, short status text, and occasional dim hints such as partial-ID match notices.
+- JSON mode is optimized for automation: plain pretty-printed JSON only, with no Rich tables or ANSI formatting.
+- Success envelopes are command-specific, but `--json` output is always intended to be machine-readable and stable enough for scripts/agents to consume directly.
+- Authentication failures in JSON mode use a structured error envelope with `error`, `code`, and `message`, plus extra diagnostics when available.
+- Generic command failures in JSON mode also return a structured error envelope and exit with status `1`.
+- In human mode, the CLI prints actionable error guidance and exits non-zero instead of returning partial JSON.
+
+## Legacy Alias and Unsupported-Form Policy
+
+Phase 0 freezes the compatibility policy as well as the grammar. Legacy roots do
+not remain supported by accident: each one must either map to a canonical
+family, stay retained without a replacement yet, or be explicitly unsupported.
+
+### Compatibility aliases once the canonical replacement exists
+
+Use this warning template when a retained legacy form remains callable after its
+canonical replacement ships:
+
+> Deprecated compatibility command. Use `<canonical command>` instead.
+
+| Current form | Canonical replacement | Policy |
+|---|---|---|
+| `notebooklm login` | `notebooklm auth login` | Keep as compatibility alias once grouped auth login exists |
+| `notebooklm list` | `notebooklm notebook list` | Keep as compatibility alias once grouped notebook metadata lands |
+| `notebooklm use <id>` | `notebooklm notebook use <id-or-title>` | Keep as compatibility alias once grouped notebook context lands |
+| `notebooklm summary` | `notebooklm summarize` | Keep as compatibility alias once the workflow root lands |
+| `notebooklm generate audio ...` | `notebooklm audio ...` | Keep as compatibility alias once the audio root lands |
+| `notebooklm generate report --format briefing-doc ...` | `notebooklm summarize ...` | Keep as compatibility alias once the summarize root lands |
+| `notebooklm generate report --format study-guide ...` | `notebooklm study-guide ...` | Keep as compatibility alias once the study-guide root lands |
+
+### Retained direct commands with no frozen replacement yet
+
+These commands stay supported on this branch without a deprecation warning in
+Phase 0 because the grammar freeze has not assigned them a better replacement
+yet:
+
+- `notebooklm create <title>`
+- `notebooklm status`
+- `notebooklm clear`
+- `notebooklm auth check`
+- `notebooklm source add`, `source add-research`, `source wait`
+- `notebooklm research status`, `research wait`
+
+### Intentionally unsupported old forms
+
+These forms are intentionally absent from the retained CLI surface and should
+continue to fail fast instead of acting like hidden compatibility shims:
+
+- Removed chat roots: `notebooklm configure`, `notebooklm history`
+- Standalone artifact follow-up roots such as `artifact-status` and `download`
+- Removed legacy groups that are not part of the retained help surface, such as `share` and `language`
 
 ---
 
-## Quick Reference
+## Quick Reference (Current Shipped Surface)
 
 ### Session Commands
 
@@ -89,6 +187,8 @@ All generate commands support:
 - `--json` for machine-readable output (returns `task_id` and `status`)
 - `--language` to override output language (defaults to config or 'en')
 - `--retry N` to automatically retry on rate limits with exponential backoff
+
+The reduced CLI does not include a separate artifact-status follow-up command. Use `--wait` when you need the completed NotebookLM URL in one CLI invocation.
 
 | Command | Options | Example |
 |---------|---------|---------|
@@ -392,7 +492,7 @@ notebooklm generate report --format briefing-doc --append "Focus on AI trends, k
 ```
 
 Completed `generate ... --wait` commands print the ready URL directly.
-Without `--wait`, generate commands print the task ID (or return it with `--json`) so you can track completion with the surviving artifact status helpers.
+Without `--wait`, generate commands print the task ID (or return it with `--json`) and exit. If you need the completed URL from the CLI itself, rerun with `--wait`.
 
 ---
 
@@ -522,7 +622,7 @@ When using this CLI programmatically:
    - `audio`: Returns immediately with a task ID unless you pass `--wait`
    - `report`: Returns immediately with a task ID unless you pass `--wait`
 
-    Avoid `--wait` for LLM agents when possible. The reduced CLI does not keep a separate `artifact` follow-up command, so either let the user check back later or run the original `generate ... --wait` command only when a blocking wait is acceptable.
+    Avoid `--wait` only when a pending task ID is enough for your workflow. If you need the completed URL from the CLI itself, use `generate ... --wait` because the reduced CLI does not keep a separate artifact follow-up command.
 
 3. **Partial IDs work**: `notebooklm use abc` matches any notebook ID starting with "abc".
 

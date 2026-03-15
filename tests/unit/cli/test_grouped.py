@@ -40,7 +40,15 @@ class TestSectionedHelp:
         assert "Chat:" in result.output
         assert "ask" in result.output
         assert "configure" not in result.output
-        assert "history" not in result.output
+
+    def test_help_shows_workflows_section(self, runner):
+        """Verify normalized workflow roots appear in help."""
+        result = runner.invoke(cli, ["--help"])
+        assert result.exit_code == 0
+        assert "Workflows:" in result.output
+        assert "summarize" in result.output
+        assert "study-guide" in result.output
+        assert "audio" in result.output
 
     def test_help_shows_command_groups_section(self, runner):
         """Verify Command Groups section appears with subcommand listings."""
@@ -48,8 +56,15 @@ class TestSectionedHelp:
         assert result.exit_code == 0
         assert "Command Groups" in result.output
         # These should show subcommands, not help text
+        assert "events" in result.output
         assert "source" in result.output
-        assert "language" not in result.output
+        assert "history" in result.output
+        assert "cache" in result.output
+        assert "watch" in result.output
+        assert "radar" in result.output
+        assert "trace" in result.output
+        assert "inbox" in result.output
+        assert "workspace" in result.output
         assert "share" not in result.output
 
     def test_help_shows_artifact_actions_section(self, runner):
@@ -61,11 +76,12 @@ class TestSectionedHelp:
         assert "download" not in result.output
 
     def test_help_shows_other_section_for_auth(self, runner):
-        """Verify auth diagnostics remain discoverable at the root shell."""
+        """Verify root-level diagnostics remain discoverable at the root shell."""
         result = runner.invoke(cli, ["--help"])
         assert result.exit_code == 0
         assert "Other:" in result.output
         assert "auth" in result.output
+        assert "doctor" in result.output
 
     def test_source_group_shows_subcommands(self, runner):
         """Verify source group subcommands are listed in help."""
@@ -99,10 +115,17 @@ class TestSectionedHelp:
             if line.strip().endswith(":")
             and any(
                 s in line
-                for s in ["Session", "Notebooks", "Chat", "Command Groups", "Artifact Actions"]
+                for s in [
+                    "Session",
+                    "Notebooks",
+                    "Chat",
+                    "Workflows",
+                    "Command Groups",
+                    "Artifact Actions",
+                ]
             )
         )
-        assert section_count >= 4  # At least 4 of our sections should appear (no Insights anymore)
+        assert section_count >= 5
 
 
 class TestSectionedHelpOrder:
@@ -119,6 +142,7 @@ class TestSectionedHelpOrder:
         session_pos = output.find("Session:")
         notebooks_pos = output.find("Notebooks:")
         chat_pos = output.find("Chat:")
+        workflows_pos = output.find("Workflows:")
         groups_pos = output.find("Command Groups")
         actions_pos = output.find("Artifact Actions")
         other_pos = output.find("Other:")
@@ -127,9 +151,18 @@ class TestSectionedHelpOrder:
         assert session_pos > 0
         assert notebooks_pos > 0
         assert chat_pos > 0
+        assert workflows_pos > 0
         assert groups_pos > 0
         assert actions_pos > 0
         assert other_pos > 0
 
         # Verify order
-        assert session_pos < notebooks_pos < chat_pos < groups_pos < actions_pos < other_pos
+        assert (
+            session_pos
+            < notebooks_pos
+            < chat_pos
+            < workflows_pos
+            < groups_pos
+            < actions_pos
+            < other_pos
+        )

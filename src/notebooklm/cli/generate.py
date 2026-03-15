@@ -7,19 +7,33 @@ Commands:
 
 import asyncio
 from collections.abc import Awaitable, Callable
+import time
 from typing import Any
 
 import click
 
 from ..client import NotebookLMClient
+from ..contracts import CacheUpdates, Diagnostics, Envelope, Intent, Route, Transport
+from ..contracts.rpc_map import RPC_MAP
+from ..local.db import connect_db
+from ..sync import invalidate_notebook_detail, seed_pending_artifact
 from ..types import (
     AudioFormat,
     AudioLength,
     GenerationStatus,
     ReportFormat,
 )
+from ..workflows import run_summarize_workflow
+from ..workflows.runtime import (
+    RETRY_BACKOFF_MULTIPLIER,
+    RETRY_INITIAL_DELAY,
+    RETRY_MAX_DELAY,
+    calculate_backoff_delay,
+    retry_with_backoff,
+)
 from .helpers import (
     console,
+    emit_compatibility_warning,
     json_error_response,
     json_output_response,
     require_notebook,
@@ -29,34 +43,212 @@ from .helpers import (
 )
 from .language import SUPPORTED_LANGUAGES, get_language
 from .options import json_option, retry_option
+from .session import _inspect_auth_state, _trace_and_run_id
 
 DEFAULT_LANGUAGE = "en"
+_AUDIO_RPC_BINDING = RPC_MAP[(Intent.GENERATION.value, "audio")]
+_BRIEFING_DOC_RPC_BINDING = RPC_MAP[(Intent.GENERATION.value, "briefing_doc")]
+_STUDY_GUIDE_RPC_BINDING = RPC_MAP[(Intent.GENERATION.value, "study_guide")]
+_PENDING_GENERATION_TABLES = ["artifacts", "notebooks", "sync_runs"]
 
-# Retry constants
-RETRY_INITIAL_DELAY = 60.0  # seconds
-RETRY_MAX_DELAY = 300.0  # 5 minutes
-RETRY_BACKOFF_MULTIPLIER = 2.0
+
+def _audio_format_map() -> dict[str, AudioFormat]:
+    return {
+        "deep-dive": AudioFormat.DEEP_DIVE,
+        "brief": AudioFormat.BRIEF,
+        "critique": AudioFormat.CRITIQUE,
+        "debate": AudioFormat.DEBATE,
+    }
 
 
-def calculate_backoff_delay(
-    attempt: int,
-    initial_delay: float = RETRY_INITIAL_DELAY,
-    max_delay: float = RETRY_MAX_DELAY,
-    multiplier: float = RETRY_BACKOFF_MULTIPLIER,
-) -> float:
-    """Calculate exponential backoff delay for a retry attempt.
+def _audio_length_map() -> dict[str, AudioLength]:
+    return {
+        "short": AudioLength.SHORT,
+        "default": AudioLength.DEFAULT,
+        "long": AudioLength.LONG,
+    }
 
-    Args:
-        attempt: The current attempt number (0-indexed).
-        initial_delay: Initial delay in seconds.
-        max_delay: Maximum delay cap in seconds.
-        multiplier: Backoff multiplier.
 
-    Returns:
-        Delay in seconds for this attempt.
-    """
-    delay = initial_delay * (multiplier**attempt)
-    return min(delay, max_delay)
+def _report_format_map() -> dict[str, ReportFormat]:
+    return {
+        "briefing-doc": ReportFormat.BRIEFING_DOC,
+        "study-guide": ReportFormat.STUDY_GUIDE,
+    }
+
+
+def _should_seed_pending_artifact(result: Any) -> bool:
+    return bool(result) and not (
+        isinstance(result, GenerationStatus) and result.is_rate_limited
+    )
+
+
+def _record_pending_artifact(
+    *,
+    notebook_id: str,
+    task_id: str,
+    artifact_type: str,
+    storage_path,
+    reason: str,
+) -> None:
+    connection = connect_db()
+    try:
+        seed_pending_artifact(
+            connection,
+            notebook_id,
+            task_id,
+            artifact_type=artifact_type,
+            storage_path=storage_path,
+        )
+        invalidate_notebook_detail(
+            connection,
+            notebook_id,
+            storage_path=storage_path,
+            reason=reason,
+        )
+    finally:
+        connection.close()
+
+
+def _profile_id(ctx: click.Context) -> str:
+    try:
+        _, profile_id = _inspect_auth_state(ctx)
+    except Exception:
+        profile_id = "default"
+    return profile_id
+
+
+def _generation_status_value(status: Any) -> str:
+    raw_status = None
+    if isinstance(status, dict):
+        raw_status = status.get("status")
+    else:
+        raw_status = getattr(status, "status", None)
+
+    if isinstance(raw_status, str):
+        normalized = raw_status.casefold()
+        if normalized == "completed":
+            return "completed"
+        if normalized == "failed":
+            return "failed"
+        if normalized in {"pending", "in_progress", "processing"}:
+            return "pending"
+
+    return "pending"
+
+
+def _generation_status_url(status: Any) -> str | None:
+    if isinstance(status, dict):
+        value = status.get("url")
+    else:
+        value = getattr(status, "url", None)
+    return str(value) if value is not None else None
+
+
+def _generation_result_payload(status: Any) -> dict[str, Any]:
+    payload = {
+        "task_id": _extract_task_id(status),
+        "status": _generation_status_value(status),
+    }
+    url = _generation_status_url(status)
+    if url is not None:
+        payload["url"] = url
+    return payload
+
+
+def _generation_cache_updates(
+    notebook_id: str,
+    *,
+    seeded_pending_artifact: bool,
+) -> CacheUpdates:
+    if not seeded_pending_artifact:
+        return CacheUpdates()
+    return CacheUpdates(
+        tables_touched=list(_PENDING_GENERATION_TABLES),
+        invalidated=[f"notebook_detail:{notebook_id}"],
+    )
+
+
+def _generation_json_envelope(
+    ctx: click.Context,
+    *,
+    binding,
+    notebook_id: str,
+    status: Any,
+    elapsed_ms: int,
+    route_reason: str,
+    cache_updates: CacheUpdates | None = None,
+) -> dict[str, Any]:
+    trace_id, run_id = _trace_and_run_id(ctx, binding.mode)
+    return Envelope(
+        ok=True,
+        trace_id=trace_id,
+        run_id=run_id,
+        route=Route(
+            intent=Intent(binding.intent),
+            mode=binding.mode,
+            notebook_id=notebook_id,
+            profile_id=_profile_id(ctx),
+            source_of_truth="remote_http",
+            cache_mode="network",
+            reason=route_reason,
+            transport=Transport(
+                kind=binding.transport_kind,
+                endpoint=binding.endpoint,
+                rpcid=binding.rpcid,
+            ),
+        ),
+        result=_generation_result_payload(status),
+        freshness=None,
+        cache_updates=cache_updates or CacheUpdates(),
+        diagnostics=Diagnostics(retries=0, auth_refreshed=False, elapsed_ms=elapsed_ms),
+    ).to_dict()
+
+
+def _status_flag(status: Any, name: str) -> bool:
+    return getattr(status, name, False) is True
+
+
+def _generation_error_details(status: Any, artifact_type: str) -> tuple[str, str] | None:
+    if _status_flag(status, "is_rate_limited"):
+        return ("RATE_LIMITED", f"{artifact_type.title()} generation rate limited by Google")
+    if _status_flag(status, "is_failed"):
+        return (
+            "GENERATION_FAILED",
+            getattr(status, "error", None) or f"{artifact_type.title()} generation failed",
+        )
+    return None
+
+
+def _generation_elapsed_ms(started_at: float | None) -> int:
+    if started_at is None:
+        return 0
+    return max(0, int((time.perf_counter() - started_at) * 1000))
+
+
+def _emit_generation_json_error(
+    *,
+    ctx: click.Context,
+    binding,
+    notebook_id: str,
+    code: str,
+    message: str,
+    route_reason: str,
+    elapsed_ms: int,
+    cache_updates: CacheUpdates | None = None,
+) -> None:
+    json_error_response(
+        code,
+        message,
+        ctx=ctx,
+        binding=binding,
+        profile_id=_profile_id(ctx),
+        notebook_id=notebook_id,
+        source_of_truth="remote_http",
+        cache_mode="network",
+        reason=route_reason,
+        cache_updates=cache_updates or CacheUpdates(),
+        diagnostics=Diagnostics(retries=0, auth_refreshed=False, elapsed_ms=elapsed_ms),
+    )
 
 
 async def generate_with_retry(
@@ -79,28 +271,24 @@ async def generate_with_retry(
     Returns:
         GenerationStatus or None if generation failed.
     """
-    for attempt in range(max_retries + 1):
-        result = await generate_fn()
+    def _should_retry(result: GenerationStatus | None) -> bool:
+        return isinstance(result, GenerationStatus) and result.is_rate_limited
 
-        # Return immediately if not rate limited (success or other failure)
-        if not isinstance(result, GenerationStatus) or not result.is_rate_limited:
-            return result
+    def _on_retry(attempt: int, total_attempts: int, delay: float) -> None:
+        if json_output:
+            return
+        console.print(
+            f"[yellow]{artifact_type.title()} rate limited. "
+            f"Retrying in {int(delay)}s (attempt {attempt + 1}/{total_attempts})...[/yellow]"
+        )
 
-        # Rate limited with no retries left
-        if attempt >= max_retries:
-            return result
-
-        # Wait before retry
-        delay = calculate_backoff_delay(attempt)
-        if not json_output:
-            console.print(
-                f"[yellow]{artifact_type.title()} rate limited. "
-                f"Retrying in {int(delay)}s (attempt {attempt + 2}/{max_retries + 1})...[/yellow]"
-            )
-        await asyncio.sleep(delay)
-
-    # Unreachable, but satisfies type checker
-    return None
+    return await retry_with_backoff(
+        generate_fn,
+        max_retries=max_retries,
+        should_retry=_should_retry,
+        on_retry=_on_retry,
+        sleep=asyncio.sleep,
+    )
 
 
 def resolve_language(language: str | None) -> str:
@@ -132,6 +320,12 @@ async def handle_generation_result(
     wait: bool = False,
     json_output: bool = False,
     timeout: float = 300.0,
+    *,
+    ctx: click.Context | None = None,
+    binding=None,
+    started_at: float | None = None,
+    cache_updates: CacheUpdates | None = None,
+    route_reason: str | None = None,
 ) -> GenerationStatus | None:
     """Handle generation result with optional waiting and output formatting.
 
@@ -152,31 +346,30 @@ async def handle_generation_result(
     Returns:
         Final GenerationStatus, or None if generation failed.
     """
+    route_reason = (
+        route_reason
+        or f"Start remote NotebookLM {artifact_type} generation and optionally wait for completion."
+    )
+    elapsed_ms = _generation_elapsed_ms(started_at)
+    if json_output and (ctx is None or binding is None):
+        raise ValueError("ctx and binding are required for generation JSON output")
+
     # Handle failed generation or rate limiting
     if not result:
         if json_output:
-            json_error_response(
-                "GENERATION_FAILED",
-                f"{artifact_type.title()} generation failed",
+            _emit_generation_json_error(
+                ctx=ctx,
+                binding=binding,
+                notebook_id=notebook_id,
+                code="GENERATION_FAILED",
+                message=f"{artifact_type.title()} generation failed",
+                route_reason=route_reason,
+                elapsed_ms=elapsed_ms,
+                cache_updates=cache_updates,
             )
         else:
             console.print(f"[red]{artifact_type.title()} generation failed.[/red]")
         return None
-
-    # Check for rate limiting (result exists but failed due to rate limit)
-    if isinstance(result, GenerationStatus) and result.is_rate_limited:
-        if json_output:
-            json_error_response(
-                "RATE_LIMITED",
-                f"{artifact_type.title()} generation rate limited by Google",
-            )
-        else:
-            console.print(
-                f"[red]{artifact_type.title()} generation rate limited by Google.[/red]\n"
-                "[yellow]Daily quota may be exceeded. Try again in 1-24 hours, "
-                "or use --retry N to retry automatically.[/yellow]"
-            )
-        return result
 
     # Extract task_id from various result formats
     task_id: str | None = None
@@ -197,8 +390,35 @@ async def handle_generation_result(
             console.print(f"[yellow]Generating {artifact_type}...[/yellow] Task: {task_id}")
         status = await client.artifacts.wait_for_completion(notebook_id, task_id, timeout=timeout)
 
+    if json_output:
+        error_details = _generation_error_details(status, artifact_type)
+        if error_details is not None:
+            code, message = error_details
+            _emit_generation_json_error(
+                ctx=ctx,
+                binding=binding,
+                notebook_id=notebook_id,
+                code=code,
+                message=message,
+                route_reason=route_reason,
+                elapsed_ms=elapsed_ms,
+                cache_updates=cache_updates,
+            )
+        json_output_response(
+            _generation_json_envelope(
+                ctx,
+                binding=binding,
+                notebook_id=notebook_id,
+                status=status,
+                elapsed_ms=elapsed_ms,
+                route_reason=route_reason,
+                cache_updates=cache_updates,
+            )
+        )
+        return status if isinstance(status, GenerationStatus) else None
+
     # Output status
-    _output_generation_status(status, artifact_type, json_output)
+    _output_generation_status(status, artifact_type, json_output=False)
 
     return status if isinstance(status, GenerationStatus) else None
 
@@ -220,8 +440,9 @@ def _extract_task_id(status: Any) -> str | None:
 
 def _output_generation_status(status: Any, artifact_type: str, json_output: bool) -> None:
     """Output generation status in appropriate format."""
-    is_complete = hasattr(status, "is_complete") and status.is_complete
-    is_failed = hasattr(status, "is_failed") and status.is_failed
+    is_complete = _status_flag(status, "is_complete")
+    is_rate_limited = _status_flag(status, "is_rate_limited")
+    is_failed = _status_flag(status, "is_failed")
 
     if json_output:
         if is_complete:
@@ -231,6 +452,11 @@ def _output_generation_status(status: Any, artifact_type: str, json_output: bool
                     "status": "completed",
                     "url": getattr(status, "url", None),
                 }
+            )
+        elif is_rate_limited:
+            json_error_response(
+                "RATE_LIMITED",
+                f"{artifact_type.title()} generation rate limited by Google",
             )
         elif is_failed:
             json_error_response(
@@ -247,11 +473,172 @@ def _output_generation_status(status: Any, artifact_type: str, json_output: bool
                 console.print(f"[green]{artifact_type.title()} ready:[/green] {url}")
             else:
                 console.print(f"[green]{artifact_type.title()} ready[/green]")
+        elif is_rate_limited:
+            console.print(
+                f"[red]{artifact_type.title()} generation rate limited by Google.[/red]\n"
+                "[yellow]Daily quota may be exceeded. Try again in 1-24 hours, "
+                "or use --retry N to retry automatically.[/yellow]"
+            )
         elif is_failed:
             console.print(f"[red]Failed:[/red] {getattr(status, 'error', 'Unknown error')}")
         else:
             task_id = _extract_task_id(status)
             console.print(f"[yellow]Started:[/yellow] {task_id or status}")
+
+
+def _run_audio_generation(
+    *,
+    ctx: click.Context,
+    client_auth,
+    notebook_id: str | None,
+    description: str,
+    audio_format: str,
+    audio_length: str,
+    language: str | None,
+    source_ids: tuple[str, ...],
+    wait: bool,
+    max_retries: int,
+    json_output: bool,
+    compatibility_warning_command: str | None = None,
+):
+    nb_id = require_notebook(notebook_id)
+    format_map = _audio_format_map()
+    length_map = _audio_length_map()
+    if compatibility_warning_command is not None:
+        emit_compatibility_warning(
+            compatibility_warning_command,
+            enabled=not json_output,
+        )
+
+    async def _run():
+        started_at = time.perf_counter()
+        async with NotebookLMClient(client_auth) as client:
+            nb_id_resolved = await resolve_notebook_id(client, nb_id)
+            sources = await resolve_source_ids(client, nb_id_resolved, source_ids)
+
+            async def _generate():
+                return await client.artifacts.generate_audio(
+                    nb_id_resolved,
+                    source_ids=sources,
+                    language=resolve_language(language),
+                    instructions=description or None,
+                    audio_format=format_map[audio_format],
+                    audio_length=length_map[audio_length],
+                )
+
+            result = await generate_with_retry(_generate, max_retries, "audio", json_output)
+            task_id = _extract_task_id(result)
+            seeded_pending_artifact = False
+            if task_id is not None and _should_seed_pending_artifact(result):
+                _record_pending_artifact(
+                    notebook_id=nb_id_resolved,
+                    task_id=task_id,
+                    artifact_type="audio",
+                    storage_path=client_auth.storage_path,
+                    reason="artifact.create",
+                )
+                seeded_pending_artifact = True
+            await handle_generation_result(
+                client,
+                nb_id_resolved,
+                result,
+                "audio",
+                wait,
+                json_output,
+                ctx=ctx,
+                binding=_AUDIO_RPC_BINDING,
+                started_at=started_at,
+                cache_updates=_generation_cache_updates(
+                    nb_id_resolved,
+                    seeded_pending_artifact=seeded_pending_artifact,
+                ),
+                route_reason=(
+                    "Start remote NotebookLM audio overview generation and optionally wait "
+                    "for completion."
+                ),
+            )
+
+    return _run()
+
+
+def _run_report_generation(
+    *,
+    ctx: click.Context,
+    client_auth,
+    notebook_id: str | None,
+    description: str,
+    report_format: str,
+    source_ids: tuple[str, ...],
+    language: str | None,
+    append_instructions: str | None,
+    wait: bool,
+    max_retries: int,
+    json_output: bool,
+    compatibility_warning_command: str | None = None,
+):
+    nb_id = require_notebook(notebook_id)
+    report_format_enum = _report_format_map()[report_format]
+    binding = (
+        _STUDY_GUIDE_RPC_BINDING
+        if report_format == "study-guide"
+        else _BRIEFING_DOC_RPC_BINDING
+    )
+    if compatibility_warning_command is not None:
+        emit_compatibility_warning(
+            compatibility_warning_command,
+            enabled=not json_output,
+        )
+
+    async def _run():
+        started_at = time.perf_counter()
+        async with NotebookLMClient(client_auth) as client:
+            workflow_result = await run_summarize_workflow(
+                client,
+                notebook_id=nb_id,
+                source_ids=source_ids,
+                language=resolve_language(language),
+                report_format=report_format_enum,
+                description=description or None,
+                append_instructions=append_instructions,
+                max_retries=max_retries,
+                json_output=json_output,
+                resolve_notebook_id=resolve_notebook_id,
+                resolve_source_ids=resolve_source_ids,
+                generate_with_retry=generate_with_retry,
+            )
+
+            task_id = _extract_task_id(workflow_result.result)
+            seeded_pending_artifact = False
+            if task_id is not None and _should_seed_pending_artifact(workflow_result.result):
+                _record_pending_artifact(
+                    notebook_id=workflow_result.resolved_notebook_id,
+                    task_id=task_id,
+                    artifact_type="report",
+                    storage_path=client_auth.storage_path,
+                    reason="artifact.create",
+                )
+                seeded_pending_artifact = True
+            await handle_generation_result(
+                client,
+                workflow_result.resolved_notebook_id,
+                workflow_result.result,
+                workflow_result.format_display,
+                wait,
+                json_output,
+                ctx=ctx,
+                binding=binding,
+                started_at=started_at,
+                cache_updates=_generation_cache_updates(
+                    workflow_result.resolved_notebook_id,
+                    seeded_pending_artifact=seeded_pending_artifact,
+                ),
+                route_reason=(
+                    f"Start remote NotebookLM {workflow_result.format_display} generation "
+                    "and optionally wait for completion."
+                ),
+            )
+
+    return _run()
 
 
 @click.group()
@@ -327,40 +714,20 @@ def generate_audio(
       notebooklm generate audio "make it funny and casual" --format debate
       notebooklm generate audio -s src_001 -s src_002 "from specific sources"
     """
-    nb_id = require_notebook(notebook_id)
-    format_map = {
-        "deep-dive": AudioFormat.DEEP_DIVE,
-        "brief": AudioFormat.BRIEF,
-        "critique": AudioFormat.CRITIQUE,
-        "debate": AudioFormat.DEBATE,
-    }
-    length_map = {
-        "short": AudioLength.SHORT,
-        "default": AudioLength.DEFAULT,
-        "long": AudioLength.LONG,
-    }
-
-    async def _run():
-        async with NotebookLMClient(client_auth) as client:
-            nb_id_resolved = await resolve_notebook_id(client, nb_id)
-            sources = await resolve_source_ids(client, nb_id_resolved, source_ids)
-
-            async def _generate():
-                return await client.artifacts.generate_audio(
-                    nb_id_resolved,
-                    source_ids=sources,
-                    language=resolve_language(language),
-                    instructions=description or None,
-                    audio_format=format_map[audio_format],
-                    audio_length=length_map[audio_length],
-                )
-
-            result = await generate_with_retry(_generate, max_retries, "audio", json_output)
-            await handle_generation_result(
-                client, nb_id_resolved, result, "audio", wait, json_output
-            )
-
-    return _run()
+    return _run_audio_generation(
+        ctx=ctx,
+        client_auth=client_auth,
+        notebook_id=notebook_id,
+        description=description,
+        audio_format=audio_format,
+        audio_length=audio_length,
+        language=language,
+        source_ids=source_ids,
+        wait=wait,
+        max_retries=max_retries,
+        json_output=json_output,
+        compatibility_warning_command="notebooklm audio",
+    )
 
 
 @generate.command("report")
@@ -417,38 +784,182 @@ def generate_report_cmd(
       notebooklm generate report "Focus on AI trends"         # append focus instructions
       notebooklm generate report --format study-guide --append "Target audience: beginners"
     """
-    nb_id = require_notebook(notebook_id)
-    extra_parts = [part for part in (description, append_instructions) if part]
-    extra_instructions = "\n\n".join(extra_parts) if extra_parts else None
+    return _run_report_generation(
+        ctx=ctx,
+        client_auth=client_auth,
+        notebook_id=notebook_id,
+        description=description,
+        report_format=report_format,
+        source_ids=source_ids,
+        language=language,
+        append_instructions=append_instructions,
+        wait=wait,
+        max_retries=max_retries,
+        json_output=json_output,
+        compatibility_warning_command=(
+            "notebooklm study-guide"
+            if report_format == "study-guide"
+            else "notebooklm summarize"
+        ),
+    )
 
-    format_map = {
-        "briefing-doc": ReportFormat.BRIEFING_DOC,
-        "study-guide": ReportFormat.STUDY_GUIDE,
-    }
-    report_format_enum = format_map[report_format]
 
-    format_display = {
-        "briefing-doc": "briefing document",
-        "study-guide": "study guide",
-    }[report_format]
+@click.command("summarize")
+@click.argument("description", default="", required=False)
+@click.option(
+    "-n",
+    "--notebook",
+    "notebook_id",
+    default=None,
+    help="Notebook ID (uses current if not set)",
+)
+@click.option("--source", "-s", "source_ids", multiple=True, help="Limit to specific source IDs")
+@click.option("--language", default=None, help="Output language (default: from config or 'en')")
+@click.option(
+    "--append",
+    "append_instructions",
+    default=None,
+    help="Append extra instructions to the built-in report prompt.",
+)
+@click.option("--wait/--no-wait", default=False, help="Wait for completion (default: no-wait)")
+@retry_option
+@json_option
+@with_client
+def summarize_cmd(
+    ctx,
+    description,
+    notebook_id,
+    source_ids,
+    language,
+    append_instructions,
+    wait,
+    max_retries,
+    json_output,
+    client_auth,
+):
+    """Generate a briefing document."""
+    return _run_report_generation(
+        ctx=ctx,
+        client_auth=client_auth,
+        notebook_id=notebook_id,
+        description=description,
+        report_format="briefing-doc",
+        source_ids=source_ids,
+        language=language,
+        append_instructions=append_instructions,
+        wait=wait,
+        max_retries=max_retries,
+        json_output=json_output,
+    )
 
-    async def _run():
-        async with NotebookLMClient(client_auth) as client:
-            nb_id_resolved = await resolve_notebook_id(client, nb_id)
-            sources = await resolve_source_ids(client, nb_id_resolved, source_ids)
 
-            async def _generate():
-                return await client.artifacts.generate_report(
-                    nb_id_resolved,
-                    source_ids=sources,
-                    language=resolve_language(language),
-                    report_format=report_format_enum,
-                    extra_instructions=extra_instructions,
-                )
+@click.command("study-guide")
+@click.argument("description", default="", required=False)
+@click.option(
+    "-n",
+    "--notebook",
+    "notebook_id",
+    default=None,
+    help="Notebook ID (uses current if not set)",
+)
+@click.option("--source", "-s", "source_ids", multiple=True, help="Limit to specific source IDs")
+@click.option("--language", default=None, help="Output language (default: from config or 'en')")
+@click.option(
+    "--append",
+    "append_instructions",
+    default=None,
+    help="Append extra instructions to the built-in report prompt.",
+)
+@click.option("--wait/--no-wait", default=False, help="Wait for completion (default: no-wait)")
+@retry_option
+@json_option
+@with_client
+def study_guide_cmd(
+    ctx,
+    description,
+    notebook_id,
+    source_ids,
+    language,
+    append_instructions,
+    wait,
+    max_retries,
+    json_output,
+    client_auth,
+):
+    """Generate a study guide."""
+    return _run_report_generation(
+        ctx=ctx,
+        client_auth=client_auth,
+        notebook_id=notebook_id,
+        description=description,
+        report_format="study-guide",
+        source_ids=source_ids,
+        language=language,
+        append_instructions=append_instructions,
+        wait=wait,
+        max_retries=max_retries,
+        json_output=json_output,
+    )
 
-            result = await generate_with_retry(_generate, max_retries, format_display, json_output)
-            await handle_generation_result(
-                client, nb_id_resolved, result, format_display, wait, json_output
-            )
 
-    return _run()
+@click.command("audio")
+@click.argument("description", default="", required=False)
+@click.option(
+    "-n",
+    "--notebook",
+    "notebook_id",
+    default=None,
+    help="Notebook ID (uses current if not set)",
+)
+@click.option(
+    "--format",
+    "audio_format",
+    type=click.Choice(["deep-dive", "brief", "critique", "debate"]),
+    default="deep-dive",
+)
+@click.option(
+    "--length",
+    "audio_length",
+    type=click.Choice(["short", "default", "long"]),
+    default="default",
+)
+@click.option("--language", default=None, help="Output language (default: from config or 'en')")
+@click.option("--source", "-s", "source_ids", multiple=True, help="Limit to specific source IDs")
+@click.option("--wait/--no-wait", default=False, help="Wait for completion (default: no-wait)")
+@retry_option
+@json_option
+@with_client
+def audio_cmd(
+    ctx,
+    description,
+    notebook_id,
+    audio_format,
+    audio_length,
+    language,
+    source_ids,
+    wait,
+    max_retries,
+    json_output,
+    client_auth,
+):
+    """Generate an audio overview."""
+    return _run_audio_generation(
+        ctx=ctx,
+        client_auth=client_auth,
+        notebook_id=notebook_id,
+        description=description,
+        audio_format=audio_format,
+        audio_length=audio_length,
+        language=language,
+        source_ids=source_ids,
+        wait=wait,
+        max_retries=max_retries,
+        json_output=json_output,
+    )
+
+
+def register_generate_workflow_commands(cli) -> None:
+    """Register normalized workflow roots that reuse the retained generate flows."""
+    cli.add_command(summarize_cmd)
+    cli.add_command(study_guide_cmd)
+    cli.add_command(audio_cmd)

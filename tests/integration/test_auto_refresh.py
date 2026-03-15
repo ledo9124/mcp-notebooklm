@@ -19,6 +19,7 @@ class TestAutoRefreshIntegration:
             cookies={"SID": "test"},
             csrf_token="csrf",
             session_id="sid",
+            build_label="boq_labs-tailwind-frontend_test",
         )
 
         client = NotebookLMClient(auth)
@@ -34,6 +35,7 @@ class TestAutoRefreshIntegration:
             cookies={"SID": "test"},
             csrf_token="old_csrf",
             session_id="sid",
+            build_label="boq_labs-tailwind-frontend_old",
         )
 
         client = NotebookLMClient(auth)
@@ -85,6 +87,7 @@ class TestAutoRefreshIntegration:
             cookies={"SID": "test"},
             csrf_token="old_csrf",
             session_id="sid",
+            build_label="boq_labs-tailwind-frontend_old",
         )
 
         client = NotebookLMClient(auth)
@@ -131,6 +134,7 @@ class TestAutoRefreshIntegration:
             cookies={"SID": "test"},
             csrf_token="csrf",
             session_id="sid",
+            build_label="boq_labs-tailwind-frontend_test",
         )
 
         client = NotebookLMClient(auth)
@@ -174,6 +178,7 @@ class TestAutoRefreshIntegration:
             cookies={"SID": "test"},
             csrf_token="csrf",
             session_id="sid",
+            build_label="boq_labs-tailwind-frontend_test",
         )
 
         client = NotebookLMClient(auth)

@@ -1,7 +1,7 @@
 # Project Overview
 
 **Status:** Active  
-**Last Updated:** 2026-03-14
+**Last Updated:** 2026-03-15
 
 This document summarizes what the project does today and the main technologies used to implement it.
 
@@ -49,8 +49,10 @@ This document summarizes what the project does today and the main technologies u
 
 The repository now treats the `notebooklm` CLI and the SDK under `src/notebooklm/**` as the supported product surface.
 
+- The install/import boundary is: PyPI package `notebooklm-py`, Python package `notebooklm`, console command `notebooklm`.
 - The actively supported user journeys are notebook bootstrap, source ingestion, research, chat, and the retained `generate` flows.
 - Deferred SDK compatibility helpers may still exist in-tree without being part of the active CLI promise.
+- Future agent-first work should layer on top of this frozen CLI/SDK boundary rather than reintroducing removed MCP/BA runtimes.
 - This overview focuses on the surviving CLI/SDK contract after the MCP/BA cleanup work.
 
 ## Current Functional Coverage

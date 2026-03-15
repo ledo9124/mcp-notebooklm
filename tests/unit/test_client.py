@@ -2,7 +2,7 @@
 
 import asyncio
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
@@ -11,7 +11,11 @@ from pytest_httpx import HTTPXMock
 from notebooklm._core import ClientCore, is_auth_error
 from notebooklm.auth import AuthTokens
 from notebooklm.client import NotebookLMClient
-from notebooklm.rpc import AuthError, RPCError, RPCMethod
+from notebooklm.local.db import connect_db
+from notebooklm.local.events import list_run_events
+from notebooklm.observability import bind_trace
+from notebooklm.profiles.manager import ProfileManager
+from notebooklm.rpc import BATCHEXECUTE_URL, AuthError, RPCError, RPCMethod, RateLimitError
 
 
 @pytest.fixture
@@ -21,6 +25,7 @@ def mock_auth():
         cookies={"SID": "test_sid", "HSID": "test_hsid"},
         csrf_token="test_csrf",
         session_id="test_session",
+        build_label="boq_labs-tailwind-frontend_test",
     )
 
 
@@ -43,6 +48,12 @@ class TestNotebookLMClientInit:
         assert client._notes is None
         assert client._settings is None
         assert client._sharing is None
+
+    def test_client_accepts_configurable_rate_limit_retry_budget(self, mock_auth):
+        """NotebookLMClient should expose the transport 429 retry budget."""
+        client = NotebookLMClient(mock_auth, rate_limit_max_retries=1)
+
+        assert client._core._rate_limit_max_retries == 1
 
     def test_client_is_connected_before_open(self, mock_auth):
         """Test is_connected returns False before opening."""
@@ -106,7 +117,11 @@ class TestFromStorage:
         storage_file.write_text(json.dumps(storage_state))
 
         # Mock token fetch
-        html = '"SNlM0e":"csrf_token_abc" "FdrFJe":"session_id_xyz"'
+        html = (
+            '"SNlM0e":"csrf_token_abc" '
+            '"FdrFJe":"session_id_xyz" '
+            '"cfb2h":"boq_labs-tailwind-frontend_20260315.01_p0"'
+        )
         httpx_mock.add_response(
             url="https://notebooklm.google.com/",
             content=html.encode(),
@@ -117,6 +132,7 @@ class TestFromStorage:
         assert client.auth.cookies["SID"] == "test_sid"
         assert client.auth.csrf_token == "csrf_token_abc"
         assert client.auth.session_id == "session_id_xyz"
+        assert client.auth.build_label == "boq_labs-tailwind-frontend_20260315.01_p0"
 
     @pytest.mark.asyncio
     async def test_from_storage_file_not_found(self, tmp_path):
@@ -149,11 +165,16 @@ class TestFromStorage:
         try:
             DEFAULT_STORAGE_PATH.write_text(json.dumps(storage_state))
 
-            html = '"SNlM0e":"csrf" "FdrFJe":"sess"'
+            html = (
+                '"SNlM0e":"csrf" '
+                '"FdrFJe":"sess" '
+                '"cfb2h":"boq_labs-tailwind-frontend_20260315.03_p0"'
+            )
             httpx_mock.add_response(content=html.encode())
 
             client = await NotebookLMClient.from_storage()
             assert client.auth.cookies["SID"] == "default_sid"
+            assert client.auth.build_label == "boq_labs-tailwind-frontend_20260315.03_p0"
         except PermissionError:
             pytest.skip("Cannot write to default storage path")
         finally:
@@ -182,7 +203,8 @@ class TestRefreshAuth:
         <script>
             window.WIZ_global_data = {
                 "SNlM0e":"new_csrf_token_123",
-                "FdrFJe":"new_session_id_456"
+                "FdrFJe":"new_session_id_456",
+                "cfb2h":"boq_labs-tailwind-frontend_20260315.02_p0"
             };
         </script>
         </html>
@@ -198,8 +220,78 @@ class TestRefreshAuth:
             # Should have new tokens
             assert refreshed_auth.csrf_token == "new_csrf_token_123"
             assert refreshed_auth.session_id == "new_session_id_456"
+            assert refreshed_auth.build_label == "boq_labs-tailwind-frontend_20260315.02_p0"
             assert client.auth.csrf_token == "new_csrf_token_123"
             assert client.auth.session_id == "new_session_id_456"
+            assert client.auth.build_label == "boq_labs-tailwind-frontend_20260315.02_p0"
+
+    @pytest.mark.asyncio
+    async def test_refresh_auth_persists_profile_snapshot_when_storage_path_is_known(
+        self, tmp_path, httpx_mock: HTTPXMock, monkeypatch
+    ):
+        """Successful refresh should update the profile-backed auth snapshot."""
+        home_dir = tmp_path / "home"
+        storage_path = home_dir / "storage_state.json"
+        browser_profile_dir = home_dir / "browser_profile"
+        home_dir.mkdir()
+        browser_profile_dir.mkdir()
+        monkeypatch.setenv("NOTEBOOKLM_HOME", str(home_dir))
+
+        storage_path.write_text(
+            json.dumps(
+                {
+                    "cookies": [
+                        {"name": "SID", "value": "test_sid", "domain": ".google.com"},
+                    ],
+                    "bl": "boq_labs-tailwind-frontend_old",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        auth = AuthTokens(
+            cookies={"SID": "test_sid"},
+            csrf_token="old_csrf",
+            session_id="old_session",
+            build_label="boq_labs-tailwind-frontend_old",
+            storage_path=storage_path.resolve(),
+        )
+        client = NotebookLMClient(auth)
+
+        html = """
+        <html>
+        <script>
+            window.WIZ_global_data = {
+                "SNlM0e":"new_csrf_token_123",
+                "FdrFJe":"new_session_id_456",
+                "cfb2h":"boq_labs-tailwind-frontend_20260315.04_p0"
+            };
+        </script>
+        </html>
+        """
+        httpx_mock.add_response(
+            url="https://notebooklm.google.com/",
+            content=html.encode(),
+        )
+
+        async with client:
+            await client.refresh_auth()
+
+        manager = ProfileManager.open()
+        try:
+            snapshot = manager.require_auth_snapshot("default")
+        finally:
+            manager.close()
+
+        persisted_storage = json.loads(storage_path.read_text(encoding="utf-8"))
+        assert persisted_storage["bl"] == "boq_labs-tailwind-frontend_20260315.04_p0"
+        assert snapshot.cookie_fingerprint == auth.cookie_fingerprint
+        assert snapshot.csrf_token == "new_csrf_token_123"
+        assert snapshot.session_id == "new_session_id_456"
+        assert snapshot.build_label == "boq_labs-tailwind-frontend_20260315.04_p0"
+        assert snapshot.status == "fresh"
+        assert snapshot.source == "refresh_from_homepage"
+        assert snapshot.validated_at is not None
 
     @pytest.mark.asyncio
     async def test_refresh_auth_redirect_to_login(self, mock_auth, httpx_mock: HTTPXMock):
@@ -250,6 +342,21 @@ class TestRefreshAuth:
 
         async with client:
             with pytest.raises(ValueError, match="Failed to extract session ID"):
+                await client.refresh_auth()
+
+    @pytest.mark.asyncio
+    async def test_refresh_auth_missing_build_label(self, mock_auth, httpx_mock: HTTPXMock):
+        """Test refresh_auth raises error when build label not found."""
+        client = NotebookLMClient(mock_auth)
+
+        html = '"SNlM0e":"csrf_only" "FdrFJe":"session_only"'
+        httpx_mock.add_response(
+            url="https://notebooklm.google.com/",
+            content=html.encode(),
+        )
+
+        async with client:
+            with pytest.raises(ValueError, match="Failed to extract build label"):
                 await client.refresh_auth()
 
 
@@ -386,6 +493,12 @@ class TestIsAuthError:
         error = RPCError("Unauthorized access")
         assert is_auth_error(error) is True
 
+    def test_rpc_error_with_build_mismatch_is_auth_error(self):
+        """Build-label mismatches should be treated as refreshable auth failures."""
+
+        error = RPCError("Build label mismatch from server")
+        assert is_auth_error(error) is True
+
     def test_rpc_error_generic_is_not_auth_error(self):
         """Generic RPCError should NOT be auth error."""
 
@@ -418,6 +531,7 @@ class TestClientCoreRefreshCallback:
             cookies={"SID": "test"},
             csrf_token="csrf",
             session_id="sid",
+            build_label="boq_labs-tailwind-frontend_test",
         )
 
         async def mock_refresh():
@@ -433,6 +547,7 @@ class TestClientCoreRefreshCallback:
             cookies={"SID": "test"},
             csrf_token="csrf",
             session_id="sid",
+            build_label="boq_labs-tailwind-frontend_test",
         )
 
         core = ClientCore(auth)
@@ -444,6 +559,7 @@ class TestClientCoreRefreshCallback:
             cookies={"SID": "test"},
             csrf_token="csrf",
             session_id="sid",
+            build_label="boq_labs-tailwind-frontend_test",
         )
 
         async def mock_refresh():
@@ -460,10 +576,48 @@ class TestClientCoreRefreshCallback:
             cookies={"SID": "test"},
             csrf_token="csrf",
             session_id="sid",
+            build_label="boq_labs-tailwind-frontend_test",
         )
 
         core = ClientCore(auth)
         assert core._refresh_lock is None
+
+
+# =============================================================================
+# URL BUILDING TESTS
+# =============================================================================
+
+
+class TestClientCoreUrlBuilding:
+    """Tests for transport URL construction."""
+
+    def test_build_rpc_params_includes_build_label(self, mock_auth):
+        """The canonical batchexecute params should always carry `bl`."""
+        core = ClientCore(mock_auth)
+
+        params = core._build_rpc_params(RPCMethod.GET_NOTEBOOK, "/notebook/abc123")
+
+        assert params == {
+            "rpcids": RPCMethod.GET_NOTEBOOK.value,
+            "source-path": "/notebook/abc123",
+            "hl": "en",
+            "rt": "c",
+            "f.sid": mock_auth.session_id,
+            "bl": mock_auth.build_label,
+        }
+
+    def test_build_url_always_contains_build_label(self, mock_auth):
+        """The batchexecute URL should keep `bl` in the outgoing query string."""
+        core = ClientCore(mock_auth)
+
+        url = httpx.URL(core._build_url(RPCMethod.LIST_NOTEBOOKS))
+
+        assert str(url).startswith(BATCHEXECUTE_URL)
+        assert url.params["rpcids"] == RPCMethod.LIST_NOTEBOOKS.value
+        assert url.params["source-path"] == "/"
+        assert url.params["f.sid"] == mock_auth.session_id
+        assert url.params["bl"] == mock_auth.build_label
+        assert url.params["rt"] == "c"
 
 
 # =============================================================================
@@ -479,6 +633,7 @@ class TestRpcCallAutoRetry:
             cookies={"SID": "test"},
             csrf_token="csrf",
             session_id="sid",
+            build_label="boq_labs-tailwind-frontend_test",
         )
 
         refresh_called = []
@@ -522,6 +677,7 @@ class TestRpcCallAutoRetry:
             cookies={"SID": "test"},
             csrf_token="csrf",
             session_id="sid",
+            build_label="boq_labs-tailwind-frontend_test",
         )
 
         refresh_called = []
@@ -560,12 +716,56 @@ class TestRpcCallAutoRetry:
         assert result == ["result"]
 
     @pytest.mark.asyncio
+    async def test_retries_on_build_mismatch_error(self):
+        """rpc_call should retry once after a build-mismatch RPC error."""
+        auth = AuthTokens(
+            cookies={"SID": "test"},
+            csrf_token="csrf",
+            session_id="sid",
+            build_label="boq_labs-tailwind-frontend_test",
+        )
+
+        refresh_called = []
+
+        async def mock_refresh():
+            refresh_called.append(True)
+            return auth
+
+        core = ClientCore(auth, refresh_callback=mock_refresh, refresh_retry_delay=0)
+
+        async def mock_post(*args, **kwargs):
+            response = MagicMock()
+            response.text = "mock response"
+            response.raise_for_status = MagicMock()
+            return response
+
+        core._http_client = MagicMock()
+        core._http_client.post = mock_post
+        core._http_client.headers = {"Cookie": "old"}
+
+        decode_call_count = [0]
+
+        def mock_decode(*args, **kwargs):
+            decode_call_count[0] += 1
+            if decode_call_count[0] == 1:
+                raise RPCError("Build label mismatch")
+            return ["result"]
+
+        with patch("notebooklm._core.decode_response", side_effect=mock_decode):
+            result = await core.rpc_call(RPCMethod.LIST_NOTEBOOKS, [])
+
+        assert len(refresh_called) == 1, "refresh_callback should be called once"
+        assert decode_call_count[0] == 2, "decode should be called twice (original + retry)"
+        assert result == ["result"]
+
+    @pytest.mark.asyncio
     async def test_no_retry_without_callback(self):
         """rpc_call should NOT retry if no refresh_callback provided."""
         auth = AuthTokens(
             cookies={"SID": "test"},
             csrf_token="csrf",
             session_id="sid",
+            build_label="boq_labs-tailwind-frontend_test",
         )
 
         core = ClientCore(auth)  # No refresh_callback
@@ -593,6 +793,7 @@ class TestRpcCallAutoRetry:
             cookies={"SID": "test"},
             csrf_token="csrf",
             session_id="sid",
+            build_label="boq_labs-tailwind-frontend_test",
         )
 
         refresh_count = [0]
@@ -629,6 +830,7 @@ class TestRpcCallAutoRetry:
             cookies={"SID": "test"},
             csrf_token="csrf",
             session_id="sid",
+            build_label="boq_labs-tailwind-frontend_test",
         )
 
         refresh_called = []
@@ -663,6 +865,7 @@ class TestRpcCallAutoRetry:
             cookies={"SID": "test"},
             csrf_token="csrf",
             session_id="sid",
+            build_label="boq_labs-tailwind-frontend_test",
         )
 
         async def failing_refresh():
@@ -692,6 +895,7 @@ class TestRpcCallAutoRetry:
             cookies={"SID": "test"},
             csrf_token="csrf",
             session_id="sid",
+            build_label="boq_labs-tailwind-frontend_test",
         )
 
         refresh_count = [0]
@@ -735,3 +939,339 @@ class TestRpcCallAutoRetry:
         assert refresh_count[0] == 1, (
             f"Refresh should be called exactly once, got {refresh_count[0]}"
         )
+
+    @pytest.mark.asyncio
+    async def test_retries_on_http_429_with_backoff_and_jitter(self):
+        """rpc_call should back off and retry transient HTTP 429 responses."""
+        auth = AuthTokens(
+            cookies={"SID": "test"},
+            csrf_token="csrf",
+            session_id="sid",
+            build_label="boq_labs-tailwind-frontend_test",
+        )
+
+        core = ClientCore(auth)
+        core._rate_limit_initial_delay = 1.0
+        core._rate_limit_max_delay = 10.0
+        core._rate_limit_jitter_ratio = 0.25
+
+        call_count = [0]
+
+        async def mock_post(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                request = httpx.Request("POST", args[0])
+                response = httpx.Response(429, request=request)
+                raise httpx.HTTPStatusError(
+                    "Too Many Requests",
+                    request=request,
+                    response=response,
+                )
+            response = MagicMock()
+            response.text = "mock response"
+            response.raise_for_status = MagicMock()
+            return response
+
+        core._http_client = MagicMock()
+        core._http_client.post = mock_post
+
+        sleep_mock = AsyncMock()
+        with (
+            patch("notebooklm._core.asyncio.sleep", sleep_mock),
+            patch("notebooklm._core.random.uniform", return_value=0.125),
+            patch("notebooklm._core.decode_response", return_value=["result"]),
+        ):
+            result = await core.rpc_call(RPCMethod.LIST_NOTEBOOKS, [])
+
+        assert call_count[0] == 2
+        sleep_mock.assert_awaited_once_with(1.125)
+        assert result == ["result"]
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_retry_budget_is_configurable(self):
+        """ClientCore should honor a custom 429 retry budget."""
+        auth = AuthTokens(
+            cookies={"SID": "test"},
+            csrf_token="csrf",
+            session_id="sid",
+            build_label="boq_labs-tailwind-frontend_test",
+        )
+
+        core = ClientCore(auth, rate_limit_max_retries=1)
+        core._rate_limit_jitter_ratio = 0.0
+
+        call_count = [0]
+
+        async def mock_post(*args, **kwargs):
+            call_count[0] += 1
+            request = httpx.Request("POST", args[0])
+            response = httpx.Response(429, request=request)
+            raise httpx.HTTPStatusError(
+                "Too Many Requests",
+                request=request,
+                response=response,
+            )
+
+        core._http_client = MagicMock()
+        core._http_client.post = mock_post
+
+        sleep_mock = AsyncMock()
+        with patch("notebooklm._core.asyncio.sleep", sleep_mock):
+            with pytest.raises(RateLimitError, match="API rate limit exceeded"):
+                await core.rpc_call(RPCMethod.LIST_NOTEBOOKS, [])
+
+        assert call_count[0] == 2
+        assert sleep_mock.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_http_429_retry_uses_retry_after_header(self):
+        """rpc_call should honor Retry-After when the API provides one."""
+        auth = AuthTokens(
+            cookies={"SID": "test"},
+            csrf_token="csrf",
+            session_id="sid",
+            build_label="boq_labs-tailwind-frontend_test",
+        )
+
+        core = ClientCore(auth)
+
+        call_count = [0]
+
+        async def mock_post(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                request = httpx.Request("POST", args[0])
+                response = httpx.Response(
+                    429,
+                    request=request,
+                    headers={"retry-after": "7"},
+                )
+                raise httpx.HTTPStatusError(
+                    "Too Many Requests",
+                    request=request,
+                    response=response,
+                )
+            response = MagicMock()
+            response.text = "mock response"
+            response.raise_for_status = MagicMock()
+            return response
+
+        core._http_client = MagicMock()
+        core._http_client.post = mock_post
+
+        sleep_mock = AsyncMock()
+        with (
+            patch("notebooklm._core.asyncio.sleep", sleep_mock),
+            patch("notebooklm._core.random.uniform") as jitter_mock,
+            patch("notebooklm._core.decode_response", return_value=["result"]),
+        ):
+            result = await core.rpc_call(RPCMethod.LIST_NOTEBOOKS, [])
+
+        assert call_count[0] == 2
+        sleep_mock.assert_awaited_once_with(7.0)
+        jitter_mock.assert_not_called()
+        assert result == ["result"]
+
+    @pytest.mark.asyncio
+    async def test_http_429_stops_after_rate_limit_retry_budget(self):
+        """rpc_call should raise once the 429 retry budget is exhausted."""
+        auth = AuthTokens(
+            cookies={"SID": "test"},
+            csrf_token="csrf",
+            session_id="sid",
+            build_label="boq_labs-tailwind-frontend_test",
+        )
+
+        core = ClientCore(auth)
+        core._rate_limit_max_retries = 2
+        core._rate_limit_jitter_ratio = 0.0
+
+        call_count = [0]
+
+        async def mock_post(*args, **kwargs):
+            call_count[0] += 1
+            request = httpx.Request("POST", args[0])
+            response = httpx.Response(429, request=request)
+            raise httpx.HTTPStatusError(
+                "Too Many Requests",
+                request=request,
+                response=response,
+            )
+
+        core._http_client = MagicMock()
+        core._http_client.post = mock_post
+
+        sleep_mock = AsyncMock()
+        with patch("notebooklm._core.asyncio.sleep", sleep_mock):
+            with pytest.raises(RateLimitError, match="API rate limit exceeded"):
+                await core.rpc_call(RPCMethod.LIST_NOTEBOOKS, [])
+
+        assert call_count[0] == 3
+        assert sleep_mock.await_count == 2
+
+    @pytest.mark.asyncio
+    async def test_retries_on_decoder_rate_limit_error(self):
+        """rpc_call should also retry decoder-side RateLimitError responses."""
+        auth = AuthTokens(
+            cookies={"SID": "test"},
+            csrf_token="csrf",
+            session_id="sid",
+            build_label="boq_labs-tailwind-frontend_test",
+        )
+
+        core = ClientCore(auth)
+        core._rate_limit_initial_delay = 0.5
+        core._rate_limit_max_delay = 10.0
+        core._rate_limit_jitter_ratio = 0.0
+
+        async def mock_post(*args, **kwargs):
+            response = MagicMock()
+            response.text = "mock response"
+            response.raise_for_status = MagicMock()
+            return response
+
+        core._http_client = MagicMock()
+        core._http_client.post = mock_post
+
+        decode_call_count = [0]
+
+        def mock_decode(*args, **kwargs):
+            decode_call_count[0] += 1
+            if decode_call_count[0] == 1:
+                raise RateLimitError(
+                    "API rate limit or quota exceeded. Please wait before retrying.",
+                    method_id="wXbhsf",
+                )
+            return ["result"]
+
+        sleep_mock = AsyncMock()
+        with (
+            patch("notebooklm._core.asyncio.sleep", sleep_mock),
+            patch("notebooklm._core.decode_response", side_effect=mock_decode),
+        ):
+            result = await core.rpc_call(RPCMethod.LIST_NOTEBOOKS, [])
+
+        assert decode_call_count[0] == 2
+        sleep_mock.assert_awaited_once_with(0.5)
+        assert result == ["result"]
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_retry_records_run_event(self, tmp_path, monkeypatch):
+        """A traced 429 retry should emit a transport.retry run_event."""
+        monkeypatch.setenv("NOTEBOOKLM_HOME", str(tmp_path))
+        auth = AuthTokens(
+            cookies={"SID": "test"},
+            csrf_token="csrf",
+            session_id="sid",
+            build_label="boq_labs-tailwind-frontend_test",
+        )
+
+        core = ClientCore(auth)
+        core._rate_limit_initial_delay = 0.5
+        core._rate_limit_jitter_ratio = 0.0
+
+        call_count = [0]
+
+        async def mock_post(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                request = httpx.Request("POST", args[0])
+                response = httpx.Response(429, request=request)
+                raise httpx.HTTPStatusError(
+                    "Too Many Requests",
+                    request=request,
+                    response=response,
+                )
+            response = MagicMock()
+            response.text = "mock response"
+            response.raise_for_status = MagicMock()
+            return response
+
+        core._http_client = MagicMock()
+        core._http_client.post = mock_post
+
+        with (
+            bind_trace(trace_id="trc_retry_budget", run_id="run_retry_budget"),
+            patch("notebooklm._core.asyncio.sleep", AsyncMock()),
+            patch("notebooklm._core.decode_response", return_value=["result"]),
+        ):
+            await core.rpc_call(RPCMethod.LIST_NOTEBOOKS, [])
+
+        connection = connect_db()
+        try:
+            events = list_run_events(connection, "trc_retry_budget")
+        finally:
+            connection.close()
+
+        assert [event.kind for event in events] == ["transport.retry"]
+        assert events[0].run_id == "run_retry_budget"
+        assert events[0].payload == {
+            "attempt": 1,
+            "delay_s": 0.5,
+            "max_retries": 3,
+            "method": RPCMethod.LIST_NOTEBOOKS.value,
+            "reason": "rate_limit",
+            "retry_after_s": None,
+            "rpc_method": "LIST_NOTEBOOKS",
+            "source_path": "/",
+        }
+
+    @pytest.mark.asyncio
+    async def test_auth_refresh_retry_records_run_event(self, tmp_path, monkeypatch):
+        """A traced auth refresh should emit an auth.refreshed run_event."""
+        monkeypatch.setenv("NOTEBOOKLM_HOME", str(tmp_path))
+        auth = AuthTokens(
+            cookies={"SID": "test"},
+            csrf_token="csrf",
+            session_id="sid",
+            build_label="boq_labs-tailwind-frontend_test",
+        )
+
+        refresh_called = []
+
+        async def mock_refresh():
+            refresh_called.append(True)
+            return auth
+
+        core = ClientCore(auth, refresh_callback=mock_refresh, refresh_retry_delay=0)
+
+        async def mock_post(*args, **kwargs):
+            response = MagicMock()
+            response.text = "mock response"
+            response.raise_for_status = MagicMock()
+            return response
+
+        core._http_client = MagicMock()
+        core._http_client.post = mock_post
+        core._http_client.headers = {"Cookie": "old"}
+
+        decode_call_count = [0]
+
+        def mock_decode(*args, **kwargs):
+            decode_call_count[0] += 1
+            if decode_call_count[0] == 1:
+                raise RPCError("Authentication expired")
+            return ["result"]
+
+        with (
+            bind_trace(trace_id="trc_auth_refresh", run_id="run_auth_refresh"),
+            patch("notebooklm._core.decode_response", side_effect=mock_decode),
+        ):
+            result = await core.rpc_call(RPCMethod.LIST_NOTEBOOKS, [])
+
+        connection = connect_db()
+        try:
+            events = list_run_events(connection, "trc_auth_refresh")
+        finally:
+            connection.close()
+
+        assert len(refresh_called) == 1
+        assert result == ["result"]
+        assert [event.kind for event in events] == ["auth.refreshed"]
+        assert events[0].payload == {
+            "message": "Authentication expired",
+            "method": RPCMethod.LIST_NOTEBOOKS.value,
+            "rpc_method": "LIST_NOTEBOOKS",
+            "source_path": "/",
+            "trigger": "RPCError",
+        }

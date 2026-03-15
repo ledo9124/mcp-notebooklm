@@ -469,6 +469,7 @@ class TestChatAskErrorHandling:
             cookies={"SID": "sid"},
             csrf_token=None,
             session_id=None,
+            build_label="boq_labs-tailwind-frontend_test",
         )
 
         inner_data = [
@@ -514,6 +515,7 @@ class TestChatAskErrorHandling:
             cookies={"SID": "sid"},
             csrf_token="test_token",
             session_id="my_session_id",
+            build_label="boq_labs-tailwind-frontend_test",
         )
 
         inner_data = [

@@ -51,6 +51,7 @@ class TestGetSourceGuide:
             cookies={"SID": "test"},
             csrf_token="test_csrf",
             session_id="test_session",
+            build_label="boq_labs-tailwind-frontend_test",
         )
         client = NotebookLMClient(auth)
         client._core._http_client = MagicMock()
@@ -98,6 +99,7 @@ class TestGetSuggestedReportFormats:
             cookies={"SID": "test"},
             csrf_token="test_csrf",
             session_id="test_session",
+            build_label="boq_labs-tailwind-frontend_test",
         )
         client = NotebookLMClient(auth)
         client._core._http_client = MagicMock()
@@ -135,6 +137,7 @@ class TestAddSourceDrive:
             cookies={"SID": "test"},
             csrf_token="test_csrf",
             session_id="test_session",
+            build_label="boq_labs-tailwind-frontend_test",
         )
         client = NotebookLMClient(auth)
         client._core._http_client = MagicMock()
@@ -175,6 +178,7 @@ class TestGetNotebookDescription:
             cookies={"SID": "test"},
             csrf_token="test_csrf",
             session_id="test_session",
+            build_label="boq_labs-tailwind-frontend_test",
         )
         client = NotebookLMClient(auth)
         client._core._http_client = MagicMock()
@@ -212,6 +216,7 @@ class TestPayloadFixes:
             cookies={"SID": "test"},
             csrf_token="test_csrf",
             session_id="test_session",
+            build_label="boq_labs-tailwind-frontend_test",
         )
         client = NotebookLMClient(auth)
         client._core._http_client = MagicMock()

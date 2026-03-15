@@ -1,25 +1,44 @@
 """CLI interface for NotebookLM automation.
 
-Command structure:
+Canonical grammar families are frozen around:
+  notebooklm auth <subcommand>
+  notebooklm notebook <subcommand>
+  notebooklm source <subcommand>
+  notebooklm sync <subcommand>
+  notebooklm cache <subcommand>
+  notebooklm <workflow-root>
+  notebooklm <maintenance-root>
+
+Current shipped commands remain a transitional compatibility surface:
   notebooklm login                    # Authenticate
   notebooklm use <notebook_id>        # Set current notebook context
   notebooklm status                   # Show current context
   notebooklm auth check               # Validate auth and diagnose issues
+  notebooklm auth inspect             # Inspect persisted auth/profile state
+  notebooklm auth refresh             # Force homepage refresh and persist auth state
+  notebooklm doctor                   # Fast local health check
   notebooklm list                     # List notebooks
   notebooklm create <title>           # Create notebook
+  notebooklm overview                 # Get a lightweight notebook overview
   notebooklm summary                  # Summarize the current notebook
   notebooklm ask <question>           # Ask the current notebook a question
-
   notebooklm source <command>         # Source add/list/wait operations
-  notebooklm generate <type>          # Generate audio or report artifacts
+  notebooklm sync <command>           # Explicit metadata sync operations
+  notebooklm history <command>        # Local history search/show operations
+  notebooklm watch <command>          # Manage local radar watch definitions
+  notebooklm radar <command>          # Review radar events and stored briefings
+  notebooklm cache <command>          # Local cache diagnostics and maintenance
+  notebooklm workspace <command>      # Local workspace management and indexing
+  notebooklm summarize                # Generate a briefing document
+  notebooklm study-guide              # Generate a study guide
+  notebooklm audio                    # Generate an audio overview
+  notebooklm generate <type>          # Compatibility artifact subcommands
   notebooklm research <command>       # Monitor research started via source add-research
+  notebooklm agent "request"          # Route one natural-language request
+  notebooklm route <command>          # Explain experimental routing decisions
 
-LLM-friendly design:
-  # Set context once, then use simple commands
-  notebooklm use nb123
-  notebooklm generate audio "deep dive focusing on chapter 3"
-  notebooklm generate report --format briefing-doc
-  notebooklm ask "what are the key themes?"
+See docs/cli-reference.md for the frozen grammar map and the currently shipped
+normalization-era command surface.
 """
 
 # Runtime Python version guard (must run before any PEP 604 syntax is evaluated)
@@ -57,15 +76,30 @@ import click
 
 from . import __version__
 from .auth import DEFAULT_STORAGE_PATH
+from .observability import bind_trace
 
 # Import command groups from cli package
 from .cli import (
+    agent,
+    cache,
+    events,
     generate,
+    history,
+    inbox,
+    radar,
     register_chat_commands,
+    register_doctor_commands,
+    register_generate_workflow_commands,
     register_notebook_commands,
+    register_overview_commands,
     register_session_commands,
     research,
+    route,
     source,
+    sync,
+    trace,
+    watch,
+    workspace,
 )
 from .cli.grouped import SectionedGroup
 
@@ -96,6 +130,15 @@ def cli(ctx, storage, verbose):
     """NotebookLM CLI.
 
     \b
+    Canonical grammar freeze:
+      auth / notebook / source / sync / workflow roots / maintenance commands
+
+    Compatibility note:
+      The currently shipped direct roots (`login`, `list`, `create`, `overview`,
+      `summary`, `generate`, etc.) remain available during normalization. See
+      docs/cli-reference.md for the frozen command-family map.
+
+    \b
     Quick start:
       notebooklm login              # Authenticate first
       notebooklm list               # List your notebooks
@@ -112,6 +155,11 @@ def cli(ctx, storage, verbose):
         logging.getLogger("notebooklm").setLevel(logging.INFO)
 
     ctx.ensure_object(dict)
+    trace_binding = bind_trace()
+    trace = trace_binding.__enter__()
+    ctx.call_on_close(lambda: trace_binding.__exit__(None, None, None))
+    ctx.obj["trace"] = trace
+    ctx.obj["trace_id"] = trace.trace_id
     ctx.obj["storage_path"] = Path(storage) if storage else None
 
 
@@ -123,11 +171,25 @@ def cli(ctx, storage, verbose):
 register_session_commands(cli)
 register_notebook_commands(cli)
 register_chat_commands(cli)
+register_overview_commands(cli)
+register_doctor_commands(cli)
+register_generate_workflow_commands(cli)
 
 # Register command groups (subcommand style)
 cli.add_command(source)
+cli.add_command(sync)
+cli.add_command(history)
+cli.add_command(trace)
+cli.add_command(events)
+cli.add_command(cache)
+cli.add_command(agent)
 cli.add_command(generate)
+cli.add_command(inbox)
+cli.add_command(watch)
+cli.add_command(radar)
 cli.add_command(research)
+cli.add_command(route)
+cli.add_command(workspace)
 
 
 # =============================================================================

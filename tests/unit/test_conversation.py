@@ -16,6 +16,7 @@ def auth_tokens():
         cookies={"SID": "test"},
         csrf_token="test_csrf",
         session_id="test_session",
+        build_label="boq_labs-tailwind-frontend_test",
     )
 
 
@@ -161,3 +162,35 @@ class TestAsk:
             result = await client.chat.ask("nb_123", "What is this?", source_ids=["test_source"])
 
         assert result.conversation_id == server_conv_id
+
+    @pytest.mark.asyncio
+    async def test_ask_request_uses_auth_build_label(self, auth_tokens, httpx_mock, monkeypatch):
+        """ask() should send the active auth snapshot build label, not an env fallback."""
+        monkeypatch.setenv("NOTEBOOKLM_BL", "boq_labs-tailwind-frontend_wrong")
+
+        inner_json = json.dumps(
+            [
+                [
+                    "This is the answer. It is now long enough to be valid.",
+                    None,
+                    None,
+                    None,
+                    [1],
+                ]
+            ]
+        )
+        chunk_json = json.dumps([["wrb.fr", None, inner_json]])
+        response_body = f")]}}'\\n{len(chunk_json)}\\n{chunk_json}\\n"
+        httpx_mock.add_response(
+            url=re.compile(r".*GenerateFreeFormStreamed.*"),
+            content=response_body.encode(),
+            method="POST",
+        )
+
+        async with NotebookLMClient(auth_tokens) as client:
+            await client.chat.ask("nb_123", "What is this?", source_ids=["test_source"])
+
+        request = httpx_mock.get_request()
+        assert request is not None
+        assert request.url.params["bl"] == auth_tokens.build_label
+        assert request.url.params["f.sid"] == auth_tokens.session_id

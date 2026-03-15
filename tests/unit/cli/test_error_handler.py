@@ -15,6 +15,22 @@ from notebooklm.exceptions import (
 )
 
 
+def _assert_handle_errors_envelope(data: dict, *, code: str) -> dict:
+    assert data["ok"] is False
+    assert data["trace_id"].startswith("trc_")
+    assert data["run_id"].startswith("run_")
+    assert data["route"]["intent"] == "LOCAL_METADATA"
+    assert data["route"]["mode"] == "handle_errors"
+    assert data["route"]["notebook_id"] is None
+    assert data["route"]["profile_id"] == "default"
+    assert data["route"]["source_of_truth"] == "local_cache"
+    assert data["route"]["cache_mode"] == "offline"
+    assert data["route"]["transport"] == {"kind": "local", "endpoint": None, "rpcid": None}
+    assert data["diagnostics"]["elapsed_ms"] == 0
+    assert data["result"]["code"] == code
+    return data["result"]
+
+
 class TestHandleErrorsExitCodes:
     """Test that exceptions produce correct exit codes."""
 
@@ -65,9 +81,8 @@ class TestHandleErrorsJsonOutput:
 
         output = capsys.readouterr().out
         data = json.loads(output)
-        assert data["error"] is True
-        assert data["code"] == "VALIDATION_ERROR"
-        assert "Invalid input" in data["message"]
+        result = _assert_handle_errors_envelope(data, code="VALIDATION_ERROR")
+        assert "Invalid input" in result["message"]
 
     def test_rate_limit_error_json_includes_retry_after(self, capsys):
         """RateLimitError with retry_after should include it in JSON output."""
@@ -76,10 +91,9 @@ class TestHandleErrorsJsonOutput:
 
         output = capsys.readouterr().out
         data = json.loads(output)
-        assert data["error"] is True
-        assert data["code"] == "RATE_LIMITED"
-        assert data["retry_after"] == 30
-        assert "30s" in data["message"]
+        result = _assert_handle_errors_envelope(data, code="RATE_LIMITED")
+        assert result["retry_after"] == 30
+        assert "30s" in result["message"]
 
     def test_rate_limit_error_json_without_retry_after(self, capsys):
         """RateLimitError without retry_after should not include extra field."""
@@ -88,9 +102,8 @@ class TestHandleErrorsJsonOutput:
 
         output = capsys.readouterr().out
         data = json.loads(output)
-        assert data["error"] is True
-        assert data["code"] == "RATE_LIMITED"
-        assert "retry_after" not in data
+        result = _assert_handle_errors_envelope(data, code="RATE_LIMITED")
+        assert "retry_after" not in result
 
     def test_rpc_error_verbose_includes_method_id(self, capsys):
         """RPCError with verbose=True should include method_id in JSON."""
@@ -99,9 +112,8 @@ class TestHandleErrorsJsonOutput:
 
         output = capsys.readouterr().out
         data = json.loads(output)
-        assert data["error"] is True
-        assert data["code"] == "NOTEBOOKLM_ERROR"
-        assert data["method_id"] == "abc123"
+        result = _assert_handle_errors_envelope(data, code="NOTEBOOKLM_ERROR")
+        assert result["method_id"] == "abc123"
 
     def test_rpc_error_non_verbose_excludes_method_id(self, capsys):
         """RPCError without verbose should not include method_id."""
@@ -110,8 +122,8 @@ class TestHandleErrorsJsonOutput:
 
         output = capsys.readouterr().out
         data = json.loads(output)
-        assert data["error"] is True
-        assert "method_id" not in data
+        result = _assert_handle_errors_envelope(data, code="NOTEBOOKLM_ERROR")
+        assert "method_id" not in result
 
     def test_unexpected_error_json_format(self, capsys):
         """Unexpected errors should produce UNEXPECTED_ERROR code."""
@@ -120,9 +132,8 @@ class TestHandleErrorsJsonOutput:
 
         output = capsys.readouterr().out
         data = json.loads(output)
-        assert data["error"] is True
-        assert data["code"] == "UNEXPECTED_ERROR"
-        assert "Something broke" in data["message"]
+        result = _assert_handle_errors_envelope(data, code="UNEXPECTED_ERROR")
+        assert "Something broke" in result["message"]
 
 
 class TestHandleErrorsTextOutput:
@@ -164,7 +175,8 @@ class TestHandleErrorsTextOutput:
         output = capsys.readouterr().out
         data = json.loads(output)
         # Hint text should not be in the JSON structure
-        assert "login" not in json.dumps(data).lower()
+        result = _assert_handle_errors_envelope(data, code="AUTH_ERROR")
+        assert "login" not in json.dumps(result).lower()
 
 
 class TestHandleErrorsKeyboardInterrupt:
@@ -183,5 +195,4 @@ class TestHandleErrorsKeyboardInterrupt:
 
         output = capsys.readouterr().out
         data = json.loads(output)
-        assert data["error"] is True
-        assert data["code"] == "CANCELLED"
+        _assert_handle_errors_envelope(data, code="CANCELLED")

@@ -1,7 +1,8 @@
-"""Tests for session CLI commands (login, use, status, clear)."""
+"""Tests for session CLI commands (login, use, status, clear, auth)."""
 
 import json
 from datetime import datetime
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import click
@@ -9,6 +10,8 @@ import pytest
 from click.testing import CliRunner
 
 from notebooklm.notebooklm_cli import cli
+from notebooklm.profiles.manager import ProfileManager
+from notebooklm.auth import AuthTokens
 from notebooklm.types import Notebook
 
 from .conftest import create_mock_client, patch_main_cli_client
@@ -105,7 +108,11 @@ class TestUseCommand:
             mock_client_cls.return_value = mock_client
 
             with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf", "session")
+                mock_fetch.return_value = (
+                    "csrf",
+                    "session",
+                    "boq_labs-tailwind-frontend_20260315.01_p0",
+                )
 
                 # Patch in session module where it's imported
                 with patch(
@@ -116,6 +123,8 @@ class TestUseCommand:
                     result = runner.invoke(cli, ["use", "nb_123"])
 
         assert result.exit_code == 0
+        assert "Deprecated compatibility command." in result.output
+        assert "notebooklm notebook use <id-or-title>" in result.output
         assert "nb_123" in result.output or "Test Notebook" in result.output
 
     def test_use_with_partial_id(self, runner, mock_auth, mock_context_file):
@@ -133,7 +142,11 @@ class TestUseCommand:
             mock_client_cls.return_value = mock_client
 
             with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf", "session")
+                mock_fetch.return_value = (
+                    "csrf",
+                    "session",
+                    "boq_labs-tailwind-frontend_20260315.01_p0",
+                )
 
                 # Patch in session module where it's imported
                 with patch(
@@ -174,7 +187,11 @@ class TestUseCommand:
             mock_client_cls.return_value = mock_client
 
             with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf", "session")
+                mock_fetch.return_value = (
+                    "csrf",
+                    "session",
+                    "boq_labs-tailwind-frontend_20260315.01_p0",
+                )
 
                 # Patch in session module where it's imported
                 with patch(
@@ -250,10 +267,17 @@ class TestStatusCommand:
         result = runner.invoke(cli, ["status", "--json"])
 
         assert result.exit_code == 0
-        # Should be valid JSON
-        output_data = json.loads(result.output)
-        assert output_data["has_context"] is True
-        assert output_data["notebook"]["id"] == "nb_json_test"
+        payload = json.loads(result.output)
+        assert payload["ok"] is True
+        assert payload["route"]["intent"] == "LOCAL_METADATA"
+        assert payload["route"]["mode"] == "status"
+        assert payload["route"]["notebook_id"] == "nb_json_test"
+        assert payload["route"]["profile_id"] == "default"
+        assert payload["route"]["source_of_truth"] == "local_cache"
+        assert payload["route"]["cache_mode"] == "offline"
+        assert payload["route"]["transport"]["kind"] == "local"
+        assert payload["result"]["has_context"] is True
+        assert payload["result"]["notebook"]["id"] == "nb_json_test"
 
     def test_status_json_output_no_context(self, runner, mock_context_file):
         """Test status --json outputs valid JSON when no context."""
@@ -263,9 +287,12 @@ class TestStatusCommand:
         result = runner.invoke(cli, ["status", "--json"])
 
         assert result.exit_code == 0
-        output_data = json.loads(result.output)
-        assert output_data["has_context"] is False
-        assert output_data["notebook"] is None
+        payload = json.loads(result.output)
+        assert payload["ok"] is True
+        assert payload["route"]["mode"] == "status"
+        assert payload["route"]["notebook_id"] is None
+        assert payload["result"]["has_context"] is False
+        assert payload["result"]["notebook"] is None
 
     def test_status_handles_corrupted_context_file(self, runner, mock_context_file):
         """Test status handles corrupted context file gracefully."""
@@ -346,10 +373,15 @@ class TestStatusPaths:
             result = runner.invoke(cli, ["status", "--paths", "--json"])
 
         assert result.exit_code == 0
-        output_data = json.loads(result.output)
-        assert "paths" in output_data
-        assert output_data["paths"]["home_dir"] == "/custom/path/.notebooklm"
-        assert output_data["paths"]["home_source"] == "NOTEBOOKLM_HOME"
+        payload = json.loads(result.output)
+        assert payload["ok"] is True
+        assert payload["route"]["intent"] == "LOCAL_METADATA"
+        assert payload["route"]["mode"] == "status_paths"
+        assert payload["route"]["notebook_id"] is None
+        assert payload["route"]["transport"]["kind"] == "local"
+        assert "paths" in payload["result"]
+        assert payload["result"]["paths"]["home_dir"] == "/custom/path/.notebooklm"
+        assert payload["result"]["paths"]["home_source"] == "NOTEBOOKLM_HOME"
 
     def test_status_paths_shows_auth_json_note(self, runner, mock_context_file, monkeypatch):
         """Test status --paths shows note when NOTEBOOKLM_AUTH_JSON is set."""
@@ -405,10 +437,14 @@ class TestAuthCheckCommand:
         result = runner.invoke(cli, ["auth", "check", "--json"])
 
         assert result.exit_code == 0
-        output = json.loads(result.output)
-        assert output["status"] == "error"
-        assert output["checks"]["storage_exists"] is False
-        assert "not found" in output["details"]["error"]
+        payload = json.loads(result.output)
+        assert payload["ok"] is False
+        assert payload["route"]["intent"] == "DOCTOR"
+        assert payload["route"]["mode"] == "check"
+        assert payload["route"]["transport"]["kind"] == "local"
+        assert payload["result"]["status"] == "error"
+        assert payload["result"]["checks"]["storage_exists"] is False
+        assert "not found" in payload["result"]["details"]["error"]
 
     def test_auth_check_invalid_json(self, runner, mock_storage_path):
         """Test auth check when storage file contains invalid JSON."""
@@ -427,11 +463,12 @@ class TestAuthCheckCommand:
         result = runner.invoke(cli, ["auth", "check", "--json"])
 
         assert result.exit_code == 0
-        output = json.loads(result.output)
-        assert output["status"] == "error"
-        assert output["checks"]["storage_exists"] is True
-        assert output["checks"]["json_valid"] is False
-        assert "Invalid JSON" in output["details"]["error"]
+        payload = json.loads(result.output)
+        assert payload["ok"] is False
+        assert payload["result"]["status"] == "error"
+        assert payload["result"]["checks"]["storage_exists"] is True
+        assert payload["result"]["checks"]["json_valid"] is False
+        assert "Invalid JSON" in payload["result"]["details"]["error"]
 
     def test_auth_check_missing_sid_cookie(self, runner, mock_storage_path):
         """Test auth check when SID cookie is missing."""
@@ -478,13 +515,48 @@ class TestAuthCheckCommand:
         result = runner.invoke(cli, ["auth", "check", "--json"])
 
         assert result.exit_code == 0
-        output = json.loads(result.output)
-        assert output["status"] == "ok"
-        assert output["checks"]["storage_exists"] is True
-        assert output["checks"]["json_valid"] is True
-        assert output["checks"]["cookies_present"] is True
-        assert output["checks"]["sid_cookie"] is True
-        assert "SID" in output["details"]["cookies_found"]
+        payload = json.loads(result.output)
+        assert payload["ok"] is True
+        assert payload["route"]["intent"] == "DOCTOR"
+        assert payload["route"]["mode"] == "check"
+        assert payload["route"]["source_of_truth"] == "local_cache"
+        assert payload["route"]["cache_mode"] == "offline"
+        assert payload["route"]["transport"]["kind"] == "local"
+        assert payload["result"]["status"] == "ok"
+        assert payload["result"]["checks"]["storage_exists"] is True
+        assert payload["result"]["checks"]["json_valid"] is True
+        assert payload["result"]["checks"]["cookies_present"] is True
+        assert payload["result"]["checks"]["sid_cookie"] is True
+        assert "SID" in payload["result"]["details"]["cookies_found"]
+
+    def test_auth_check_honors_root_storage_override(self, runner, tmp_path, monkeypatch):
+        """Test auth check uses the root --storage override before NOTEBOOKLM_HOME."""
+        auth_home = tmp_path / "home"
+        auth_home.mkdir()
+        monkeypatch.setenv("NOTEBOOKLM_HOME", str(auth_home))
+
+        override_path = tmp_path / "override_storage.json"
+        override_path.write_text(
+            json.dumps(
+                {
+                    "cookies": [
+                        {"name": "SID", "value": "override_sid", "domain": ".google.com"},
+                        {"name": "HSID", "value": "override_hsid", "domain": ".google.com"},
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        result = runner.invoke(cli, ["--storage", str(override_path), "auth", "check", "--json"])
+
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload["ok"] is True
+        assert payload["result"]["checks"]["storage_exists"] is True
+        assert payload["result"]["checks"]["sid_cookie"] is True
+        assert payload["result"]["details"]["storage_path"] == str(override_path.resolve())
+        assert payload["result"]["details"]["auth_source"] == f"file ({override_path.resolve()})"
 
     def test_auth_check_with_test_flag_success(self, runner, mock_storage_path):
         """Test auth check --test with successful token fetch."""
@@ -496,7 +568,11 @@ class TestAuthCheckCommand:
         mock_storage_path.write_text(json.dumps(storage_data))
 
         with patch("notebooklm.auth.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-            mock_fetch.return_value = ("csrf_token_abc", "session_id_xyz")
+            mock_fetch.return_value = (
+                "csrf_token_abc",
+                "session_id_xyz",
+                "boq_labs-tailwind-frontend_20260315.02_p0",
+            )
 
             result = runner.invoke(cli, ["auth", "check", "--test"])
 
@@ -533,16 +609,27 @@ class TestAuthCheckCommand:
         mock_storage_path.write_text(json.dumps(storage_data))
 
         with patch("notebooklm.auth.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-            mock_fetch.return_value = ("csrf_12345", "sess_67890")
+            mock_fetch.return_value = (
+                "csrf_12345",
+                "sess_67890",
+                "boq_labs-tailwind-frontend_20260315.03_p0",
+            )
 
             result = runner.invoke(cli, ["auth", "check", "--test", "--json"])
 
         assert result.exit_code == 0
-        output = json.loads(result.output)
-        assert output["status"] == "ok"
-        assert output["checks"]["token_fetch"] is True
-        assert output["details"]["csrf_length"] == 10
-        assert output["details"]["session_id_length"] == 10
+        payload = json.loads(result.output)
+        assert payload["ok"] is True
+        assert payload["route"]["intent"] == "DOCTOR"
+        assert payload["route"]["mode"] == "check"
+        assert payload["route"]["source_of_truth"] == "mixed"
+        assert payload["route"]["cache_mode"] == "network"
+        assert payload["route"]["transport"]["kind"] == "httpx"
+        assert payload["route"]["transport"]["endpoint"] == "https://notebooklm.google.com/"
+        assert payload["result"]["status"] == "ok"
+        assert payload["result"]["checks"]["token_fetch"] is True
+        assert payload["result"]["details"]["csrf_length"] == 10
+        assert payload["result"]["details"]["session_id_length"] == 10
 
     def test_auth_check_env_var_takes_precedence(self, runner, mock_storage_path, monkeypatch):
         """Test auth check uses NOTEBOOKLM_AUTH_JSON when set."""
@@ -560,9 +647,10 @@ class TestAuthCheckCommand:
         result = runner.invoke(cli, ["auth", "check", "--json"])
 
         assert result.exit_code == 0
-        output = json.loads(result.output)
-        assert output["status"] == "ok"
-        assert output["details"]["auth_source"] == "NOTEBOOKLM_AUTH_JSON"
+        payload = json.loads(result.output)
+        assert payload["ok"] is True
+        assert payload["result"]["status"] == "ok"
+        assert payload["result"]["details"]["auth_source"] == "NOTEBOOKLM_AUTH_JSON"
 
     def test_auth_check_shows_cookie_domains(self, runner, mock_storage_path):
         """Test auth check displays cookie domains."""
@@ -577,8 +665,8 @@ class TestAuthCheckCommand:
         result = runner.invoke(cli, ["auth", "check", "--json"])
 
         assert result.exit_code == 0
-        output = json.loads(result.output)
-        assert ".google.com" in output["details"]["cookie_domains"]
+        payload = json.loads(result.output)
+        assert ".google.com" in payload["result"]["details"]["cookie_domains"]
 
     def test_auth_check_shows_cookies_by_domain(self, runner, mock_storage_path):
         """Test auth check --json includes detailed cookies_by_domain."""
@@ -596,8 +684,8 @@ class TestAuthCheckCommand:
         result = runner.invoke(cli, ["auth", "check", "--json"])
 
         assert result.exit_code == 0
-        output = json.loads(result.output)
-        cookies_by_domain = output["details"]["cookies_by_domain"]
+        payload = json.loads(result.output)
+        cookies_by_domain = payload["result"]["details"]["cookies_by_domain"]
 
         # Verify .google.com has expected cookies
         assert ".google.com" in cookies_by_domain
@@ -621,8 +709,8 @@ class TestAuthCheckCommand:
         result = runner.invoke(cli, ["auth", "check", "--json"])
 
         assert result.exit_code == 0
-        output = json.loads(result.output)
-        assert output["checks"]["token_fetch"] is None  # Not tested
+        payload = json.loads(result.output)
+        assert payload["result"]["checks"]["token_fetch"] is None  # Not tested
 
     def test_auth_check_help(self, runner):
         """Test auth check --help shows usage information."""
@@ -632,6 +720,192 @@ class TestAuthCheckCommand:
         assert "Check authentication status" in result.output
         assert "--test" in result.output
         assert "--json" in result.output
+
+
+class TestAuthInspectAndRefreshCommands:
+    """Tests for the 'auth inspect' and 'auth refresh' commands."""
+
+    @pytest.fixture
+    def auth_home(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("NOTEBOOKLM_HOME", str(tmp_path))
+        return tmp_path
+
+    @pytest.fixture
+    def storage_file(self, auth_home):
+        storage_path = auth_home / "storage_state.json"
+        storage_path.write_text(
+            json.dumps(
+                {
+                    "cookies": [
+                        {"name": "SID", "value": "test_sid", "domain": ".google.com"},
+                        {"name": "HSID", "value": "test_hsid", "domain": ".google.com"},
+                    ],
+                    "bl": "boq_labs-tailwind-frontend_20260315.10_p0",
+                }
+            ),
+            encoding="utf-8",
+        )
+        return storage_path
+
+    def _create_profile_snapshot(self, auth_home, storage_file):
+        browser_profile = auth_home / "browser_profile"
+        browser_profile.mkdir()
+        manager = ProfileManager.open()
+        try:
+            profile = manager.get_profile("default")
+            if profile is None:
+                manager.create_profile(
+                    profile_id="default",
+                    display_name="Default",
+                    account_email="user@example.com",
+                    storage_state_path=storage_file,
+                    browser_profile_path=browser_profile,
+                    is_default=True,
+                )
+            else:
+                manager.update_profile(
+                    "default",
+                    account_email="user@example.com",
+                    storage_state_path=storage_file,
+                    browser_profile_path=browser_profile,
+                    is_default=True,
+                )
+            manager.upsert_auth_snapshot(
+                "default",
+                cookie_fingerprint=AuthTokens(
+                    cookies={"HSID": "test_hsid", "SID": "test_sid"},
+                    csrf_token="",
+                    session_id="",
+                    build_label="boq_labs-tailwind-frontend_20260315.10_p0",
+                    storage_path=storage_file.resolve(),
+                ).cookie_fingerprint,
+                csrf_token="csrf_snapshot",
+                session_id="session_snapshot",
+                build_label="boq_labs-tailwind-frontend_20260315.10_p0",
+                captured_at="2026-03-15T03:00:00+00:00",
+                validated_at="2026-03-15T03:00:30+00:00",
+                status="fresh",
+                source="refresh_from_homepage",
+            )
+        finally:
+            manager.close()
+
+    def test_auth_inspect_json_outputs_canonical_envelope(self, runner, auth_home, storage_file):
+        self._create_profile_snapshot(auth_home, storage_file)
+
+        result = runner.invoke(cli, ["auth", "inspect", "--json"])
+
+        assert result.exit_code == 0, result.output
+        payload = json.loads(result.output)
+        assert payload["ok"] is True
+        assert payload["route"]["intent"] == "DOCTOR"
+        assert payload["route"]["mode"] == "inspect"
+        assert payload["route"]["transport"]["kind"] == "local"
+        assert payload["result"]["profile"]["profile_id"] == "default"
+        assert payload["result"]["build_label_present"] is True
+        assert payload["result"]["csrf_present"] is True
+        assert payload["result"]["session_id_present"] is True
+        assert payload["result"]["snapshot"]["present"] is True
+        assert payload["result"]["snapshot"]["status"] == "fresh"
+        assert payload["result"]["cookie_fingerprint"]
+
+    def test_auth_inspect_plain_output_shows_fingerprint_not_raw_cookie(
+        self, runner, auth_home, storage_file
+    ):
+        self._create_profile_snapshot(auth_home, storage_file)
+
+        result = runner.invoke(cli, ["auth", "inspect"])
+
+        assert result.exit_code == 0, result.output
+        assert "Cookie fingerprint" in result.output
+        assert "test_sid" not in result.output
+        assert "Snapshot age (s)" in result.output
+
+    def test_auth_refresh_json_outputs_canonical_envelope_and_persistence(
+        self, runner, auth_home, storage_file
+    ):
+        self._create_profile_snapshot(auth_home, storage_file)
+
+        with patch("notebooklm.cli.session.NotebookLMClient") as mock_client_cls:
+            mock_client = create_mock_client()
+
+            async def _refresh_auth():
+                storage_data = json.loads(storage_file.read_text(encoding="utf-8"))
+                storage_data["bl"] = "boq_labs-tailwind-frontend_20260315.11_p0"
+                storage_file.write_text(json.dumps(storage_data), encoding="utf-8")
+
+                manager = ProfileManager.open()
+                try:
+                    manager.upsert_auth_snapshot(
+                        "default",
+                        cookie_fingerprint=AuthTokens(
+                            cookies={"HSID": "test_hsid", "SID": "test_sid"},
+                            csrf_token="new_csrf",
+                            session_id="new_session",
+                            build_label="boq_labs-tailwind-frontend_20260315.11_p0",
+                            storage_path=storage_file.resolve(),
+                        ).cookie_fingerprint,
+                        csrf_token="new_csrf",
+                        session_id="new_session",
+                        build_label="boq_labs-tailwind-frontend_20260315.11_p0",
+                        captured_at="2026-03-15T03:10:00+00:00",
+                        validated_at="2026-03-15T03:10:05+00:00",
+                        status="fresh",
+                        source="refresh_from_homepage",
+                    )
+                finally:
+                    manager.close()
+
+                return AuthTokens(
+                    cookies={"SID": "test_sid", "HSID": "test_hsid"},
+                    csrf_token="new_csrf",
+                    session_id="new_session",
+                    build_label="boq_labs-tailwind-frontend_20260315.11_p0",
+                    storage_path=storage_file.resolve(),
+                )
+
+            mock_client.refresh_auth = AsyncMock(side_effect=_refresh_auth)
+            mock_client_cls.return_value = mock_client
+
+            result = runner.invoke(cli, ["auth", "refresh", "--json"])
+
+        assert result.exit_code == 0, result.output
+        payload = json.loads(result.output)
+        assert payload["ok"] is True
+        assert payload["route"]["intent"] == "LOCAL_METADATA"
+        assert payload["route"]["mode"] == "refresh"
+        assert payload["route"]["transport"]["kind"] == "httpx"
+        assert payload["diagnostics"]["auth_refreshed"] is True
+        assert payload["result"]["build_label"] == "boq_labs-tailwind-frontend_20260315.11_p0"
+        assert payload["result"]["persisted_to_storage"] is True
+        assert payload["result"]["persisted_snapshot"] is True
+        assert payload["result"]["snapshot"]["source"] == "refresh_from_homepage"
+        mock_client.refresh_auth.assert_awaited_once()
+
+    def test_auth_refresh_requires_file_backed_auth(self, runner, monkeypatch):
+        monkeypatch.setenv(
+            "NOTEBOOKLM_AUTH_JSON",
+            json.dumps(
+                {
+                    "cookies": [
+                        {"name": "SID", "value": "inline_sid", "domain": ".google.com"},
+                    ]
+                }
+            ),
+        )
+
+        result = runner.invoke(cli, ["auth", "refresh"])
+
+        assert result.exit_code == 1
+        assert "requires file-backed auth" in result.output
+
+    def test_auth_group_help_lists_inspect_and_refresh(self, runner):
+        result = runner.invoke(cli, ["auth", "--help"])
+
+        assert result.exit_code == 0
+        assert "check" in result.output
+        assert "inspect" in result.output
+        assert "refresh" in result.output
 
 
 # =============================================================================
@@ -648,7 +922,11 @@ class TestSessionEdgeCases:
             mock_client_cls.return_value = mock_client
 
             with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf", "session")
+                mock_fetch.return_value = (
+                    "csrf",
+                    "session",
+                    "boq_labs-tailwind-frontend_20260315.01_p0",
+                )
 
                 # Patch in session module where it's imported
                 with patch(
@@ -685,7 +963,11 @@ class TestSessionEdgeCases:
             mock_client_cls.return_value = mock_client
 
             with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf", "session")
+                mock_fetch.return_value = (
+                    "csrf",
+                    "session",
+                    "boq_labs-tailwind-frontend_20260315.01_p0",
+                )
 
                 # Patch resolve_notebook_id to raise ClickException (e.g., ambiguous ID)
                 with patch(
@@ -711,9 +993,13 @@ class TestSessionEdgeCases:
             result = runner.invoke(cli, ["status", "--json"])
 
         assert result.exit_code == 0
-        output_data = json.loads(result.output)
-        assert output_data["has_context"] is True
-        assert output_data["notebook"]["id"] == "nb_corrupted"
+        payload = json.loads(result.output)
+        assert payload["ok"] is True
+        assert payload["route"]["intent"] == "LOCAL_METADATA"
+        assert payload["route"]["mode"] == "status"
+        assert payload["route"]["notebook_id"] == "nb_corrupted"
+        assert payload["result"]["has_context"] is True
+        assert payload["result"]["notebook"]["id"] == "nb_corrupted"
         # Title and is_owner should be None due to JSONDecodeError
-        assert output_data["notebook"]["title"] is None
-        assert output_data["notebook"]["is_owner"] is None
+        assert payload["result"]["notebook"]["title"] is None
+        assert payload["result"]["notebook"]["is_owner"] is None

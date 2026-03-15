@@ -22,6 +22,7 @@ from notebooklm._notebooks import _delete_notebook_rpc
 from notebooklm import NotebookLMClient
 from notebooklm.auth import (
     AuthTokens,
+    extract_build_label_from_html,
     extract_csrf_from_html,
     extract_session_id_from_html,
     load_auth_from_storage,
@@ -166,7 +167,13 @@ def auth_tokens(auth_cookies) -> AuthTokens:
             resp.raise_for_status()
             csrf = extract_csrf_from_html(resp.text)
             session_id = extract_session_id_from_html(resp.text)
-        return AuthTokens(cookies=auth_cookies, csrf_token=csrf, session_id=session_id)
+            build_label = extract_build_label_from_html(resp.text)
+        return AuthTokens(
+            cookies=auth_cookies,
+            csrf_token=csrf,
+            session_id=session_id,
+            build_label=build_label,
+        )
 
     return asyncio.run(_fetch_tokens())
 

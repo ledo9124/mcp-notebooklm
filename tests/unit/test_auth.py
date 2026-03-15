@@ -8,6 +8,7 @@ from pytest_httpx import HTTPXMock
 
 from notebooklm.auth import (
     AuthTokens,
+    extract_build_label_from_html,
     extract_cookies_from_storage,
     extract_csrf_from_html,
     extract_session_id_from_html,
@@ -24,10 +25,13 @@ class TestAuthTokens:
             cookies={"SID": "abc", "HSID": "def"},
             csrf_token="csrf123",
             session_id="sess456",
+            build_label="boq_labs-tailwind-frontend_test",
         )
         assert tokens.cookies == {"SID": "abc", "HSID": "def"}
         assert tokens.csrf_token == "csrf123"
         assert tokens.session_id == "sess456"
+        assert tokens.build_label == "boq_labs-tailwind-frontend_test"
+        assert tokens.storage_path is None
 
     def test_cookie_header(self):
         """Test generating cookie header string."""
@@ -35,6 +39,7 @@ class TestAuthTokens:
             cookies={"SID": "abc", "HSID": "def"},
             csrf_token="csrf123",
             session_id="sess456",
+            build_label="boq_labs-tailwind-frontend_test",
         )
         header = tokens.cookie_header
         assert "SID=abc" in header
@@ -46,9 +51,27 @@ class TestAuthTokens:
             cookies={"A": "1", "B": "2"},
             csrf_token="x",
             session_id="y",
+            build_label="boq_labs-tailwind-frontend_test",
         )
         header = tokens.cookie_header
         assert "; " in header
+
+    def test_cookie_fingerprint_is_deterministic(self):
+        """Cookie fingerprint should be stable regardless of dict insertion order."""
+        first = AuthTokens(
+            cookies={"SID": "abc", "HSID": "def"},
+            csrf_token="csrf123",
+            session_id="sess456",
+            build_label="boq_labs-tailwind-frontend_test",
+        )
+        second = AuthTokens(
+            cookies={"HSID": "def", "SID": "abc"},
+            csrf_token="csrf123",
+            session_id="sess456",
+            build_label="boq_labs-tailwind-frontend_test",
+        )
+
+        assert first.cookie_fingerprint == second.cookie_fingerprint
 
 
 class TestExtractCookies:
@@ -163,6 +186,29 @@ class TestExtractSessionId:
 
         with pytest.raises(ValueError, match="Session ID not found"):
             extract_session_id_from_html(html)
+
+
+class TestExtractBuildLabel:
+    def test_extracts_build_label_from_cfb2h(self):
+        """Test extracting build label from cfb2h WIZ_global_data key."""
+        html = '"cfb2h":"boq_labs-tailwind-frontend_20260315.01_p0"'
+
+        build_label = extract_build_label_from_html(html)
+        assert build_label == "boq_labs-tailwind-frontend_20260315.01_p0"
+
+    def test_extracts_build_label_from_kjtsif(self):
+        """Test extracting build label from KjTSIf WIZ_global_data key."""
+        html = '"KjTSIf":"boq_labs-tailwind-frontend_20260315.02_p0"'
+
+        build_label = extract_build_label_from_html(html)
+        assert build_label == "boq_labs-tailwind-frontend_20260315.02_p0"
+
+    def test_raises_if_not_found(self):
+        """Test raises error if build label not found."""
+        html = "<html><body>No build label here</body></html>"
+
+        with pytest.raises(ValueError, match="Build label not found"):
+            extract_build_label_from_html(html)
 
 
 class TestLoadAuthFromStorage:
@@ -506,7 +552,8 @@ class TestFetchTokens:
         <script>
             window.WIZ_global_data = {
                 "SNlM0e": "AF1_QpN-csrf_token_123",
-                "FdrFJe": "session_id_456"
+                "FdrFJe": "session_id_456",
+                "cfb2h": "boq_labs-tailwind-frontend_20260315.01_p0"
             };
         </script>
         </html>
@@ -517,10 +564,11 @@ class TestFetchTokens:
         )
 
         cookies = {"SID": "test_sid"}
-        csrf, session_id = await fetch_tokens(cookies)
+        csrf, session_id, build_label = await fetch_tokens(cookies)
 
         assert csrf == "AF1_QpN-csrf_token_123"
         assert session_id == "session_id_456"
+        assert build_label == "boq_labs-tailwind-frontend_20260315.01_p0"
 
     @pytest.mark.asyncio
     async def test_fetch_tokens_redirect_to_login(self, httpx_mock: HTTPXMock):
@@ -542,7 +590,11 @@ class TestFetchTokens:
     @pytest.mark.asyncio
     async def test_fetch_tokens_includes_cookie_header(self, httpx_mock: HTTPXMock):
         """Test that fetch_tokens includes cookie header."""
-        html = '"SNlM0e":"csrf" "FdrFJe":"sess"'
+        html = (
+            '"SNlM0e":"csrf" '
+            '"FdrFJe":"sess" '
+            '"cfb2h":"boq_labs-tailwind-frontend_20260315.02_p0"'
+        )
         httpx_mock.add_response(content=html.encode())
 
         cookies = {"SID": "sid_value", "HSID": "hsid_value"}
@@ -570,7 +622,11 @@ class TestAuthTokensFromStorage:
         storage_file.write_text(json.dumps(storage_state))
 
         # Mock token fetch
-        html = '"SNlM0e":"csrf_token" "FdrFJe":"session_id"'
+        html = (
+            '"SNlM0e":"csrf_token" '
+            '"FdrFJe":"session_id" '
+            '"cfb2h":"boq_labs-tailwind-frontend_20260315.03_p0"'
+        )
         httpx_mock.add_response(content=html.encode())
 
         tokens = await AuthTokens.from_storage(storage_file)
@@ -578,6 +634,10 @@ class TestAuthTokensFromStorage:
         assert tokens.cookies["SID"] == "sid"
         assert tokens.csrf_token == "csrf_token"
         assert tokens.session_id == "session_id"
+        assert tokens.build_label == "boq_labs-tailwind-frontend_20260315.03_p0"
+        assert tokens.storage_path == storage_file.resolve()
+        persisted = json.loads(storage_file.read_text())
+        assert persisted["bl"] == "boq_labs-tailwind-frontend_20260315.03_p0"
 
     @pytest.mark.asyncio
     async def test_from_storage_file_not_found(self, tmp_path):

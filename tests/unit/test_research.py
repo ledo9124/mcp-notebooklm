@@ -14,6 +14,7 @@ def auth_tokens():
         cookies={"SID": "test"},
         csrf_token="test_csrf",
         session_id="test_session",
+        build_label="boq_labs-tailwind-frontend_test",
     )
 
 

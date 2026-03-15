@@ -95,6 +95,7 @@ class TestRPCCallHTTPErrors:
     async def test_rate_limit_429_with_retry_after_header(self, auth_tokens):
         async with NotebookLMClient(auth_tokens) as client:
             core = client._core
+            core._rate_limit_max_retries = 0
 
             mock_response = MagicMock()
             mock_response.status_code = 429
@@ -113,6 +114,7 @@ class TestRPCCallHTTPErrors:
     async def test_rate_limit_429_without_retry_after_header(self, auth_tokens):
         async with NotebookLMClient(auth_tokens) as client:
             core = client._core
+            core._rate_limit_max_retries = 0
 
             mock_response = MagicMock()
             mock_response.status_code = 429
@@ -131,6 +133,7 @@ class TestRPCCallHTTPErrors:
     async def test_rate_limit_429_with_invalid_retry_after_header(self, auth_tokens):
         async with NotebookLMClient(auth_tokens) as client:
             core = client._core
+            core._rate_limit_max_retries = 0
 
             mock_response = MagicMock()
             mock_response.status_code = 429

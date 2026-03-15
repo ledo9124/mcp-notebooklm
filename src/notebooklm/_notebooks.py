@@ -94,6 +94,10 @@ class NotebooksAPI:
         logger.debug("Created notebook: %s", notebook.id)
         return notebook
 
+    async def delete(self, notebook_id: str) -> bool:
+        """Delete one notebook."""
+        return await _delete_notebook_rpc(self._core, notebook_id)
+
     async def get(self, notebook_id: str) -> Notebook:
         """Get notebook details.
 

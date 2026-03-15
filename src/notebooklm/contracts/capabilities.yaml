@@ -1,0 +1,610 @@
+version: 1
+
+commands:
+  ask:
+    intent: QUERY
+    risk_tier: T0_READ
+    output: answer
+    remote: true
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: true
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  overview:
+    intent: QUERY
+    risk_tier: T0_READ
+    output: summary
+    remote: true
+    compatibility:
+      aliases:
+        - summary
+      deprecation_state: warn
+      deprecation_warning: Deprecated compatibility command. Use `notebooklm overview` instead.
+    read_only: true
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  summarize:
+    intent: GENERATION
+    risk_tier: T0_READ
+    output: artifact_request
+    mode: briefing_doc
+    compatibility:
+      aliases:
+        - generate report --format briefing-doc
+      deprecation_state: warn
+      deprecation_warning: Deprecated compatibility command. Use `notebooklm summarize` instead.
+    read_only: false
+    waitable: true
+    destructive: false
+    approval_gated: false
+
+  study-guide:
+    intent: GENERATION
+    risk_tier: T0_READ
+    output: artifact_request
+    mode: study_guide
+    compatibility:
+      aliases:
+        - generate report --format study-guide
+      deprecation_state: warn
+      deprecation_warning: Deprecated compatibility command. Use `notebooklm study-guide` instead.
+    read_only: false
+    waitable: true
+    destructive: false
+    approval_gated: false
+
+  audio:
+    intent: GENERATION
+    risk_tier: T0_READ
+    output: artifact_request
+    mode: audio
+    compatibility:
+      aliases:
+        - generate audio
+      deprecation_state: warn
+      deprecation_warning: Deprecated compatibility command. Use `notebooklm audio` instead.
+    read_only: false
+    waitable: true
+    destructive: false
+    approval_gated: false
+
+  research.start:
+    intent: RESEARCH
+    risk_tier: T0_READ
+    output: research_request
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: false
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  research.wait:
+    intent: RESEARCH
+    risk_tier: T0_READ
+    output: research_status
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: true
+    waitable: true
+    destructive: false
+    approval_gated: false
+
+  research.import:
+    intent: RESEARCH
+    risk_tier: T2_KNOWLEDGE_MUTATION
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: false
+    waitable: false
+    destructive: false
+    approval_gated: true
+
+  history.search:
+    intent: LOCAL_METADATA
+    risk_tier: T0_READ
+    output: history_hits
+    mode: history_search
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: true
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  history.show:
+    intent: LOCAL_METADATA
+    risk_tier: T0_READ
+    output: history_detail
+    mode: history_show
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: true
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  trace.show:
+    intent: LOCAL_METADATA
+    risk_tier: T0_READ
+    output: trace_timeline
+    mode: trace_show
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: true
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  events.tail:
+    intent: LOCAL_METADATA
+    risk_tier: T0_READ
+    output: events_tail
+    mode: events_tail
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: true
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  doctor:
+    intent: DOCTOR
+    risk_tier: T0_READ
+    output: doctor_status
+    mode: fast
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: true
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  doctor.check:
+    intent: DOCTOR
+    risk_tier: T0_READ
+    output: doctor_status
+    mode: doctor_check
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: true
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  doctor.fix:
+    intent: DOCTOR
+    risk_tier: T1_LOCAL_MUTATION
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: false
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  doctor.bundle:
+    intent: DOCTOR
+    risk_tier: T0_READ
+    compatibility:
+      aliases:
+        - support-bundle create
+      deprecation_state: none
+    read_only: false
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  workspace.list:
+    intent: LOCAL_METADATA
+    risk_tier: T0_READ
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: true
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  workspace.create:
+    intent: LOCAL_MUTATION
+    risk_tier: T1_LOCAL_MUTATION
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: false
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  workspace.add:
+    intent: LOCAL_MUTATION
+    risk_tier: T1_LOCAL_MUTATION
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: false
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  workspace.remove:
+    intent: LOCAL_MUTATION
+    risk_tier: T1_LOCAL_MUTATION
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: false
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  workspace.show:
+    intent: LOCAL_METADATA
+    risk_tier: T0_READ
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: true
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  workspace.ask:
+    intent: WORKSPACE_QUERY
+    risk_tier: T0_READ
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: true
+    waitable: false
+    destructive: false
+    approval_gated: false
+    remote: true
+
+  workspace.compare:
+    intent: WORKSPACE_COMPARE
+    risk_tier: T1_LOCAL_MUTATION
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: false
+    waitable: false
+    destructive: false
+    approval_gated: false
+    remote: true
+
+  workspace.index:
+    intent: LOCAL_MUTATION
+    risk_tier: T1_LOCAL_MUTATION
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: false
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  watch.add:
+    intent: LOCAL_MUTATION
+    risk_tier: T1_LOCAL_MUTATION
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: false
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  watch.list:
+    intent: LOCAL_METADATA
+    risk_tier: T0_READ
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: true
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  watch.pause:
+    intent: LOCAL_MUTATION
+    risk_tier: T1_LOCAL_MUTATION
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: false
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  watch.run-now:
+    intent: LOCAL_MUTATION
+    risk_tier: T1_LOCAL_MUTATION
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: false
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  radar.status:
+    intent: RADAR_STATUS
+    risk_tier: T0_READ
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: true
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  radar.list:
+    intent: RADAR_STATUS
+    risk_tier: T0_READ
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: true
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  radar.brief:
+    intent: RADAR_BRIEF
+    risk_tier: T0_READ
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: true
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  radar.ignore:
+    intent: LOCAL_MUTATION
+    risk_tier: T1_LOCAL_MUTATION
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: false
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  inbox.list:
+    intent: INBOX_TRIAGE
+    risk_tier: T0_READ
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: true
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  inbox.view:
+    intent: INBOX_TRIAGE
+    risk_tier: T0_READ
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: true
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  inbox.why:
+    intent: INBOX_TRIAGE
+    risk_tier: T0_READ
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: true
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  inbox.approve:
+    intent: INBOX_APPLY
+    risk_tier: T2_KNOWLEDGE_MUTATION
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: false
+    waitable: false
+    destructive: false
+    approval_gated: true
+
+  inbox.reject:
+    intent: INBOX_TRIAGE
+    risk_tier: T0_READ
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: false
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  inbox.defer:
+    intent: INBOX_TRIAGE
+    risk_tier: T0_READ
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: false
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  inbox.import:
+    intent: INBOX_APPLY
+    risk_tier: T2_KNOWLEDGE_MUTATION
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: false
+    waitable: false
+    destructive: false
+    approval_gated: true
+
+  inbox.apply-batch:
+    intent: INBOX_APPLY
+    risk_tier: T2_KNOWLEDGE_MUTATION
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: false
+    waitable: false
+    destructive: false
+    approval_gated: true
+
+  notebook.delete:
+    intent: MUTATION
+    risk_tier: T3_DESTRUCTIVE
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: false
+    waitable: false
+    destructive: true
+    approval_gated: true
+
+  source.guide:
+    intent: REMOTE_METADATA
+    risk_tier: T0_READ
+    output: source_guide
+    remote: true
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: true
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  source.delete:
+    intent: MUTATION
+    risk_tier: T3_DESTRUCTIVE
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: false
+    waitable: false
+    destructive: true
+    approval_gated: true
+
+  sync.notebooks:
+    intent: REMOTE_METADATA
+    risk_tier: T1_LOCAL_MUTATION
+    output: sync_report
+    mode: sync_notebooks
+    remote: true
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: false
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  cache.status:
+    intent: QUERY
+    risk_tier: T0_READ
+    output: cache_status
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: true
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+  cache.prune:
+    intent: LOCAL_MUTATION
+    risk_tier: T1_LOCAL_MUTATION
+    compatibility:
+      aliases: []
+      deprecation_state: none
+    read_only: false
+    waitable: false
+    destructive: false
+    approval_gated: false
+
+cache_entities:
+  - notebooks
+  - sources
+  - artifacts
+  - research_runs
+  - query_runs
+  - query_results
+  - sync_runs
+  - run_events
+  - approval_requests
+
+doctor_checks:
+  - auth_snapshot_present
+  - auth_snapshot_fresh
+  - build_label_present
+  - db_openable
+  - schema_current
+  - write_permissions_ok
+  - notebooklm_home_consistent
+
+doctor_check_categories:
+  auth:
+    - auth_snapshot_present
+    - auth_snapshot_fresh
+    - build_label_present
+  db:
+    - db_openable
+    - schema_current
+    - write_permissions_ok
+    - notebooklm_home_consistent
+    - cache_integrity_ok
+    - foreign_keys_ok
+    - fts_health_ok
+  workspace:
+    - workspace_tables_ready
+    - workspace_index_fresh
+  radar:
+    - radar_tables_ready
+    - radar_watch_runs_healthy
+  inbox:
+    - inbox_tables_ready
+    - inbox_cluster_links_consistent
+
+risk_tiers:
+  T0_READ:
+    alias: SAFE
+    scope: "Read-only operations: list, show, doctor, ask, history, trace, events, workspace ask, radar brief, inbox view"
+    guard_behavior: "No approval needed"
+  T1_LOCAL_MUTATION:
+    alias: CAUTION
+    scope: "Low-risk local mutations: rebuild index, clear stale leases, refresh auth, resync metadata, cache prune"
+    guard_behavior: "`--dry-run` supported; `--yes` needed if side effect is large"
+  T2_KNOWLEDGE_MUTATION:
+    alias: DANGEROUS
+    scope: "External knowledge mutations: import source, import report, replace changed source, apply research results"
+    guard_behavior: "Approval required by default; policy can auto-approve specific patterns"
+  T3_DESTRUCTIVE:
+    alias: CRITICAL
+    scope: "Destructive mutations: delete source, delete notebook, purge cache, reset profile, bulk deletes"
+    guard_behavior: "Explicit confirm/approval token required; two-step in non-interactive mode"

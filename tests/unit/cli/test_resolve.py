@@ -1,6 +1,7 @@
 """Tests for resolve_notebook_id and resolve_source_id partial ID matching."""
 
 from datetime import datetime
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import click
@@ -92,16 +93,51 @@ class TestResolveNotebookId:
         assert "notebooklm list" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_long_id_skips_resolution(self, mock_client):
-        """IDs >= 20 chars skip resolution and return unchanged."""
-        mock_client.notebooks.list = AsyncMock()
-
+    async def test_long_id_uses_cached_index_when_available(self, mock_client):
+        """Long notebook IDs are validated against the cached notebook index."""
         long_id = "a" * 20
-        result = await resolve_notebook_id(mock_client, long_id)
+        mock_client.notebooks.list = AsyncMock()
+        cached_match = SimpleNamespace(notebook_id=long_id, title="Cached notebook")
+        state = SimpleNamespace(notebooks=[cached_match], used_cache=True)
+        connection = MagicMock()
+        connection.__enter__.return_value = connection
+        connection.__exit__.return_value = None
+
+        with (
+            patch("notebooklm.cli.helpers.connect_db", return_value=connection),
+            patch("notebooklm.cli.helpers.sync_notebook_index", new=AsyncMock(return_value=state)) as mock_sync,
+        ):
+            result = await resolve_notebook_id(mock_client, long_id)
 
         assert result == long_id
-        # Should NOT call notebooks.list
         mock_client.notebooks.list.assert_not_called()
+        assert mock_sync.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_long_id_refreshes_then_raises_when_missing(self, mock_client):
+        """Missing long notebook IDs force one index refresh before failing cleanly."""
+        long_id = "a" * 20
+        mock_client.notebooks.list = AsyncMock()
+        stale_state = SimpleNamespace(notebooks=[], used_cache=True)
+        refreshed_state = SimpleNamespace(notebooks=[], used_cache=False)
+        connection = MagicMock()
+        connection.__enter__.return_value = connection
+        connection.__exit__.return_value = None
+
+        with (
+            patch("notebooklm.cli.helpers.connect_db", return_value=connection),
+            patch(
+                "notebooklm.cli.helpers.sync_notebook_index",
+                new=AsyncMock(side_effect=[stale_state, refreshed_state]),
+            ) as mock_sync,
+        ):
+            with pytest.raises(click.ClickException) as exc_info:
+                await resolve_notebook_id(mock_client, long_id)
+
+        assert "No notebook found matching" in str(exc_info.value)
+        assert "list --refresh" in str(exc_info.value)
+        mock_client.notebooks.list.assert_not_called()
+        assert mock_sync.await_count == 2
 
     @pytest.mark.asyncio
     async def test_empty_id_raises_exception(self, mock_client):

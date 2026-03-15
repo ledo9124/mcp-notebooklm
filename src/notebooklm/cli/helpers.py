@@ -14,18 +14,24 @@ import json
 import logging
 import os
 import time
+from collections.abc import Mapping
 from functools import wraps
+from typing import Any
 
 import click
 from rich.console import Console
 from rich.table import Table
 
 from ..auth import (
+    _get_storage_path_for_persistence,
     AuthTokens,
     fetch_tokens,
     load_auth_from_storage,
 )
+from ..contracts import CacheUpdates, Diagnostics, Envelope, Freshness, Intent, Route, Transport
+from ..local.db import connect_db
 from ..paths import get_browser_profile_dir, get_context_path
+from ..sync import sync_notebook_index
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -52,22 +58,36 @@ def run_async(coro):
 # =============================================================================
 
 
-def get_client(ctx) -> tuple[dict, str, str]:
+def _compat_build_label() -> str:
+    """Return a non-empty compatibility build label for legacy test stubs."""
+    return os.environ.get("NOTEBOOKLM_BL", "boq_labs-tailwind-frontend_compat")
+
+
+def get_client(ctx) -> tuple[dict, str, str, str]:
     """Get auth components from context.
 
     Args:
         ctx: Click context with optional storage_path in obj
 
     Returns:
-        Tuple of (cookies, csrf_token, session_id)
+        Tuple of (cookies, csrf_token, session_id, build_label)
 
     Raises:
         FileNotFoundError: If auth storage not found
     """
     storage_path = ctx.obj.get("storage_path") if ctx.obj else None
     cookies = load_auth_from_storage(storage_path)
-    csrf, session_id = run_async(fetch_tokens(cookies))
-    return cookies, csrf, session_id
+    fetched = run_async(fetch_tokens(cookies))
+    if len(fetched) == 2:
+        csrf, session_id = fetched
+        build_label = _compat_build_label()
+        logger.warning(
+            "fetch_tokens returned a legacy 2-tuple; using compatibility build label %s",
+            build_label,
+        )
+    else:
+        csrf, session_id, build_label = fetched
+    return cookies, csrf, session_id, build_label
 
 
 def get_auth_tokens(ctx) -> AuthTokens:
@@ -79,8 +99,15 @@ def get_auth_tokens(ctx) -> AuthTokens:
     Returns:
         AuthTokens ready for client construction
     """
-    cookies, csrf, session_id = get_client(ctx)
-    return AuthTokens(cookies=cookies, csrf_token=csrf, session_id=session_id)
+    cookies, csrf, session_id, build_label = get_client(ctx)
+    storage_path = ctx.obj.get("storage_path") if ctx.obj else None
+    return AuthTokens(
+        cookies=cookies,
+        csrf_token=csrf,
+        session_id=session_id,
+        build_label=build_label,
+        storage_path=_get_storage_path_for_persistence(storage_path),
+    )
 
 
 # =============================================================================
@@ -219,11 +246,66 @@ def require_notebook(notebook_id: str | None) -> str:
     raise SystemExit(1)
 
 
+def _notebook_identifier(item: Any) -> str:
+    identifier = getattr(item, "id", None)
+    if identifier is None:
+        identifier = getattr(item, "notebook_id", None)
+    return str(identifier or "")
+
+
+def _raise_ambiguous_id_error(partial_id: str, matches: list[Any], entity_name: str) -> None:
+    lines = [f"Ambiguous ID '{partial_id}' matches {len(matches)} {entity_name}s:"]
+    for item in matches[:5]:
+        title = getattr(item, "title", None) or "(untitled)"
+        lines.append(f"  {_notebook_identifier(item)[:12]}... {title}")
+    if len(matches) > 5:
+        lines.append(f"  ... and {len(matches) - 5} more")
+    lines.append("\nSpecify more characters to narrow down.")
+    raise click.ClickException("\n".join(lines))
+
+
+async def _resolve_cached_long_notebook_id(client, partial_id: str) -> str:
+    storage_path = getattr(getattr(client, "auth", None), "storage_path", None)
+    with connect_db() as connection:
+        state = await sync_notebook_index(
+            client,
+            connection,
+            storage_path=storage_path,
+        )
+        matches = [
+            notebook
+            for notebook in state.notebooks
+            if _notebook_identifier(notebook).lower().startswith(partial_id.lower())
+        ]
+        if not matches and state.used_cache:
+            state = await sync_notebook_index(
+                client,
+                connection,
+                storage_path=storage_path,
+                force_refresh=True,
+            )
+            matches = [
+                notebook
+                for notebook in state.notebooks
+                if _notebook_identifier(notebook).lower().startswith(partial_id.lower())
+            ]
+
+    if len(matches) == 1:
+        return _notebook_identifier(matches[0])
+    if len(matches) == 0:
+        raise click.ClickException(
+            f"No notebook found matching '{partial_id}'. "
+            "Run 'notebooklm list --refresh' to see available notebooks."
+        )
+    _raise_ambiguous_id_error(partial_id, matches, "notebook")
+
+
 async def _resolve_partial_id(
     partial_id: str,
     list_fn,
     entity_name: str,
     list_command: str,
+    long_id_resolver=None,
 ) -> str:
     """Generic partial ID resolver.
 
@@ -247,6 +329,8 @@ async def _resolve_partial_id(
 
     # Skip resolution for IDs that look complete (20+ chars)
     if len(partial_id) >= 20:
+        if long_id_resolver is not None:
+            return await long_id_resolver(partial_id)
         return partial_id
 
     items = await list_fn()
@@ -280,6 +364,7 @@ async def resolve_notebook_id(client, partial_id: str) -> str:
         list_fn=lambda: client.notebooks.list(),
         entity_name="notebook",
         list_command="list",
+        long_id_resolver=lambda value: _resolve_cached_long_notebook_id(client, value),
     )
 
 
@@ -325,7 +410,41 @@ def handle_error(e: Exception):
     raise SystemExit(1)
 
 
-def handle_auth_error(json_output: bool = False):
+def emit_local_json_error(
+    code: str,
+    message: str,
+    *,
+    mode: str,
+    reason: str,
+    extra: Mapping[str, Any] | None = None,
+    ctx: click.Context | None = None,
+    diagnostics: Diagnostics | None = None,
+    exit_code: int = 1,
+) -> None:
+    """Emit a canonical local-only JSON error envelope and exit."""
+    json_error_response(
+        code,
+        message,
+        extra=dict(extra) if extra else None,
+        ctx=ctx,
+        intent=Intent.LOCAL_METADATA,
+        mode=mode,
+        source_of_truth="local_cache",
+        cache_mode="offline",
+        reason=reason,
+        transport=Transport(kind="local"),
+        diagnostics=diagnostics,
+        exit_code=exit_code,
+    )
+
+
+def handle_auth_error(
+    json_output: bool = False,
+    *,
+    ctx: click.Context | None = None,
+    mode: str = "auth_required",
+    elapsed_ms: int = 0,
+):
     """Handle authentication errors with helpful context."""
     from ..paths import get_path_info, get_storage_path
 
@@ -336,9 +455,12 @@ def handle_auth_error(json_output: bool = False):
     storage_source = path_info["home_source"]
 
     if json_output:
-        json_error_response(
+        emit_local_json_error(
             "AUTH_REQUIRED",
             "Auth not found. Run 'notebooklm login' first.",
+            mode=mode,
+            ctx=ctx,
+            reason="Load local NotebookLM authentication before executing the requested CLI command.",
             extra={
                 "checked_paths": {
                     "storage_file": str(storage_path),
@@ -347,6 +469,7 @@ def handle_auth_error(json_output: bool = False):
                 },
                 "help": "Run 'notebooklm login' or set NOTEBOOKLM_AUTH_JSON",
             },
+            diagnostics=Diagnostics(retries=0, auth_refreshed=False, elapsed_ms=elapsed_ms),
         )
     else:
         console.print("[red]Not logged in.[/red]\n")
@@ -421,12 +544,28 @@ def with_client(f):
             log_result("completed")
             return result
         except FileNotFoundError:
-            log_result("failed", "not authenticated")
-            handle_auth_error(json_output)
+            elapsed = log_result("failed", "not authenticated")
+            handle_auth_error(
+                json_output,
+                ctx=ctx,
+                mode=cmd_name,
+                elapsed_ms=max(0, int(elapsed * 1000)),
+            )
         except Exception as e:
-            log_result("failed", str(e))
+            elapsed = log_result("failed", str(e))
             if json_output:
-                json_error_response("ERROR", str(e))
+                emit_local_json_error(
+                    "ERROR",
+                    str(e),
+                    mode=cmd_name,
+                    ctx=ctx,
+                    reason=f"Report a local CLI error raised while executing `{cmd_name}`.",
+                    diagnostics=Diagnostics(
+                        retries=0,
+                        auth_refreshed=False,
+                        elapsed_ms=max(0, int(elapsed * 1000)),
+                    ),
+                )
             else:
                 handle_error(e)
 
@@ -443,7 +582,73 @@ def json_output_response(data: dict) -> None:
     click.echo(json.dumps(data, indent=2, default=str))
 
 
-def json_error_response(code: str, message: str, extra: dict | None = None) -> None:
+def emit_compatibility_warning(canonical_command: str, *, enabled: bool = True) -> None:
+    """Print the standard compatibility warning for a legacy command surface."""
+    if not enabled:
+        return
+    console.print(
+        "[yellow]Deprecated compatibility command. "
+        f"Use `{canonical_command}` instead.[/yellow]"
+    )
+
+
+def _error_result_payload(
+    code: str,
+    message: str,
+    extra: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {"code": code, "message": message}
+    if extra:
+        payload.update(dict(extra))
+    return payload
+
+
+def _trace_and_run_id(
+    ctx: click.Context | None,
+    *,
+    mode: str,
+    run_id: str | None = None,
+) -> tuple[str, str]:
+    trace_id = ctx.obj.get("trace_id") if ctx and ctx.obj else None
+    if not trace_id:
+        trace_id = "trc_unknown"
+    if run_id is not None:
+        return trace_id, run_id
+    trace = ctx.obj.get("trace") if ctx and ctx.obj else None
+    derived_run_id = trace.run_id if trace and trace.run_id else f"run_{mode}_{trace_id.removeprefix('trc_')}"
+    return trace_id, derived_run_id
+
+
+def _binding_intent(binding: Any, *, fallback: Intent | None = None) -> Intent | None:
+    try:
+        return Intent(binding.intent)
+    except ValueError:
+        if getattr(binding, "intent", None) == "MUTATION":
+            return Intent.LOCAL_MUTATION
+        return fallback
+
+
+def json_error_response(
+    code: str,
+    message: str,
+    extra: dict | None = None,
+    *,
+    ctx: click.Context | None = None,
+    binding: Any | None = None,
+    intent: Intent | None = None,
+    mode: str | None = None,
+    profile_id: str = "default",
+    notebook_id: str | None = None,
+    source_of_truth: str = "local_cache",
+    cache_mode: str = "offline",
+    reason: str | None = None,
+    transport: Transport | None = None,
+    freshness: Freshness | None = None,
+    cache_updates: CacheUpdates | None = None,
+    diagnostics: Diagnostics | None = None,
+    run_id: str | None = None,
+    exit_code: int = 1,
+) -> None:
     """Print JSON error and exit (no colors for machine parsing).
 
     Args:
@@ -451,11 +656,42 @@ def json_error_response(code: str, message: str, extra: dict | None = None) -> N
         message: Human-readable error message
         extra: Optional additional data to include in response
     """
-    response = {"error": True, "code": code, "message": message}
-    if extra:
-        response.update(extra)
-    click.echo(json.dumps(response, indent=2))
-    raise SystemExit(1)
+    if binding is not None:
+        intent = _binding_intent(binding, fallback=intent)
+        mode = mode or binding.mode
+        transport = transport or Transport(
+            kind=binding.transport_kind,
+            endpoint=binding.endpoint,
+            rpcid=binding.rpcid,
+        )
+
+    if intent is not None and mode is not None and transport is not None:
+        trace_id, effective_run_id = _trace_and_run_id(ctx, mode=mode, run_id=run_id)
+        response = Envelope(
+            ok=False,
+            trace_id=trace_id,
+            run_id=effective_run_id,
+            route=Route(
+                intent=intent,
+                mode=mode,
+                notebook_id=notebook_id,
+                profile_id=profile_id,
+                source_of_truth=source_of_truth,
+                cache_mode=cache_mode,
+                reason=reason or message,
+                transport=transport,
+            ),
+            result=_error_result_payload(code, message, extra),
+            freshness=freshness,
+            cache_updates=cache_updates or CacheUpdates(),
+            diagnostics=diagnostics or Diagnostics(),
+        ).to_dict()
+    else:
+        response = {"error": True, "code": code, "message": message}
+        if extra:
+            response.update(extra)
+    click.echo(json.dumps(response, indent=2, default=str))
+    raise SystemExit(exit_code)
 
 
 def display_research_sources(sources: list[dict], max_display: int = 10) -> None:

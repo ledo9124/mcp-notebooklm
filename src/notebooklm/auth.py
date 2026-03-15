@@ -5,8 +5,8 @@ This module provides authentication utilities for the NotebookLM client:
 1. **Cookie-based Authentication**: Loads Google cookies from Playwright storage
    state files created by `notebooklm login`.
 
-2. **Token Extraction**: Fetches CSRF (SNlM0e) and session (FdrFJe) tokens from
-   the NotebookLM homepage, required for all RPC calls.
+2. **Token Extraction**: Fetches CSRF (SNlM0e), session (FdrFJe), and build
+   label (`bl`) values from the NotebookLM homepage, required for RPC calls.
 
 3. **Download Cookies**: Provides httpx-compatible cookies with domain info for
    authenticated downloads from Google content servers.
@@ -28,6 +28,7 @@ Security Notes:
 """
 
 import json
+import hashlib
 import logging
 import os
 import re
@@ -153,11 +154,14 @@ class AuthTokens:
         cookies: Dict of required Google auth cookies
         csrf_token: CSRF token (SNlM0e) extracted from page
         session_id: Session ID (FdrFJe) extracted from page
+        build_label: Build label (`bl`) extracted from page
     """
 
     cookies: dict[str, str]
     csrf_token: str
     session_id: str
+    build_label: str
+    storage_path: Path | None = None
 
     @property
     def cookie_header(self) -> str:
@@ -168,12 +172,19 @@ class AuthTokens:
         """
         return "; ".join(f"{k}={v}" for k, v in self.cookies.items())
 
+    @property
+    def cookie_fingerprint(self) -> str:
+        """Create a deterministic fingerprint for the effective auth cookies."""
+        material = "\n".join(f"{name}={self.cookies[name]}" for name in sorted(self.cookies))
+        return hashlib.sha256(material.encode("utf-8")).hexdigest()
+
     @classmethod
     async def from_storage(cls, path: Path | None = None) -> "AuthTokens":
         """Create AuthTokens from Playwright storage state file.
 
         This is the recommended way to create AuthTokens for programmatic use.
-        It loads cookies from storage and fetches CSRF/session tokens automatically.
+        It loads cookies from storage and fetches CSRF, session, and build-label
+        values automatically.
 
         Args:
             path: Path to storage_state.json. If None, uses default location
@@ -192,9 +203,41 @@ class AuthTokens:
             async with NotebookLMClient(auth) as client:
                 notebooks = await client.list_notebooks()
         """
+        storage_path = _get_storage_path_for_persistence(path)
         cookies = load_auth_from_storage(path)
-        csrf_token, session_id = await fetch_tokens(cookies)
-        return cls(cookies=cookies, csrf_token=csrf_token, session_id=session_id)
+        csrf_token, session_id, build_label = await fetch_tokens(cookies)
+        _persist_build_label_to_storage(storage_path, build_label)
+        return cls(
+            cookies=cookies,
+            csrf_token=csrf_token,
+            session_id=session_id,
+            build_label=build_label,
+            storage_path=storage_path,
+        )
+
+
+_BUILD_LABEL_HTML_KEYS = ("cfb2h", "KjTSIf")
+
+
+def _extract_wiz_global_value(html: str, key: str) -> str | None:
+    """Extract a raw WIZ_global_data string value from HTML."""
+    match = re.search(rf'"{re.escape(key)}"\s*:\s*"([^"]*)"', html)
+    if not match:
+        return None
+    value = match.group(1).strip()
+    return value or None
+
+
+def _raise_auth_value_error(label: str, final_url: str, html: str) -> None:
+    """Raise a consistent auth extraction error with redirect handling."""
+    if is_google_auth_redirect(final_url) or contains_google_auth_redirect(html):
+        raise ValueError(
+            "Authentication expired or invalid. Run 'notebooklm login' to re-authenticate."
+        )
+    raise ValueError(
+        f"{label} not found in HTML. Final URL: {final_url}\n"
+        "This may indicate the page structure has changed."
+    )
 
 
 def _is_google_domain(domain: str) -> bool:
@@ -358,19 +401,10 @@ def extract_csrf_from_html(html: str, final_url: str = "") -> str:
     Raises:
         ValueError: If token pattern not found in HTML
     """
-    # Match "SNlM0e": "<token>" or "SNlM0e":"<token>" pattern
-    match = re.search(r'"SNlM0e"\s*:\s*"([^"]+)"', html)
-    if not match:
-        # Check if we were redirected to login page
-        if is_google_auth_redirect(final_url) or contains_google_auth_redirect(html):
-            raise ValueError(
-                "Authentication expired or invalid. Run 'notebooklm login' to re-authenticate."
-            )
-        raise ValueError(
-            f"CSRF token not found in HTML. Final URL: {final_url}\n"
-            "This may indicate the page structure has changed."
-        )
-    return match.group(1)
+    token = _extract_wiz_global_value(html, "SNlM0e")
+    if token is None:
+        _raise_auth_value_error("CSRF token", final_url, html)
+    return token
 
 
 def extract_session_id_from_html(html: str, final_url: str = "") -> str:
@@ -390,18 +424,48 @@ def extract_session_id_from_html(html: str, final_url: str = "") -> str:
     Raises:
         ValueError: If session ID pattern not found in HTML
     """
-    # Match "FdrFJe": "<session_id>" or "FdrFJe":"<session_id>" pattern
-    match = re.search(r'"FdrFJe"\s*:\s*"([^"]+)"', html)
-    if not match:
-        if is_google_auth_redirect(final_url) or contains_google_auth_redirect(html):
-            raise ValueError(
-                "Authentication expired or invalid. Run 'notebooklm login' to re-authenticate."
-            )
-        raise ValueError(
-            f"Session ID not found in HTML. Final URL: {final_url}\n"
-            "This may indicate the page structure has changed."
-        )
-    return match.group(1)
+    session_id = _extract_wiz_global_value(html, "FdrFJe")
+    if session_id is None:
+        _raise_auth_value_error("Session ID", final_url, html)
+    return session_id
+
+
+def extract_build_label_from_html(html: str, final_url: str = "") -> str:
+    """Extract the build label (`bl`) from NotebookLM page HTML."""
+    for key in _BUILD_LABEL_HTML_KEYS:
+        build_label = _extract_wiz_global_value(html, key)
+        if build_label is not None:
+            return build_label
+    _raise_auth_value_error("Build label", final_url, html)
+
+
+def _get_storage_path_for_persistence(path: str | Path | None = None) -> Path | None:
+    """Resolve the writable storage_state.json path, if file-based auth is active."""
+    if path is not None:
+        return Path(path).expanduser().resolve()
+    if "NOTEBOOKLM_AUTH_JSON" in os.environ:
+        return None
+    return get_storage_path()
+
+
+def _persist_build_label_to_storage(path: Path | None, build_label: str) -> None:
+    """Persist the extracted build label into storage_state.json when possible."""
+    if path is None or not build_label:
+        return
+    try:
+        storage_state = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, OSError, json.JSONDecodeError) as exc:
+        logger.debug("Skipping build label persistence for %s: %s", path, exc)
+        return
+
+    if storage_state.get("bl") == build_label:
+        return
+
+    storage_state["bl"] = build_label
+    try:
+        path.write_text(json.dumps(storage_state, indent=2, ensure_ascii=False), encoding="utf-8")
+    except OSError as exc:
+        logger.warning("Failed to persist build label to %s: %s", path, exc)
 
 
 def _load_storage_state(path: Path | None = None) -> dict[str, Any]:
@@ -585,8 +649,8 @@ def load_httpx_cookies(path: Path | None = None) -> "httpx.Cookies":
     return cookies
 
 
-async def fetch_tokens(cookies: dict[str, str]) -> tuple[str, str]:
-    """Fetch CSRF token and session ID from NotebookLM homepage.
+async def fetch_tokens(cookies: dict[str, str]) -> tuple[str, str, str]:
+    """Fetch CSRF token, session ID, and build label from NotebookLM homepage.
 
     Makes an authenticated request to NotebookLM and extracts the required
     tokens from the page HTML.
@@ -595,13 +659,13 @@ async def fetch_tokens(cookies: dict[str, str]) -> tuple[str, str]:
         cookies: Dict of Google auth cookies
 
     Returns:
-        Tuple of (csrf_token, session_id)
+        Tuple of (csrf_token, session_id, build_label)
 
     Raises:
         httpx.HTTPError: If request fails
         ValueError: If tokens cannot be extracted from response
     """
-    logger.debug("Fetching CSRF and session tokens from NotebookLM")
+    logger.debug("Fetching CSRF, session ID, and build label from NotebookLM")
     cookie_header = "; ".join(f"{k}={v}" for k, v in cookies.items())
 
     async with httpx.AsyncClient() as client:
@@ -625,6 +689,7 @@ async def fetch_tokens(cookies: dict[str, str]) -> tuple[str, str]:
 
         csrf = extract_csrf_from_html(response.text, final_url)
         session_id = extract_session_id_from_html(response.text, final_url)
+        build_label = extract_build_label_from_html(response.text, final_url)
 
         logger.debug("Authentication tokens obtained successfully")
-        return csrf, session_id
+        return csrf, session_id, build_label

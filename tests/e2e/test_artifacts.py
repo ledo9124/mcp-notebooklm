@@ -12,9 +12,17 @@ import asyncio
 import pytest
 
 from notebooklm import Artifact, ArtifactType, ReportSuggestion
-from notebooklm.exceptions import RPCTimeoutError
+from notebooklm.exceptions import RPCTimeoutError, ValidationError
 
 from .conftest import assert_generation_started, requires_auth
+
+_UNUSED_NOTEBOOK_ID = "nb_mvp_unsupported"
+_UNSUPPORTED_MATCH = "is not supported on this branch"
+
+
+async def _assert_unsupported(call) -> None:
+    with pytest.raises(ValidationError, match=_UNSUPPORTED_MATCH):
+        await call
 
 
 @requires_auth
@@ -66,13 +74,9 @@ class TestArtifactTypeSpecificLists:
 
     @pytest.mark.asyncio
     @pytest.mark.readonly
-    async def test_list_video(self, client, read_only_notebook_id):
-        """Test listing video artifacts."""
-        artifacts = await client.artifacts.list_video(read_only_notebook_id)
-        assert isinstance(artifacts, list)
-        # All returned should be video type
-        for art in artifacts:
-            assert art.kind == ArtifactType.VIDEO
+    async def test_list_video(self, client):
+        """Video listing is intentionally pruned from the active MVP."""
+        await _assert_unsupported(client.artifacts.list_video(_UNUSED_NOTEBOOK_ID))
 
     @pytest.mark.asyncio
     @pytest.mark.readonly
@@ -86,55 +90,33 @@ class TestArtifactTypeSpecificLists:
 
     @pytest.mark.asyncio
     @pytest.mark.readonly
-    async def test_list_quizzes(self, client, read_only_notebook_id):
-        """Test listing quiz artifacts."""
-        artifacts = await client.artifacts.list_quizzes(read_only_notebook_id)
-        assert isinstance(artifacts, list)
-        # All returned should be quizzes
-        for art in artifacts:
-            assert art.kind == ArtifactType.QUIZ
-            assert art.is_quiz is True
+    async def test_list_quizzes(self, client):
+        """Quiz listing is intentionally pruned from the active MVP."""
+        await _assert_unsupported(client.artifacts.list_quizzes(_UNUSED_NOTEBOOK_ID))
 
     @pytest.mark.asyncio
     @pytest.mark.readonly
-    async def test_list_flashcards(self, client, read_only_notebook_id):
-        """Test listing flashcard artifacts."""
-        artifacts = await client.artifacts.list_flashcards(read_only_notebook_id)
-        assert isinstance(artifacts, list)
-        # All returned should be flashcards
-        for art in artifacts:
-            assert art.kind == ArtifactType.FLASHCARDS
-            assert art.is_flashcards is True
+    async def test_list_flashcards(self, client):
+        """Flashcard listing is intentionally pruned from the active MVP."""
+        await _assert_unsupported(client.artifacts.list_flashcards(_UNUSED_NOTEBOOK_ID))
 
     @pytest.mark.asyncio
     @pytest.mark.readonly
-    async def test_list_infographics(self, client, read_only_notebook_id):
-        """Test listing infographic artifacts."""
-        artifacts = await client.artifacts.list_infographics(read_only_notebook_id)
-        assert isinstance(artifacts, list)
-        # All returned should be infographic type
-        for art in artifacts:
-            assert art.kind == ArtifactType.INFOGRAPHIC
+    async def test_list_infographics(self, client):
+        """Infographic listing is intentionally pruned from the active MVP."""
+        await _assert_unsupported(client.artifacts.list_infographics(_UNUSED_NOTEBOOK_ID))
 
     @pytest.mark.asyncio
     @pytest.mark.readonly
-    async def test_list_slide_decks(self, client, read_only_notebook_id):
-        """Test listing slide deck artifacts."""
-        artifacts = await client.artifacts.list_slide_decks(read_only_notebook_id)
-        assert isinstance(artifacts, list)
-        # All returned should be slide deck type
-        for art in artifacts:
-            assert art.kind == ArtifactType.SLIDE_DECK
+    async def test_list_slide_decks(self, client):
+        """Slide-deck listing is intentionally pruned from the active MVP."""
+        await _assert_unsupported(client.artifacts.list_slide_decks(_UNUSED_NOTEBOOK_ID))
 
     @pytest.mark.asyncio
     @pytest.mark.readonly
-    async def test_list_data_tables(self, client, read_only_notebook_id):
-        """Test listing data table artifacts."""
-        artifacts = await client.artifacts.list_data_tables(read_only_notebook_id)
-        assert isinstance(artifacts, list)
-        # All returned should be data table type
-        for art in artifacts:
-            assert art.kind == ArtifactType.DATA_TABLE
+    async def test_list_data_tables(self, client):
+        """Data-table listing is intentionally pruned from the active MVP."""
+        await _assert_unsupported(client.artifacts.list_data_tables(_UNUSED_NOTEBOOK_ID))
 
 
 @requires_auth
@@ -229,12 +211,10 @@ class TestArtifactMutations:
     async def test_delete_artifact(self, client, temp_notebook):
         """Test deleting an artifact.
 
-        Uses quiz instead of flashcards to spread rate limits across different
-        artifact type quotas.
+        Uses audio generation because the active MVP prunes quiz/flashcard generation.
         """
-        # Create a quiz artifact for deletion (different type than flashcards)
-        result = await client.artifacts.generate_quiz(temp_notebook.id)
-        assert_generation_started(result, "Quiz")
+        result = await client.artifacts.generate_audio(temp_notebook.id)
+        assert_generation_started(result, "Audio overview")
         artifact_id = result.task_id
 
         await asyncio.sleep(2)

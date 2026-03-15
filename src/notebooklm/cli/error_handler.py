@@ -4,13 +4,13 @@ This module provides a context manager for consistent error handling
 across all CLI commands.
 """
 
-import json
 from collections.abc import Generator
 from contextlib import contextmanager
 from typing import Any
 
 import click
 
+from .helpers import emit_local_json_error
 from ..exceptions import (
     AuthError,
     ConfigurationError,
@@ -41,10 +41,14 @@ def _output_error(
         hint: Additional hint to show in text mode
     """
     if json_output:
-        response: dict = {"error": True, "code": code, "message": message}
-        if extra:
-            response.update(extra)
-        click.echo(json.dumps(response, indent=2))
+        emit_local_json_error(
+            code,
+            message,
+            mode="handle_errors",
+            reason="Report a CLI exception before command-specific routing metadata is available.",
+            extra=extra,
+            exit_code=exit_code,
+        )
     else:
         click.echo(message, err=True)
         if hint:

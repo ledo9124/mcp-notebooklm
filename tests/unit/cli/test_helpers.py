@@ -2,6 +2,7 @@
 
 import importlib
 import json
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -28,6 +29,22 @@ from notebooklm.cli.helpers import (
     # Decorator
     with_client,
 )
+
+
+def _assert_local_error_envelope(data: dict, *, code: str, mode: str) -> dict:
+    assert data["ok"] is False
+    assert data["trace_id"].startswith("trc_")
+    assert data["run_id"].startswith("run_")
+    assert data["route"]["intent"] == "LOCAL_METADATA"
+    assert data["route"]["mode"] == mode
+    assert data["route"]["notebook_id"] is None
+    assert data["route"]["profile_id"] == "default"
+    assert data["route"]["source_of_truth"] == "local_cache"
+    assert data["route"]["cache_mode"] == "offline"
+    assert data["route"]["transport"] == {"kind": "local", "endpoint": None, "rpcid": None}
+    assert data["diagnostics"]["elapsed_ms"] >= 0
+    assert data["result"]["code"] == code
+    return data["result"]
 
 
 class TestGetSourceTypeDisplay:
@@ -269,8 +286,10 @@ class TestHandleAuthError:
         assert exc_info.value.code == 1
         captured = capsys.readouterr()
         data = json.loads(captured.out)
-        assert data["error"] is True
-        assert data["code"] == "AUTH_REQUIRED"
+        result = _assert_local_error_envelope(data, code="AUTH_REQUIRED", mode="auth_required")
+        assert "notebooklm login" in result["message"]
+        assert result["checked_paths"]["storage_file"]
+        assert result["help"] == "Run 'notebooklm login' or set NOTEBOOKLM_AUTH_JSON"
 
 
 # =============================================================================
@@ -296,7 +315,11 @@ class TestWithClientDecorator:
         with patch("notebooklm.cli.helpers.load_auth_from_storage") as mock_load:
             mock_load.return_value = {"SID": "test"}
             with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf", "session")
+                mock_fetch.return_value = (
+                    "csrf",
+                    "session",
+                    "boq_labs-tailwind-frontend_20260315.01_p0",
+                )
                 result = runner.invoke(test_cmd)
 
         assert result.exit_code == 0
@@ -340,7 +363,11 @@ class TestWithClientDecorator:
         with patch("notebooklm.cli.helpers.load_auth_from_storage") as mock_load:
             mock_load.return_value = {"SID": "test"}
             with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf", "session")
+                mock_fetch.return_value = (
+                    "csrf",
+                    "session",
+                    "boq_labs-tailwind-frontend_20260315.01_p0",
+                )
                 result = runner.invoke(test_cmd)
 
         assert result.exit_code == 1
@@ -364,13 +391,42 @@ class TestWithClientDecorator:
         with patch("notebooklm.cli.helpers.load_auth_from_storage") as mock_load:
             mock_load.return_value = {"SID": "test"}
             with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf", "session")
+                mock_fetch.return_value = (
+                    "csrf",
+                    "session",
+                    "boq_labs-tailwind-frontend_20260315.01_p0",
+                )
                 result = runner.invoke(test_cmd, ["--json"])
 
         assert result.exit_code == 1
         data = json.loads(result.output)
-        assert data["error"] is True
-        assert "Test error" in data["message"]
+        result_payload = _assert_local_error_envelope(data, code="ERROR", mode="test_cmd")
+        assert "Test error" in result_payload["message"]
+
+    def test_decorator_handles_no_auth_json_mode(self):
+        """Test missing-auth handling in JSON mode."""
+        import click
+        from click.testing import CliRunner
+
+        @click.command()
+        @click.option("--json", "json_output", is_flag=True)
+        @with_client
+        def test_cmd(ctx, json_output, client_auth):
+            async def _run():
+                click.echo(f"Got auth: {client_auth is not None}")
+
+            return _run()
+
+        runner = CliRunner()
+        with patch("notebooklm.cli.helpers.load_auth_from_storage") as mock_load:
+            mock_load.side_effect = FileNotFoundError("No auth")
+            result = runner.invoke(test_cmd, ["--json"])
+
+        assert result.exit_code == 1
+        data = json.loads(result.output)
+        result_payload = _assert_local_error_envelope(data, code="AUTH_REQUIRED", mode="test_cmd")
+        assert result_payload["checked_paths"]["storage_file"]
+        assert result_payload["help"] == "Run 'notebooklm login' or set NOTEBOOKLM_AUTH_JSON"
 
 
 # =============================================================================
@@ -386,13 +442,18 @@ class TestGetClient:
         with patch("notebooklm.cli.helpers.load_auth_from_storage") as mock_load:
             mock_load.return_value = {"SID": "test_sid"}
             with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf_token", "session_id")
+                mock_fetch.return_value = (
+                    "csrf_token",
+                    "session_id",
+                    "boq_labs-tailwind-frontend_20260315.02_p0",
+                )
 
-                cookies, csrf, session = get_client(ctx)
+                cookies, csrf, session, build_label = get_client(ctx)
 
         assert cookies == {"SID": "test_sid"}
         assert csrf == "csrf_token"
         assert session == "session_id"
+        assert build_label == "boq_labs-tailwind-frontend_20260315.02_p0"
 
     def test_uses_storage_path_from_context(self):
         ctx = MagicMock()
@@ -401,7 +462,11 @@ class TestGetClient:
         with patch("notebooklm.cli.helpers.load_auth_from_storage") as mock_load:
             mock_load.return_value = {"SID": "test"}
             with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf", "session")
+                mock_fetch.return_value = (
+                    "csrf",
+                    "session",
+                    "boq_labs-tailwind-frontend_20260315.01_p0",
+                )
 
                 get_client(ctx)
 
@@ -409,20 +474,45 @@ class TestGetClient:
 
 
 class TestGetAuthTokens:
-    def test_returns_auth_tokens_object(self):
+    def test_returns_auth_tokens_object(self, monkeypatch):
         ctx = MagicMock()
         ctx.obj = None
+        monkeypatch.delenv("NOTEBOOKLM_AUTH_JSON", raising=False)
+        monkeypatch.delenv("NOTEBOOKLM_HOME", raising=False)
 
         with patch("notebooklm.cli.helpers.load_auth_from_storage") as mock_load:
             mock_load.return_value = {"SID": "test_sid"}
             with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
-                mock_fetch.return_value = ("csrf_token", "session_id")
+                mock_fetch.return_value = (
+                    "csrf_token",
+                    "session_id",
+                    "boq_labs-tailwind-frontend_20260315.03_p0",
+                )
 
                 auth = get_auth_tokens(ctx)
 
         assert auth.cookies == {"SID": "test_sid"}
         assert auth.csrf_token == "csrf_token"
         assert auth.session_id == "session_id"
+        assert auth.build_label == "boq_labs-tailwind-frontend_20260315.03_p0"
+        assert auth.storage_path == Path.home() / ".notebooklm" / "storage_state.json"
+
+    def test_uses_storage_path_for_auth_token_persistence(self):
+        ctx = MagicMock()
+        ctx.obj = {"storage_path": "/custom/path"}
+
+        with patch("notebooklm.cli.helpers.load_auth_from_storage") as mock_load:
+            mock_load.return_value = {"SID": "test_sid"}
+            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
+                mock_fetch.return_value = (
+                    "csrf_token",
+                    "session_id",
+                    "boq_labs-tailwind-frontend_20260315.03_p0",
+                )
+
+                auth = get_auth_tokens(ctx)
+
+        assert auth.storage_path == Path("/custom/path").resolve()
 
 
 class TestRunAsync:

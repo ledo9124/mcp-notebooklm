@@ -6,11 +6,96 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from notebooklm.local.db import connect_db
 from notebooklm.notebooklm_cli import cli
 from notebooklm.rpc.types import ReportFormat
 from notebooklm.types import GenerationStatus
 
 from .conftest import create_mock_client, patch_client_for_module
+
+
+def _prepare_local_cache_home(monkeypatch, tmp_path) -> None:
+    home = tmp_path / "home"
+    monkeypatch.setenv("NOTEBOOKLM_HOME", str(home))
+    home.mkdir(parents=True, exist_ok=True)
+    (home / "storage_state.json").write_text("{}", encoding="utf-8")
+    (home / "browser_profile").mkdir(exist_ok=True)
+    connection = connect_db()
+    connection.close()
+
+
+def _insert_detail_sync_seed(connection, notebook_id: str) -> None:
+    connection.execute(
+        """
+        INSERT INTO notebooks (
+            notebook_id,
+            profile_id,
+            title,
+            normalized_title,
+            detail_synced_at,
+            remote_fingerprint
+        ) VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (
+            notebook_id,
+            "default",
+            "Notebook",
+            "notebook",
+            "2026-03-15T04:00:00+00:00",
+            "fp_before",
+        ),
+    )
+    connection.execute(
+        """
+        INSERT INTO sync_runs (
+            id,
+            trace_id,
+            profile_id,
+            scope,
+            target_id,
+            trigger,
+            started_at,
+            ended_at,
+            status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            "sr_detail",
+            "trc_detail",
+            "default",
+            "notebook_detail",
+            notebook_id,
+            "manual",
+            "2026-03-15T04:00:00+00:00",
+            "2026-03-15T04:00:01+00:00",
+            "completed",
+        ),
+        )
+
+
+def _assert_generation_error_envelope(
+    payload: dict,
+    *,
+    code: str,
+    mode: str = "audio",
+    notebook_id: str = "nb_123",
+    cache_updates: dict | None = None,
+) -> dict:
+    assert payload["ok"] is False
+    assert payload["trace_id"].startswith("trc_")
+    assert payload["run_id"].startswith("run_")
+    assert payload["route"]["intent"] == "GENERATION"
+    assert payload["route"]["mode"] == mode
+    assert payload["route"]["notebook_id"] == notebook_id
+    assert payload["route"]["profile_id"] == "default"
+    assert payload["route"]["source_of_truth"] == "remote_http"
+    assert payload["route"]["cache_mode"] == "network"
+    assert payload["route"]["transport"]["kind"] == "httpx"
+    if cache_updates is not None:
+        assert payload["cache_updates"] == cache_updates
+    assert payload["diagnostics"]["elapsed_ms"] >= 0
+    assert payload["result"]["code"] == code
+    return payload["result"]
 
 
 class TestGenerateAudio:
@@ -30,6 +115,8 @@ class TestGenerateAudio:
                 )
 
         assert result.exit_code == 0
+        assert "Deprecated compatibility command." in result.output
+        assert "notebooklm audio" in result.output
         assert "audio_123" in result.output or "Started" in result.output
         mock_client.artifacts.generate_audio.assert_awaited_once()
         call_kwargs = mock_client.artifacts.generate_audio.call_args.kwargs
@@ -86,8 +173,84 @@ class TestGenerateAudio:
                 result = runner.invoke(cli, ["generate", "audio", "--json", "-n", "nb_123"])
 
         assert result.exit_code == 0
-        data = json.loads(result.output)
-        assert data == {"task_id": "audio_123", "status": "pending"}
+        assert "Deprecated compatibility command." not in result.output
+        payload = json.loads(result.output)
+        assert payload["ok"] is True
+        assert payload["route"]["intent"] == "GENERATION"
+        assert payload["route"]["mode"] == "audio"
+        assert payload["route"]["notebook_id"] == "nb_123"
+        assert payload["route"]["source_of_truth"] == "remote_http"
+        assert payload["route"]["cache_mode"] == "network"
+        assert payload["route"]["transport"]["kind"] == "httpx"
+        assert payload["result"] == {"task_id": "audio_123", "status": "pending"}
+        assert payload["cache_updates"]["tables_touched"] == ["artifacts", "notebooks", "sync_runs"]
+        assert payload["cache_updates"]["invalidated"] == ["notebook_detail:nb_123"]
+        assert payload["diagnostics"]["elapsed_ms"] >= 0
+
+    def test_generate_audio_seeds_pending_artifact_and_invalidates_detail_cache(
+        self, runner, mock_auth, monkeypatch, tmp_path
+    ):
+        _prepare_local_cache_home(monkeypatch, tmp_path)
+        with connect_db() as connection:
+            _insert_detail_sync_seed(connection, "nb_123")
+
+        with patch_client_for_module("generate") as mock_client_cls:
+            mock_client = create_mock_client()
+            mock_client.artifacts.generate_audio = AsyncMock(
+                return_value=GenerationStatus(task_id="audio_123", status="pending")
+            )
+            mock_client_cls.return_value = mock_client
+
+            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
+                mock_fetch.return_value = ("csrf", "session")
+                result = runner.invoke(
+                    cli,
+                    ["generate", "audio", "deep dive on the key debates", "-n", "nb_123"],
+                )
+
+        assert result.exit_code == 0
+        with connect_db() as connection:
+            notebook = connection.execute(
+                "SELECT detail_synced_at, remote_fingerprint FROM notebooks WHERE notebook_id = ?",
+                ("nb_123",),
+            ).fetchone()
+            sync_run = connection.execute(
+                "SELECT status, error_text FROM sync_runs WHERE id = ?",
+                ("sr_detail",),
+            ).fetchone()
+            artifact = connection.execute(
+                """
+                SELECT artifact_type, status, requested_at
+                FROM artifacts
+                WHERE artifact_id = ?
+                """,
+                ("audio_123",),
+            ).fetchone()
+
+        assert notebook["detail_synced_at"] is None
+        assert notebook["remote_fingerprint"] is None
+        assert sync_run["status"] == "cancelled"
+        assert sync_run["error_text"] == "artifact.create"
+        assert artifact["artifact_type"] == "audio"
+        assert artifact["status"] == "pending"
+        assert artifact["requested_at"] is not None
+
+    def test_audio_root_command_reuses_generation_flow(self, runner, mock_auth):
+        with patch_client_for_module("generate") as mock_client_cls:
+            mock_client = create_mock_client()
+            mock_client.artifacts.generate_audio = AsyncMock(
+                return_value={"artifact_id": "audio_123", "status": "processing"}
+            )
+            mock_client_cls.return_value = mock_client
+
+            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
+                mock_fetch.return_value = ("csrf", "session")
+                result = runner.invoke(cli, ["audio", "deep dive", "-n", "nb_123"])
+
+        assert result.exit_code == 0
+        assert "Deprecated compatibility command." not in result.output
+        call_kwargs = mock_client.artifacts.generate_audio.call_args.kwargs
+        assert call_kwargs["instructions"] == "deep dive"
 
 
 class TestGenerateReport:
@@ -104,9 +267,36 @@ class TestGenerateReport:
                 result = runner.invoke(cli, ["generate", "report", "-n", "nb_123"])
 
         assert result.exit_code == 0
+        assert "Deprecated compatibility command." in result.output
+        assert "notebooklm summarize" in result.output
         call_kwargs = mock_client.artifacts.generate_report.call_args.kwargs
         assert call_kwargs["report_format"] == ReportFormat.BRIEFING_DOC
         assert call_kwargs["extra_instructions"] is None
+
+    def test_generate_report_with_wait(self, runner, mock_auth):
+        with patch_client_for_module("generate") as mock_client_cls:
+            mock_client = create_mock_client()
+            initial_status = GenerationStatus(task_id="report_123", status="pending")
+            completed_status = GenerationStatus(
+                task_id="report_123",
+                status="completed",
+                url="https://example.com/report.pdf",
+            )
+            mock_client.artifacts.generate_report = AsyncMock(return_value=initial_status)
+            mock_client.artifacts.wait_for_completion = AsyncMock(return_value=completed_status)
+            mock_client_cls.return_value = mock_client
+
+            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
+                mock_fetch.return_value = ("csrf", "session")
+                result = runner.invoke(cli, ["generate", "report", "--wait", "-n", "nb_123"])
+
+        assert result.exit_code == 0
+        assert "report.pdf" in result.output
+        mock_client.artifacts.wait_for_completion.assert_awaited_once_with(
+            "nb_123",
+            "report_123",
+            timeout=300.0,
+        )
 
     def test_generate_report_study_guide(self, runner, mock_auth):
         with patch_client_for_module("generate") as mock_client_cls:
@@ -124,6 +314,8 @@ class TestGenerateReport:
                 )
 
         assert result.exit_code == 0
+        assert "Deprecated compatibility command." in result.output
+        assert "notebooklm study-guide" in result.output
         call_kwargs = mock_client.artifacts.generate_report.call_args.kwargs
         assert call_kwargs["report_format"] == ReportFormat.STUDY_GUIDE
 
@@ -170,8 +362,118 @@ class TestGenerateReport:
                 result = runner.invoke(cli, ["generate", "report", "--json", "-n", "nb_123"])
 
         assert result.exit_code == 0
-        data = json.loads(result.output)
-        assert data == {"task_id": "report_123", "status": "pending"}
+        assert "Deprecated compatibility command." not in result.output
+        payload = json.loads(result.output)
+        assert payload["ok"] is True
+        assert payload["route"]["intent"] == "GENERATION"
+        assert payload["route"]["mode"] == "briefing_doc"
+        assert payload["route"]["notebook_id"] == "nb_123"
+        assert payload["route"]["source_of_truth"] == "remote_http"
+        assert payload["route"]["cache_mode"] == "network"
+        assert payload["route"]["transport"]["kind"] == "httpx"
+        assert payload["result"] == {"task_id": "report_123", "status": "pending"}
+        assert payload["cache_updates"]["tables_touched"] == ["artifacts", "notebooks", "sync_runs"]
+        assert payload["cache_updates"]["invalidated"] == ["notebook_detail:nb_123"]
+        assert payload["diagnostics"]["elapsed_ms"] >= 0
+
+    def test_study_guide_root_json_output_uses_study_guide_route(self, runner, mock_auth):
+        with patch_client_for_module("generate") as mock_client_cls:
+            mock_client = create_mock_client()
+            mock_client.artifacts.generate_report = AsyncMock(
+                return_value={"task_id": "report_123", "status": "processing"}
+            )
+            mock_client_cls.return_value = mock_client
+
+            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
+                mock_fetch.return_value = ("csrf", "session")
+                result = runner.invoke(cli, ["study-guide", "--json", "-n", "nb_123"])
+
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload["ok"] is True
+        assert payload["route"]["intent"] == "GENERATION"
+        assert payload["route"]["mode"] == "study_guide"
+        assert payload["route"]["notebook_id"] == "nb_123"
+        assert payload["result"] == {"task_id": "report_123", "status": "pending"}
+
+    def test_generate_report_seeds_pending_artifact_and_invalidates_detail_cache(
+        self, runner, mock_auth, monkeypatch, tmp_path
+    ):
+        _prepare_local_cache_home(monkeypatch, tmp_path)
+        with connect_db() as connection:
+            _insert_detail_sync_seed(connection, "nb_123")
+
+        with patch_client_for_module("generate") as mock_client_cls:
+            mock_client = create_mock_client()
+            mock_client.artifacts.generate_report = AsyncMock(
+                return_value=GenerationStatus(task_id="report_123", status="pending")
+            )
+            mock_client_cls.return_value = mock_client
+
+            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
+                mock_fetch.return_value = ("csrf", "session")
+                result = runner.invoke(cli, ["generate", "report", "-n", "nb_123"])
+
+        assert result.exit_code == 0
+        with connect_db() as connection:
+            notebook = connection.execute(
+                "SELECT detail_synced_at, remote_fingerprint FROM notebooks WHERE notebook_id = ?",
+                ("nb_123",),
+            ).fetchone()
+            sync_run = connection.execute(
+                "SELECT status, error_text FROM sync_runs WHERE id = ?",
+                ("sr_detail",),
+            ).fetchone()
+            artifact = connection.execute(
+                """
+                SELECT artifact_type, status, requested_at
+                FROM artifacts
+                WHERE artifact_id = ?
+                """,
+                ("report_123",),
+            ).fetchone()
+
+        assert notebook["detail_synced_at"] is None
+        assert notebook["remote_fingerprint"] is None
+        assert sync_run["status"] == "cancelled"
+        assert sync_run["error_text"] == "artifact.create"
+        assert artifact["artifact_type"] == "report"
+        assert artifact["status"] == "pending"
+        assert artifact["requested_at"] is not None
+
+    def test_summarize_root_command_uses_briefing_doc_format(self, runner, mock_auth):
+        with patch_client_for_module("generate") as mock_client_cls:
+            mock_client = create_mock_client()
+            mock_client.artifacts.generate_report = AsyncMock(
+                return_value={"artifact_id": "report_123", "status": "processing"}
+            )
+            mock_client_cls.return_value = mock_client
+
+            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
+                mock_fetch.return_value = ("csrf", "session")
+                result = runner.invoke(cli, ["summarize", "-n", "nb_123"])
+
+        assert result.exit_code == 0
+        assert "Deprecated compatibility command." not in result.output
+        call_kwargs = mock_client.artifacts.generate_report.call_args.kwargs
+        assert call_kwargs["report_format"] == ReportFormat.BRIEFING_DOC
+
+    def test_study_guide_root_command_uses_study_guide_format(self, runner, mock_auth):
+        with patch_client_for_module("generate") as mock_client_cls:
+            mock_client = create_mock_client()
+            mock_client.artifacts.generate_report = AsyncMock(
+                return_value={"artifact_id": "report_123", "status": "processing"}
+            )
+            mock_client_cls.return_value = mock_client
+
+            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
+                mock_fetch.return_value = ("csrf", "session")
+                result = runner.invoke(cli, ["study-guide", "-n", "nb_123"])
+
+        assert result.exit_code == 0
+        assert "Deprecated compatibility command." not in result.output
+        call_kwargs = mock_client.artifacts.generate_report.call_args.kwargs
+        assert call_kwargs["report_format"] == ReportFormat.STUDY_GUIDE
 
 
 class TestGenerateCommandsExist:
@@ -213,6 +515,13 @@ class TestGenerateCommandsExist:
 
     def test_retry_option_in_report_help(self, runner):
         result = runner.invoke(cli, ["generate", "report", "--help"])
+
+        assert result.exit_code == 0
+        assert "--retry" in result.output
+
+    @pytest.mark.parametrize("command", ["audio", "summarize", "study-guide"])
+    def test_root_workflow_help_exposes_retry_option(self, runner, command):
+        result = runner.invoke(cli, [command, "--help"])
 
         assert result.exit_code == 0
         assert "--retry" in result.output
@@ -421,9 +730,14 @@ class TestRateLimitDetection:
                 mock_fetch.return_value = ("csrf", "session")
                 result = runner.invoke(cli, ["generate", "audio", "-n", "nb_123", "--json"])
 
-        data = json.loads(result.output)
-        assert data["error"] is True
-        assert data["code"] == "RATE_LIMITED"
+        assert result.exit_code == 1, result.output
+        payload = json.loads(result.output)
+        result_payload = _assert_generation_error_envelope(
+            payload,
+            code="RATE_LIMITED",
+            cache_updates={"tables_touched": [], "invalidated": []},
+        )
+        assert result_payload["message"] == "Audio generation rate limited by Google"
 
 
 class TestResolveLanguageDirect:
@@ -504,6 +818,18 @@ class TestOutputGenerationStatusDirect:
             self.generate_module._output_generation_status(status, "audio", json_output=True)
 
         mock_err.assert_called_once_with("GENERATION_FAILED", "Audio generation failed")
+
+    def test_json_rate_limited(self):
+        status = self._make_status(is_failed=True, error="Rate limited")
+        status.is_rate_limited = True
+
+        with patch.object(self.generate_module, "json_error_response") as mock_err:
+            self.generate_module._output_generation_status(status, "audio", json_output=True)
+
+        mock_err.assert_called_once_with(
+            "RATE_LIMITED",
+            "Audio generation rate limited by Google",
+        )
 
     def test_text_completed_with_url(self):
         status = self._make_status(
@@ -598,9 +924,42 @@ class TestHandleGenerationResultPaths:
                 mock_fetch.return_value = ("csrf", "session")
                 result = runner.invoke(cli, ["generate", "audio", "-n", "nb_123", "--json"])
 
-        data = json.loads(result.output)
-        assert data["error"] is True
-        assert data["code"] == "GENERATION_FAILED"
+        assert result.exit_code == 1, result.output
+        payload = json.loads(result.output)
+        result_payload = _assert_generation_error_envelope(
+            payload,
+            code="GENERATION_FAILED",
+            cache_updates={"tables_touched": [], "invalidated": []},
+        )
+        assert result_payload["message"] == "Audio generation failed"
+
+    def test_generation_failed_status_json_uses_error_envelope(self, runner, mock_auth):
+        failed_status = GenerationStatus(
+            task_id="task_failed_1",
+            status="failed",
+            error="Backend exploded",
+        )
+
+        with patch_client_for_module("generate") as mock_client_cls:
+            mock_client = create_mock_client()
+            mock_client.artifacts.generate_audio = AsyncMock(return_value=failed_status)
+            mock_client_cls.return_value = mock_client
+
+            with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock_fetch:
+                mock_fetch.return_value = ("csrf", "session")
+                result = runner.invoke(cli, ["generate", "audio", "-n", "nb_123", "--json"])
+
+        assert result.exit_code == 1, result.output
+        payload = json.loads(result.output)
+        result_payload = _assert_generation_error_envelope(
+            payload,
+            code="GENERATION_FAILED",
+            cache_updates={
+                "tables_touched": ["artifacts", "notebooks", "sync_runs"],
+                "invalidated": ["notebook_detail:nb_123"],
+            },
+        )
+        assert result_payload["message"] == "Backend exploded"
 
     def test_generation_with_wait_and_generation_status(self, runner, mock_auth):
         initial_status = GenerationStatus(task_id="task_wait_1", status="pending")

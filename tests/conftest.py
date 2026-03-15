@@ -45,7 +45,8 @@ def sample_homepage_html():
     <body>
     <script>window.WIZ_global_data = {
         "SNlM0e": "test_csrf_token_123",
-        "FdrFJe": "test_session_id_456"
+        "FdrFJe": "test_session_id_456",
+        "cfb2h": "boq_labs-tailwind-frontend_20260315.01_p0"
     }</script>
     </body>
     </html>

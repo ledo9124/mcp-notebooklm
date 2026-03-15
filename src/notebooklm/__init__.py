@@ -49,6 +49,7 @@ from .auth import DEFAULT_STORAGE_PATH, AuthTokens
 
 # Public API: Client
 from .client import NotebookLMClient
+from .workspaces import WorkspaceTool, WorkspaceToolDefinition, build_workspace_tool
 
 # Public API: Exceptions (centralized in exceptions.py)
 from .exceptions import (
@@ -139,9 +140,12 @@ __all__ = [
     "__version__",
     # Client (main entry point)
     "NotebookLMClient",
+    "build_workspace_tool",
     # Auth
     "AuthTokens",
     "DEFAULT_STORAGE_PATH",
+    "WorkspaceTool",
+    "WorkspaceToolDefinition",
     # Types
     "Notebook",
     "NotebookDescription",

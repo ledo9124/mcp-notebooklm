@@ -12,6 +12,17 @@ def runner():
     return CliRunner()
 
 
+@pytest.fixture(autouse=True)
+def isolated_notebooklm_home(tmp_path, monkeypatch):
+    """Give each CLI test an isolated NOTEBOOKLM_HOME layout."""
+    home = tmp_path / "notebooklm-home"
+    monkeypatch.setenv("NOTEBOOKLM_HOME", str(home))
+    home.mkdir(parents=True, exist_ok=True)
+    (home / "storage_state.json").write_text("{}", encoding="utf-8")
+    (home / "browser_profile").mkdir(exist_ok=True)
+    yield home
+
+
 @pytest.fixture
 def mock_auth():
     """Mock authentication for CLI commands.
@@ -38,7 +49,11 @@ def mock_fetch_tokens():
     Uses AsyncMock since fetch_tokens is an async function.
     """
     with patch("notebooklm.cli.helpers.fetch_tokens", new_callable=AsyncMock) as mock:
-        mock.return_value = ("csrf_token", "session_id")
+        mock.return_value = (
+            "csrf_token",
+            "session_id",
+            "boq_labs-tailwind-frontend_20260315.01_p0",
+        )
         yield mock
 
 

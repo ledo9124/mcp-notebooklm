@@ -15,7 +15,8 @@ class SectionedGroup(click.Group):
     - Session: login, use, status, clear
     - Notebooks: list, create, summary
     - Chat: ask
-    - Command Groups: source, research (show subcommands)
+    - Workflows: overview, summarize, study-guide, audio
+    - Command Groups: source, sync, research, history, trace, events, cache, radar, workspace (show subcommands)
     - Artifact Actions: generate (show types)
     """
 
@@ -25,6 +26,7 @@ class SectionedGroup(click.Group):
             ("Session", ["login", "use", "status", "clear"]),
             ("Notebooks", ["list", "create", "summary"]),
             ("Chat", ["ask"]),
+            ("Workflows", ["overview", "summarize", "study-guide", "audio"]),
         ]
     )
 
@@ -33,7 +35,19 @@ class SectionedGroup(click.Group):
         [
             (
                 "Command Groups (use: notebooklm <group> <command>)",
-                ["source", "research"],
+                [
+                    "source",
+                    "sync",
+                    "research",
+                    "history",
+                    "trace",
+                    "events",
+                    "cache",
+                    "watch",
+                    "radar",
+                    "inbox",
+                    "workspace",
+                ],
             ),
             ("Artifact Actions (use: notebooklm <action> <type>)", ["generate"]),
         ]

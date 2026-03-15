@@ -6,7 +6,6 @@ conversations usable across asks.
 
 import json
 import logging
-import os
 import re
 import uuid
 from typing import Any
@@ -20,8 +19,6 @@ from .rpc import QUERY_URL, RPCMethod
 from .types import AskResult, ChatReference
 
 logger = logging.getLogger(__name__)
-
-_DEFAULT_BL = "boq_labs-tailwind-frontend_20260301.03_p0"
 
 # UUID pattern for validating source IDs (compiled once at module level)
 _UUID_PATTERN = re.compile(
@@ -130,18 +127,7 @@ class ChatAPI:
 
         body = "&".join(body_parts) + "&"
 
-        self._core._reqid_counter += 100000
-        url_params = {
-            "bl": os.environ.get("NOTEBOOKLM_BL", _DEFAULT_BL),
-            "hl": "en",
-            "_reqid": str(self._core._reqid_counter),
-            "rt": "c",
-        }
-        if self._core.auth.session_id:
-            url_params["f.sid"] = self._core.auth.session_id
-
-        query_string = urlencode(url_params)
-        url = f"{QUERY_URL}?{query_string}"
+        url = self._build_query_url()
 
         http_client = self._core.get_http_client()
         try:
@@ -218,6 +204,19 @@ class ChatAPI:
     # =========================================================================
     # Private Helpers
     # =========================================================================
+
+    def _build_query_url(self) -> str:
+        """Build the query endpoint URL using the active auth snapshot."""
+        self._core._reqid_counter += 100000
+        url_params = {
+            "bl": self._core.auth.build_label,
+            "hl": "en",
+            "_reqid": str(self._core._reqid_counter),
+            "rt": "c",
+        }
+        if self._core.auth.session_id:
+            url_params["f.sid"] = self._core.auth.session_id
+        return f"{QUERY_URL}?{urlencode(url_params)}"
 
     def _build_conversation_history(self, conversation_id: str) -> list | None:
         """Build conversation history for follow-up requests."""

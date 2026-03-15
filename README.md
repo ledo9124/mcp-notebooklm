@@ -1,15 +1,4 @@
 # notebooklm-py
-<p align="left">
-  <img src="https://raw.githubusercontent.com/teng-lin/notebooklm-py/main/notebooklm-py.png" alt="notebooklm-py logo" width="128">
-</p>
-
-Unofficial async Python API + CLI for Google NotebookLM.
-
-[![PyPI version](https://img.shields.io/pypi/v/notebooklm-py.svg)](https://pypi.org/project/notebooklm-py/)
-[![Python](https://img.shields.io/badge/python-%3E%3D3.10-blue)](https://pypi.org/project/notebooklm-py/)
-[![Tests](https://github.com/teng-lin/notebooklm-py/actions/workflows/test.yml/badge.svg)](https://github.com/teng-lin/notebooklm-py/actions/workflows/test.yml)
-
-**Repository:** <https://github.com/teng-lin/notebooklm-py>
 
 > **Warning: Unofficial API**
 >
@@ -27,9 +16,20 @@ Unofficial async Python API + CLI for Google NotebookLM.
 - Research: web/drive research runs, poll/wait, import discovered sources
 - Artifacts: audio generation plus report generation (`briefing-doc`, `study-guide`)
 
+## Supported Surface Today
+
+- Install package: `notebooklm-py`
+- Python import package: `notebooklm`
+- Console command: `notebooklm`
+- Supported public workflows on this branch: auth/session, notebook bootstrap, source ingestion, research, chat, and the retained `generate` flows
+- Deferred compatibility modules may still exist in-tree, but removed standalone CLI groups are not part of the active product promise
+- Near-term roadmap: freeze this CLI/SDK contract first, then layer agent-first contract work above it instead of reviving removed legacy runtimes
+
 ## Installation
 
 Python requirement: **3.10+**.
+
+After installation, run the CLI as `notebooklm`. The Python examples in this repo import from `notebooklm`.
 
 ### Linux / macOS
 
@@ -138,6 +138,7 @@ See [Configuration](docs/configuration.md) for details and precedence rules.
 
 ## Documentation
 
+- [Project Overview](docs/project-overview.md)
 - [CLI Reference](docs/cli-reference.md)
 - [Python API Reference](docs/python-api.md)
 - [Configuration](docs/configuration.md)

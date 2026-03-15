@@ -53,6 +53,7 @@ async def get_vcr_auth() -> AuthTokens:
             },
             csrf_token="mock_csrf_token",
             session_id="mock_session_id",
+            build_label="boq_labs-tailwind-frontend_test",
         )
 
 
@@ -69,6 +70,7 @@ def auth_tokens():
         },
         csrf_token="test_csrf_token",
         session_id="test_session_id",
+        build_label="boq_labs-tailwind-frontend_test",
     )
 
 
