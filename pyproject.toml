@@ -42,7 +42,7 @@ dev = [
   "pytest-cov>=7.1.0,<8",
   "pytest-httpx>=0.36.2,<1",
   "pytest-rerunfailures>=16.1,<17",
-  "python-dotenv>=1,<2",
+  "python-dotenv>=1.2.2,<2",
   "ruff>=0.15.10,<1",
   "vcrpy>=8.1.1,<9",
 ]
@@ -54,7 +54,7 @@ all = [
   "pytest-cov>=7.1.0,<8",
   "pytest-httpx>=0.36.2,<1",
   "pytest-rerunfailures>=16.1,<17",
-  "python-dotenv>=1,<2",
+  "python-dotenv>=1.2.2,<2",
   "ruff>=0.15.10,<1",
   "vcrpy>=8.1.1,<9",
 ]
